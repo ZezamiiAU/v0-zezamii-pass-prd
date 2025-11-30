@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy } from "lucide-react"
 import Image from "next/image"
 
 const SuccessParamsSchema = z.object({
@@ -33,17 +33,21 @@ export default function SuccessPage() {
   const [passDetails, setPassDetails] = useState<PassDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [isOffline, setIsOffline] = useState(false)
-  const [codeWarning, setCodeWarning] = useState(false) // Track code fetch issues separately
+  const [codeWarning, setCodeWarning] = useState(false)
   const [supportEmail, setSupportEmail] = useState("support@zezamii.com")
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false)
 
-  console.log("[v0] Success page loaded")
-  console.log("[v0] Raw searchParams:", Object.fromEntries(searchParams.entries()))
+  const rawParams = Object.fromEntries(searchParams.entries())
 
   const paramsValidation = SuccessParamsSchema.safeParse({
     session_id: searchParams.get("session_id"),
     payment_intent: searchParams.get("payment_intent"),
   })
+
+  console.log("[v0] Success page loaded")
+  console.log("[v0] Raw searchParams:", rawParams)
 
   console.log("[v0] Validation result:", paramsValidation)
 
@@ -69,7 +73,17 @@ export default function SuccessPage() {
 
   useEffect(() => {
     if (!paramsValidation.success) {
-      console.log("[v0] Validation failed:", paramsValidation.error)
+      const errorInfo = {
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        params: rawParams,
+        validationError: paramsValidation.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      }
+      const detailsText = `Error Details:\n${JSON.stringify(errorInfo, null, 2)}`
+      setErrorDetails(detailsText)
       setError(`Invalid payment details. Please contact ${supportEmail} with your order confirmation.`)
       setIsLoading(false)
       return
@@ -80,7 +94,14 @@ export default function SuccessPage() {
     console.log("[v0] Validated params:", { sessionId, paymentIntent })
 
     if (!sessionId && !paymentIntent) {
-      console.log("[v0] No session_id or payment_intent found")
+      const errorInfo = {
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        params: rawParams,
+        issue: "No session_id or payment_intent parameter found",
+      }
+      const detailsText = `Error Details:\n${JSON.stringify(errorInfo, null, 2)}`
+      setErrorDetails(detailsText)
       setError("No payment information found. Please check your payment confirmation email.")
       setIsLoading(false)
       return
@@ -112,6 +133,19 @@ export default function SuccessPage() {
         if (!response.ok) {
           const errorData = await response.json()
           console.log("[v0] Error response:", errorData)
+
+          const errorInfo = {
+            timestamp: new Date().toISOString(),
+            url: window.location.href,
+            params: rawParams,
+            apiResponse: {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorData,
+            },
+          }
+          const detailsText = `Error Details:\n${JSON.stringify(errorInfo, null, 2)}`
+          setErrorDetails(detailsText)
 
           if ((errorData.status === "pending" || errorData.paymentStatus === "pending") && paymentIntent) {
             if (retryCount >= MAX_RETRIES) {
@@ -159,6 +193,17 @@ export default function SuccessPage() {
           return
         }
         console.error("[v0] Error fetching pass details:", err)
+
+        const errorInfo = {
+          timestamp: new Date().toISOString(),
+          url: window.location.href,
+          params: rawParams,
+          error: err instanceof Error ? err.message : String(err),
+          offline: !navigator.onLine,
+        }
+        const detailsText = `Error Details:\n${JSON.stringify(errorInfo, null, 2)}`
+        setErrorDetails(detailsText)
+
         if (!navigator.onLine) {
           setError("You're offline. PIN display requires an internet connection.")
         } else {
@@ -176,7 +221,7 @@ export default function SuccessPage() {
         clearTimeout(pollInterval)
       }
     }
-  }, [paramsValidation, isOffline, supportEmail])
+  }, [paramsValidation, isOffline, supportEmail, rawParams])
 
   const formatDateTime = (dateString: string, timezone: string) => {
     return formatLocalizedDateTime(dateString, timezone)
@@ -234,6 +279,14 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
     }
   }
 
+  const copyErrorDetails = () => {
+    if (errorDetails) {
+      navigator.clipboard.writeText(errorDetails)
+      setCopiedToClipboard(true)
+      setTimeout(() => setCopiedToClipboard(false), 2000)
+    }
+  }
+
   return (
     <div className="h-full flex items-center justify-center p-3 bg-brand-gradient">
       <Card className="w-full max-w-md max-h-[80vh] overflow-auto">
@@ -256,22 +309,42 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
           )}
 
           {error && (
-            <Alert variant="destructive" className={isOffline ? "border-orange-500 bg-orange-50" : ""}>
-              {isOffline ? <WifiOff className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-              <AlertDescription className={isOffline ? "text-orange-800 text-sm" : "text-sm"}>
-                {error}
-                {isOffline && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 w-full bg-transparent text-sm h-8"
-                    onClick={() => window.location.reload()}
-                  >
-                    Retry when online
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-2">
+              <Alert variant="destructive" className={isOffline ? "border-orange-500 bg-orange-50" : ""}>
+                {isOffline ? <WifiOff className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                <AlertDescription className={isOffline ? "text-orange-800 text-sm" : "text-sm"}>
+                  {error}
+                  {isOffline && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-full bg-transparent text-sm h-8"
+                      onClick={() => window.location.reload()}
+                    >
+                      Retry when online
+                    </Button>
+                  )}
+                </AlertDescription>
+              </Alert>
+
+              {errorDetails && (
+                <div className="bg-muted p-3 rounded-md text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-muted-foreground">Technical Details</p>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={copyErrorDetails}>
+                      <Copy className="h-3 w-3 mr-1" />
+                      {copiedToClipboard ? "Copied!" : "Copy"}
+                    </Button>
+                  </div>
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-2 rounded border">
+                    {errorDetails}
+                  </pre>
+                  <p className="text-muted-foreground text-xs">
+                    Please copy these details and send them to <strong>{supportEmail}</strong>
+                  </p>
+                </div>
+              )}
+            </div>
           )}
 
           {passDetails && (
