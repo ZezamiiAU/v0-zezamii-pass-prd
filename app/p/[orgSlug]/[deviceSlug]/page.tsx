@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { notFound } from "next/navigation"
 import { PassPurchaseForm } from "@/components/pass-purchase-form"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
@@ -103,6 +104,10 @@ export default function DevicePassPage() {
         <footer className="absolute bottom-8 text-center text-slate-400 text-sm">Powered by Zezamii</footer>
       </main>
     )
+  }
+
+  if (!accessPointData?.siteId) {
+    notFound()
   }
 
   return (
