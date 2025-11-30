@@ -2,6 +2,7 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.21.0",
   "scripts": {
     "prebuild": "tsx scripts/ensure-build-scripts.ts",
     "build": "tsx scripts/check-next-route-params.ts && next build",
@@ -72,7 +73,7 @@
     "react-dom": "19.1.0",
     "react-hook-form": "latest",
     "react-resizable-panels": "latest",
-    "recharts": "latest",
+    "recharts": "2.12.7",
     "sonner": "latest",
     "stripe": "latest",
     "tailwind-merge": "^2.5.5",
