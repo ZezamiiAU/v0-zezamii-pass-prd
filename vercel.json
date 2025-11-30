@@ -1,0 +1,6 @@
+{
+  "regions": ["syd1"],
+  "crons": [{ "path": "/api/cron/webhook-delivery", "schedule": "*/2 * * * *" }],
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm build"
+}

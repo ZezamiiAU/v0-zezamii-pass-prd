@@ -1,0 +1,336 @@
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
+import { loadStripe } from "@stripe/stripe-js"
+import { Elements } from "@stripe/react-stripe-js"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PaymentForm } from "@/components/payment-form"
+import { createPaymentIntent } from "@/lib/api/payments"
+
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+if (!publishableKey) {
+  throw new Error("Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY")
+}
+const stripePromise = loadStripe(publishableKey)
+
+interface PassType {
+  id: string
+  name: string
+  code: string
+  description: string | null
+  price_cents: number
+  duration_minutes: number
+  currency?: string
+}
+
+interface PassPurchaseFormProps {
+  organizationId: string // renamed from orgId
+  organizationName?: string // added for branding
+  organizationLogo?: string | null // added for branding
+  siteId: string
+  siteName?: string
+  deviceId: string
+  deviceName?: string // renamed from accesspointName
+  deviceDescription?: string | null // added for branding
+}
+
+export function PassPurchaseForm({
+  organizationId, // renamed from orgId
+  organizationName, // added
+  organizationLogo, // added
+  siteId,
+  siteName,
+  deviceId,
+  deviceName, // renamed from accesspointName
+  deviceDescription, // added
+}: PassPurchaseFormProps) {
+  const [passTypes, setPassTypes] = useState<PassType[]>([])
+  const [selectedPassTypeId, setSelectedPassTypeId] = useState("")
+  const [vehiclePlate, setVehiclePlate] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+
+  useEffect(() => {
+    const abortController = new AbortController()
+
+    async function loadPassTypes() {
+      try {
+        const url = `/api/pass-types${organizationId ? `?orgId=${organizationId}` : ""}`
+        const res = await fetch(url, {
+          signal: abortController.signal,
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setPassTypes(data)
+          if (data.length > 0) {
+            setSelectedPassTypeId(data[0].id)
+          }
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return
+      }
+    }
+
+    loadPassTypes()
+
+    return () => {
+      abortController.abort()
+    }
+  }, [organizationId]) // dependency updated
+
+  const selectedPassType = passTypes.find((pt) => pt.id === selectedPassTypeId)
+
+  const currency = selectedPassType?.currency?.toUpperCase() || "AUD"
+  const formatPrice = (cents: number) => {
+    return `$${(cents / 100).toFixed(2)} ${currency}`
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!email || !email.trim()) {
+      alert("Please enter your email address")
+      return
+    }
+
+    if (!termsAccepted) {
+      alert("Please accept the terms and conditions")
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const key =
+        (typeof crypto !== "undefined" && "randomUUID" in crypto && crypto.randomUUID()) ||
+        `${Date.now()}-${Math.random()}`
+
+      const data = await createPaymentIntent(
+        {
+          accessPointId: deviceId,
+          passTypeId: selectedPassTypeId,
+          plate: vehiclePlate || "",
+          email: email || "",
+          phone: phone || "",
+        },
+        key,
+      )
+
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret)
+      } else {
+        throw new Error("No client secret received")
+      }
+
+      setIsLoading(false)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Something went wrong. Please try again.")
+      setIsLoading(false)
+    }
+  }
+
+  if (clientSecret) {
+    return (
+      <Card className="w-full">
+        <CardHeader className="pb-1 pt-2 px-3">
+          <CardTitle className="text-lg">Complete Payment</CardTitle>
+          {(siteName || deviceName) && (
+            <CardDescription className="text-xs">{[deviceName, siteName].filter(Boolean).join(" - ")}</CardDescription>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-2 pb-2 px-3 max-h-[70vh] overflow-y-auto">
+          {selectedPassType && (
+            <Card className="bg-muted/50">
+              <CardHeader className="pb-1 pt-1.5 px-2">
+                <CardTitle className="text-base">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0.5 pb-1.5 px-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pass Type:</span>
+                  <span className="font-medium">{selectedPassType.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Duration:</span>
+                  <span className="font-medium">
+                    {selectedPassType.duration_minutes >= 60
+                      ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
+                      : `${selectedPassType.duration_minutes} minutes`}
+                  </span>
+                </div>
+                {selectedPassType.description && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Details:</span>
+                    <span className="font-medium text-xs">{selectedPassType.description}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-0.5 border-t text-sm">
+                  <span className="font-semibold">Total:</span>
+                  <span className="font-semibold">
+                    {formatPrice(selectedPassType.price_cents)}
+                    <span className="text-xs text-muted-foreground ml-1">(incl GST and fees)</span>
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <PaymentForm returnUrl={`${window.location.origin}/success`} customerEmail={email} />
+          </Elements>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="w-full">
+      <CardHeader className="pb-1 pt-2 px-3">
+        <CardTitle className="text-lg">Purchase Pass</CardTitle>
+        {(siteName || deviceName) && (
+          <CardDescription className="text-base">{[deviceName, siteName].filter(Boolean).join(" - ")}</CardDescription>
+        )}
+      </CardHeader>
+      <CardContent className="py-1.5 px-3">
+        <form onSubmit={handleSubmit} className="space-y-1.5">
+          <div className="space-y-0.5">
+            <Label htmlFor="passType" className="text-sm">
+              Pass Type
+            </Label>
+            <Select value={selectedPassTypeId} onValueChange={setSelectedPassTypeId}>
+              <SelectTrigger id="passType" className="h-7 text-sm">
+                <SelectValue placeholder="Select pass type" />
+              </SelectTrigger>
+              <SelectContent>
+                {passTypes.map((pt) => (
+                  <SelectItem key={pt.id} value={pt.id}>
+                    {pt.name} - {formatPrice(pt.price_cents)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-0.5">
+            <Label htmlFor="email" className="text-sm">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-7 text-sm"
+              required
+            />
+            <p className="text-xs text-muted-foreground leading-tight">Receive your pass details via email</p>
+          </div>
+
+          <div className="space-y-0.5">
+            <Label htmlFor="vehiclePlate" className="text-sm">
+              Vehicle Rego (Optional)
+            </Label>
+            <Input
+              id="vehiclePlate"
+              type="text"
+              placeholder="ABC-123"
+              value={vehiclePlate}
+              onChange={(e) => setVehiclePlate(e.target.value)}
+              className="uppercase h-7 text-sm"
+            />
+          </div>
+
+          <div className="space-y-0.5">
+            <Label htmlFor="phone" className="text-sm">
+              Mobile (Optional)
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="0412 345 678"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="h-7 text-sm"
+            />
+            <p className="text-xs text-muted-foreground leading-tight">Share pass via SMS from success page</p>
+          </div>
+
+          {selectedPassType && (
+            <Card className="bg-muted/50 mt-1">
+              <CardHeader className="pb-1 pt-1.5 px-2">
+                <CardTitle className="text-base">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0.5 pb-1.5 px-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pass Type:</span>
+                  <span className="font-medium">{selectedPassType.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Duration:</span>
+                  <span className="font-medium">
+                    {selectedPassType.duration_minutes >= 60
+                      ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
+                      : `${selectedPassType.duration_minutes} minutes`}
+                  </span>
+                </div>
+                {selectedPassType.description && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Details:</span>
+                    <span className="font-medium text-xs">{selectedPassType.description}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-0.5 border-t text-sm">
+                  <span className="font-semibold">Total:</span>
+                  <span className="font-semibold">
+                    {formatPrice(selectedPassType.price_cents)}
+                    <span className="text-xs text-muted-foreground block">incl GST and fees</span>
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex items-start space-x-1.5 pt-1">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 h-3 w-3"
+            />
+            <Label htmlFor="terms" className="text-xs font-normal leading-tight">
+              I accept the{" "}
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline hover:no-underline"
+              >
+                terms and conditions
+              </a>{" "}
+              for pass usage
+            </Label>
+          </div>
+
+          <Button
+            type="submit"
+            size="sm"
+            className="w-full mt-1.5 h-8 text-sm bg-brand text-white hover:opacity-90"
+            disabled={isLoading || !selectedPassType}
+          >
+            {isLoading ? "Processing..." : "Continue to Payment"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}

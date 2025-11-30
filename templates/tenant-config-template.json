@@ -1,0 +1,155 @@
+{
+  "$schema": "./tenant-config-schema.json",
+  "version": "1.0.0",
+  "generatedAt": "2024-01-01T00:00:00Z",
+  "organization": {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "name": "Your Organization Name",
+    "slug": "your-org-slug",
+    "logo_url": "https://your-cdn.com/logo.png",
+    "primary_color": "#3B82F6",
+    "secondary_color": "#1E40AF",
+    "contact_email": "contact@yourorg.com",
+    "contact_phone": "+1-555-0123",
+    "support_email": "support@yourorg.com",
+    "address": "123 Main Street",
+    "city": "San Francisco",
+    "state": "CA",
+    "country": "USA",
+    "postal_code": "94102",
+    "timezone": "America/Los_Angeles",
+    "is_active": true,
+    "notes": "Main organization entry"
+  },
+  "sites": [
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "name": "Main Site",
+      "slug": "main-site",
+      "address": "456 Park Ave",
+      "city": "San Francisco",
+      "state": "CA",
+      "country": "USA",
+      "postal_code": "94103",
+      "timezone": "America/Los_Angeles",
+      "is_active": true,
+      "notes": "Primary location"
+    }
+  ],
+  "buildings": [
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "site_id": "00000000-0000-0000-0000-000000000002",
+      "name": "Main Building",
+      "address": "456 Park Ave",
+      "floors": 5,
+      "is_active": true,
+      "notes": "Main entrance building"
+    }
+  ],
+  "floors": [
+    {
+      "id": "00000000-0000-0000-0000-000000000004",
+      "building_id": "00000000-0000-0000-0000-000000000003",
+      "name": "Ground Floor",
+      "level": 1,
+      "is_active": true,
+      "notes": "Main entrance level"
+    }
+  ],
+  "devices": [
+    {
+      "id": "00000000-0000-0000-0000-000000000005",
+      "floor_id": "00000000-0000-0000-0000-000000000004",
+      "name": "Main Entrance Door",
+      "device_type": "door_lock",
+      "manufacturer": "YourLockBrand",
+      "model": "Model-X1",
+      "serial_number": "SN123456789",
+      "mac_address": "AA:BB:CC:DD:EE:FF",
+      "ip_address": "192.168.1.100",
+      "firmware_version": "1.0.0",
+      "lock_id": "LOCK-001",
+      "slug": "main-entrance",
+      "slug_is_active": true,
+      "custom_name": "Welcome to Our Location",
+      "custom_description": "Purchase your access pass here",
+      "custom_logo_url": "https://your-cdn.com/custom-logo.png",
+      "is_active": true,
+      "notes": "Primary access point"
+    }
+  ],
+  "passTypes": [
+    {
+      "id": "00000000-0000-0000-0000-000000000010",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "name": "1 Hour Pass",
+      "description": "Quick access for 1 hour",
+      "duration_hours": 1,
+      "price_cents": 1000,
+      "stripe_product_id": null,
+      "stripe_price_id": "price_xxxxxxxxxxxxx",
+      "max_uses": 1,
+      "is_active": true,
+      "display_order": 1,
+      "notes": "Short duration pass"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000011",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "name": "Day Pass",
+      "description": "Full day access",
+      "duration_hours": 24,
+      "price_cents": 2500,
+      "stripe_product_id": null,
+      "stripe_price_id": "price_yyyyyyyyyyyyy",
+      "max_uses": 10,
+      "is_active": true,
+      "display_order": 2,
+      "notes": "24-hour access"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000012",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "name": "Week Pass",
+      "description": "7 days of access",
+      "duration_hours": 168,
+      "price_cents": 10000,
+      "stripe_product_id": null,
+      "stripe_price_id": "price_zzzzzzzzzzzzz",
+      "max_uses": 100,
+      "is_active": true,
+      "display_order": 3,
+      "notes": "Weekly access package"
+    }
+  ],
+  "accesspointSlugs": [
+    {
+      "slug": "main-entrance",
+      "device_id": "00000000-0000-0000-0000-000000000005",
+      "organization_slug": "your-org-slug",
+      "site_slug": "main-site",
+      "custom_name": "Welcome to Our Location",
+      "custom_description": "Purchase your access pass here",
+      "custom_logo_url": "https://your-cdn.com/custom-logo.png",
+      "is_active": true,
+      "notes": "User-friendly URL for main entrance"
+    }
+  ],
+  "integrations": [
+    {
+      "id": "00000000-0000-0000-0000-000000000020",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "integration_type": "rooms_event_hub",
+      "name": "Rooms Lock System",
+      "base_url": "https://sender.rooms.zezamii.com",
+      "api_key": "YOUR_API_KEY_HERE",
+      "property_id": "z71owzgoNUxJtxOC",
+      "webhook_secret": "YOUR_WEBHOOK_SECRET",
+      "config_json": {},
+      "is_active": true,
+      "notes": "Lock credential generation system"
+    }
+  ]
+}
