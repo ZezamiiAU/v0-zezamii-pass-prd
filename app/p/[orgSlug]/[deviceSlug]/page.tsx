@@ -26,12 +26,35 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
   console.log("[v0] Querying for:", { orgSlug, deviceSlug })
 
   const { data: accessPoint, error } = await supabase
-    .schema("pass")
-    .from("v_accesspoint_details")
-    .select("*")
-    .eq("org_slug", orgSlug)
+    .schema("core")
+    .from("devices")
+    .select(`
+      id,
+      name,
+      custom_name,
+      custom_description,
+      custom_logo_url,
+      code,
+      org_id,
+      site_id,
+      slug,
+      slug_is_active,
+      organisations:org_id (
+        id,
+        name,
+        slug,
+        timezone
+      ),
+      sites:site_id (
+        id,
+        name,
+        city,
+        state
+      )
+    `)
     .eq("slug", deviceSlug)
-    .eq("is_active", true)
+    .eq("organisations.slug", orgSlug)
+    .eq("slug_is_active", true)
     .single()
 
   if (error || !accessPoint) {
@@ -44,7 +67,6 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
       deviceSlug,
     })
 
-    // Pass error details as query params for debugging
     const errorParams = new URLSearchParams({
       orgSlug,
       deviceSlug,
@@ -57,10 +79,14 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
     redirect(`/p/error?${errorParams.toString()}`)
   }
 
+  const org = Array.isArray(accessPoint.organisations) ? accessPoint.organisations[0] : accessPoint.organisations
+
+  const site = Array.isArray(accessPoint.sites) ? accessPoint.sites[0] : accessPoint.sites
+
   console.log("[v0] Found access point:", {
-    deviceId: accessPoint.device_id,
-    accesspointName: accessPoint.accesspoint_name,
-    orgName: accessPoint.org_name,
+    deviceId: accessPoint.id,
+    deviceName: accessPoint.custom_name || accessPoint.name,
+    orgName: org?.name,
   })
 
   if (qr) {
@@ -70,7 +96,7 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
         .from("qr_scans")
         .insert({
           qr_instance_id: qr,
-          device_id: accessPoint.device_id,
+          device_id: accessPoint.id,
           org_id: accessPoint.org_id,
           source: source || "qr",
           scanned_at: new Date().toISOString(),
@@ -92,13 +118,13 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
       >
         <PassPurchaseForm
           organizationId={accessPoint.org_id}
-          organizationName={accessPoint.org_name}
-          organizationLogo={accessPoint.org_logo_url}
+          organizationName={org?.name || "Organization"}
+          organizationLogo={accessPoint.custom_logo_url}
           siteId={accessPoint.site_id}
-          siteName={accessPoint.site_name}
-          deviceId={accessPoint.device_id}
-          deviceName={accessPoint.accesspoint_name}
-          deviceDescription={accessPoint.site_description}
+          siteName={site?.name || "Site"}
+          deviceId={accessPoint.id}
+          deviceName={accessPoint.custom_name || accessPoint.name}
+          deviceDescription={accessPoint.custom_description}
         />
       </Suspense>
     </main>
