@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { notFound } from "next/navigation"
+import { redirect } from "next/navigation"
 import { PassPurchaseForm } from "@/components/pass-purchase-form"
 import { Spinner } from "@/components/ui/spinner"
 import { createServiceClient } from "@/lib/supabase/server"
@@ -43,7 +43,18 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
       orgSlug,
       deviceSlug,
     })
-    notFound()
+
+    // Pass error details as query params for debugging
+    const errorParams = new URLSearchParams({
+      orgSlug,
+      deviceSlug,
+      errorMessage: error?.message || "No data returned",
+      errorCode: error?.code || "UNKNOWN",
+      errorDetails: error?.details || "N/A",
+      errorHint: error?.hint || "N/A",
+    })
+
+    redirect(`/p/error?${errorParams.toString()}`)
   }
 
   console.log("[v0] Found access point:", {
