@@ -26,15 +26,48 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
   console.log("[v0] Querying device:", { orgSlug, deviceSlug })
 
   const { data: deviceData, error } = await supabase
+    .schema("pass")
     .from("v_accesspoint_details")
     .select("*")
     .eq("org_slug", orgSlug)
-    .eq("slug", deviceSlug)
-    .eq("is_active", true)
+    .eq("device_slug", deviceSlug)
+    .eq("device_is_active", true)
+    .eq("slug_is_active", true)
     .single()
 
   if (error || !deviceData) {
-    console.error("[v0] Failed to resolve device:", error)
+    console.error("[v0] Failed to resolve device:", {
+      error: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+      orgSlug,
+      deviceSlug,
+    })
+
+    // Query to check if org exists
+    const { data: orgCheck } = await supabase
+      .schema("core")
+      .from("organisations")
+      .select("id, name, slug, is_active")
+      .eq("slug", orgSlug)
+      .single()
+
+    console.log("[v0] Organization check:", orgCheck || "Not found")
+
+    // Query to check if device exists for this org
+    if (orgCheck) {
+      const { data: deviceCheck } = await supabase
+        .schema("core")
+        .from("devices")
+        .select("id, name, slug, slug_is_active, org_id")
+        .eq("org_id", orgCheck.id)
+        .eq("slug", deviceSlug)
+        .single()
+
+      console.log("[v0] Device check:", deviceCheck || "Not found")
+    }
+
     notFound()
   }
 
@@ -42,13 +75,16 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
 
   if (qr) {
     try {
-      await supabase.from("qr_scans").insert({
-        qr_instance_id: qr,
-        device_id: deviceData.device_id,
-        org_id: deviceData.org_id,
-        source: source || "qr",
-        scanned_at: new Date().toISOString(),
-      })
+      await supabase
+        .schema("analytics")
+        .from("qr_scans")
+        .insert({
+          qr_instance_id: qr,
+          device_id: deviceData.device_id,
+          org_id: deviceData.org_id,
+          source: source || "qr",
+          scanned_at: new Date().toISOString(),
+        })
       console.log("[v0] QR scan tracked:", qr)
     } catch (error) {
       // Don't block page load if tracking fails
