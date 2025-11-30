@@ -129,8 +129,12 @@ export async function getPassByCheckoutSession(sessionId: string): Promise<Payme
 
 export async function getPassByPaymentIntent(intentId: string): Promise<PaymentWithPass | null> {
   try {
+    console.log("[v0] getPassByPaymentIntent called with intentId:", intentId)
+
     return await retryWithBackoff(async () => {
       const supabase = createServiceClient()
+
+      console.log("[v0] Querying v_pass_payments for payment intent:", intentId)
 
       const { data: payment, error: paymentError } = await supabase
         .schema("public")
@@ -146,16 +150,30 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
         .single()
 
       if (paymentError) {
+        console.error("[v0] Payment query error:", {
+          code: paymentError.code,
+          message: paymentError.message,
+          details: paymentError.details,
+          hint: paymentError.hint,
+        })
+
         if (paymentError.code === "PGRST116") {
+          console.log("[v0] No payment found (PGRST116)")
           return null
         }
         throw paymentError
       }
 
+      console.log("[v0] Payment found:", {
+        hasPayment: !!payment,
+        hasPass: !!payment?.pass,
+        paymentStatus: payment?.status,
+      })
+
       return payment as PaymentWithPass
     })
   } catch (error) {
-    console.error("Error fetching pass by payment intent:", error)
+    console.error("[v0] Error fetching pass by payment intent:", error)
     return null
   }
 }

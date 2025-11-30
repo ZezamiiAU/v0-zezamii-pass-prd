@@ -64,7 +64,7 @@ const nextConfig = {
               "img-src 'self' data: https:",
               "font-src 'self' data:",
               `connect-src ${connectSrc}`,
-              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://vercel.live",
               "frame-ancestors 'none'",
             ].join("; "),
           },

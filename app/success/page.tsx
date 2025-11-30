@@ -88,12 +88,17 @@ export default function SuccessPage() {
       try {
         const queryParam = sessionId ? `session_id=${sessionId}` : `payment_intent=${paymentIntent}`
 
+        console.log("[v0] Fetching pass details with:", { sessionId, paymentIntent })
+
         const response = await fetch(`/api/passes/by-session?${queryParam}`, {
           signal: abortController.signal,
         })
 
+        console.log("[v0] Response status:", response.status)
+
         if (!response.ok) {
           const errorData = await response.json()
+          console.log("[v0] Error response:", errorData)
 
           if ((errorData.status === "pending" || errorData.paymentStatus === "pending") && paymentIntent) {
             if (retryCount >= MAX_RETRIES) {
@@ -128,6 +133,7 @@ export default function SuccessPage() {
         }
 
         const data = await response.json()
+        console.log("[v0] Pass details received:", data)
 
         if (data.code === null || data.codeUnavailable) {
           setCodeWarning(true)
