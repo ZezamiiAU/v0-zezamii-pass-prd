@@ -13,16 +13,26 @@ export async function GET(request: NextRequest) {
 
     const { session_id: sessionId, payment_intent: intentId } = validateSearchParams(request, sessionQuerySchema)
 
+    console.log("[v0] /api/passes/by-session called with:", { sessionId, intentId, devMode })
+
     if (!sessionId && !intentId) {
       return NextResponse.json({ error: "Session ID or Payment Intent ID required" }, { status: 400 })
     }
 
     let result
     if (sessionId) {
+      console.log("[v0] Fetching pass by checkout session:", sessionId)
       result = await getPassByCheckoutSession(sessionId)
     } else if (intentId) {
+      console.log("[v0] Fetching pass by payment intent:", intentId)
       result = await getPassByPaymentIntent(intentId)
     }
+
+    console.log(
+      "[v0] Query result:",
+      result ? "found" : "not found",
+      result ? { passId: result.pass?.id, paymentStatus: result.status } : null,
+    )
 
     if (!result) {
       if (devMode) {
