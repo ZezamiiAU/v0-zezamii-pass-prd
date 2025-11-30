@@ -36,7 +36,16 @@ export default function SuccessPage() {
   const [isOffline, setIsOffline] = useState(false)
   const [codeWarning, setCodeWarning] = useState(false) // Track code fetch issues separately
   const [supportEmail, setSupportEmail] = useState("support@zezamii.com")
-  const paramsValidation = SuccessParamsSchema.safeParse(searchParams)
+
+  console.log("[v0] Success page loaded")
+  console.log("[v0] Raw searchParams:", Object.fromEntries(searchParams.entries()))
+
+  const paramsValidation = SuccessParamsSchema.safeParse({
+    session_id: searchParams.get("session_id"),
+    payment_intent: searchParams.get("payment_intent"),
+  })
+
+  console.log("[v0] Validation result:", paramsValidation)
 
   useEffect(() => {
     const email = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@zezamii.com"
@@ -60,6 +69,7 @@ export default function SuccessPage() {
 
   useEffect(() => {
     if (!paramsValidation.success) {
+      console.log("[v0] Validation failed:", paramsValidation.error)
       setError(`Invalid payment details. Please contact ${supportEmail} with your order confirmation.`)
       setIsLoading(false)
       return
@@ -67,7 +77,10 @@ export default function SuccessPage() {
 
     const { session_id: sessionId, payment_intent: paymentIntent } = paramsValidation.data
 
+    console.log("[v0] Validated params:", { sessionId, paymentIntent })
+
     if (!sessionId && !paymentIntent) {
+      console.log("[v0] No session_id or payment_intent found")
       setError("No payment information found. Please check your payment confirmation email.")
       setIsLoading(false)
       return
