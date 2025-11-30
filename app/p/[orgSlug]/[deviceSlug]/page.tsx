@@ -25,6 +25,7 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
 
   console.log("[v0] Querying for:", { orgSlug, deviceSlug })
 
+  // Join through: devices → floors → buildings → sites → organisations
   const { data: accessPoint, error } = await supabase
     .schema("core")
     .from("devices")
@@ -36,25 +37,34 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
       custom_logo_url,
       code,
       org_id,
-      site_id,
       slug,
       slug_is_active,
-      organisations:org_id (
+      floor_id,
+      floors:floor_id (
         id,
-        name,
-        slug,
-        timezone
-      ),
-      sites:site_id (
-        id,
-        name,
-        city,
-        state
+        building_id,
+        buildings:building_id (
+          id,
+          site_id,
+          sites:site_id (
+            id,
+            name,
+            city,
+            state,
+            org_id,
+            organisations:org_id (
+              id,
+              name,
+              slug,
+              timezone
+            )
+          )
+        )
       )
     `)
     .eq("slug", deviceSlug)
-    .eq("organisations.slug", orgSlug)
     .eq("slug_is_active", true)
+    .eq("floors.buildings.sites.organisations.slug", orgSlug)
     .single()
 
   if (error || !accessPoint) {
@@ -79,14 +89,31 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
     redirect(`/p/error?${errorParams.toString()}`)
   }
 
-  const org = Array.isArray(accessPoint.organisations) ? accessPoint.organisations[0] : accessPoint.organisations
+  const floor = Array.isArray(accessPoint.floors) ? accessPoint.floors[0] : accessPoint.floors
+  const building = floor && (Array.isArray(floor.buildings) ? floor.buildings[0] : floor.buildings)
+  const site = building && (Array.isArray(building.sites) ? building.sites[0] : building.sites)
+  const org = site && (Array.isArray(site.organisations) ? site.organisations[0] : site.organisations)
 
-  const site = Array.isArray(accessPoint.sites) ? accessPoint.sites[0] : accessPoint.sites
+  if (!org) {
+    console.error("[v0] Organization not found in joined data")
+
+    const errorParams = new URLSearchParams({
+      orgSlug,
+      deviceSlug,
+      errorMessage: "Organization not found",
+      errorCode: "ORG_NOT_FOUND",
+      errorDetails: "The organization data could not be retrieved",
+      errorHint: "Check that the device is properly linked to an organization",
+    })
+
+    redirect(`/p/error?${errorParams.toString()}`)
+  }
 
   console.log("[v0] Found access point:", {
     deviceId: accessPoint.id,
     deviceName: accessPoint.custom_name || accessPoint.name,
     orgName: org?.name,
+    siteName: site?.name,
   })
 
   if (qr) {
@@ -120,7 +147,7 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
           organizationId={accessPoint.org_id}
           organizationName={org?.name || "Organization"}
           organizationLogo={accessPoint.custom_logo_url}
-          siteId={accessPoint.site_id}
+          siteId={site?.id}
           siteName={site?.name || "Site"}
           deviceId={accessPoint.id}
           deviceName={accessPoint.custom_name || accessPoint.name}
