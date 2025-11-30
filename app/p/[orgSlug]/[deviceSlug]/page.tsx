@@ -30,9 +30,8 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
     .from("v_accesspoint_details")
     .select("*")
     .eq("org_slug", orgSlug)
-    .eq("device_slug", deviceSlug)
-    .eq("device_is_active", true)
-    .eq("slug_is_active", true)
+    .eq("slug", deviceSlug)
+    .eq("is_active", true)
     .single()
 
   if (error || !accessPoint) {
@@ -49,7 +48,7 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
 
   console.log("[v0] Found access point:", {
     deviceId: accessPoint.device_id,
-    deviceName: accessPoint.device_name,
+    accesspointName: accessPoint.accesspoint_name,
     orgName: accessPoint.org_name,
   })
 
@@ -87,7 +86,7 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
           siteId={accessPoint.site_id}
           siteName={accessPoint.site_name}
           deviceId={accessPoint.device_id}
-          deviceName={accessPoint.device_name}
+          deviceName={accessPoint.accesspoint_name}
           deviceDescription={accessPoint.site_description}
         />
       </Suspense>
