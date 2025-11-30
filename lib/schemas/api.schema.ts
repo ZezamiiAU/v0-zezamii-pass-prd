@@ -66,11 +66,12 @@ export type WebhookSubscriptionUpdate = z.infer<typeof webhookSubscriptionUpdate
 
 export const sessionQuerySchema = z
   .object({
-    session_id: z.string().startsWith("cs_", "Session ID must start with cs_").optional(),
-    payment_intent: z.string().startsWith("pi_", "Payment Intent ID must start with pi_").optional(),
+    session_id: z.string().startsWith("cs_", "Session ID must start with cs_").nullable().optional(),
+    payment_intent: z.string().startsWith("pi_", "Payment Intent ID must start with pi_").nullable().optional(),
   })
   .refine((data) => data.session_id || data.payment_intent, {
     message: "Either session_id or payment_intent is required",
+    path: ["session_id"], // Show error on session_id field
   })
 export type SessionQuery = z.infer<typeof sessionQuerySchema>
 

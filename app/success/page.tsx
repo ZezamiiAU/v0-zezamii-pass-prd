@@ -37,8 +37,8 @@ export default function SuccessPage() {
   const rawParams = Object.fromEntries(searchParams.entries())
 
   const paramsValidation = sessionQuerySchema.safeParse({
-    session_id: searchParams.get("session_id"),
-    payment_intent: searchParams.get("payment_intent"),
+    session_id: searchParams.get("session_id") || undefined,
+    payment_intent: searchParams.get("payment_intent") || undefined,
   })
 
   console.log("[v0] Success page loaded")
