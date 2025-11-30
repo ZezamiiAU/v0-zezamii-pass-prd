@@ -17,13 +17,13 @@ export async function GET() {
     orientation: "portrait",
     icons: [
       {
-        src: branding.organizationLogo || "/icon-192.jpg",
+        src: "/icon.svg",
         sizes: "192x192",
-        type: "image/jpeg",
+        type: "image/svg+xml",
         purpose: "any maskable",
       },
       {
-        src: "/icon-512.svg",
+        src: "/icon.svg",
         sizes: "512x512",
         type: "image/svg+xml",
         purpose: "any maskable",

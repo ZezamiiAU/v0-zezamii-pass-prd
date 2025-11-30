@@ -23,19 +23,20 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
 
   const supabase = createServiceClient()
 
-  console.log("[v0] Querying device:", { orgSlug, deviceSlug })
+  console.log("[v0] Querying for:", { orgSlug, deviceSlug })
 
-  const { data: deviceData, error } = await supabase
+  const { data: accessPoint, error } = await supabase
     .schema("pass")
     .from("v_accesspoint_details")
     .select("*")
     .eq("org_slug", orgSlug)
     .eq("device_slug", deviceSlug)
     .eq("device_is_active", true)
+    .eq("slug_is_active", true)
     .single()
 
-  if (error || !deviceData) {
-    console.error("[v0] Failed to resolve device:", {
+  if (error || !accessPoint) {
+    console.error("[v0] Access point lookup failed:", {
       error: error?.message,
       code: error?.code,
       details: error?.details,
@@ -43,34 +44,14 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
       orgSlug,
       deviceSlug,
     })
-
-    // Query to check if org exists
-    const { data: orgCheck } = await supabase
-      .schema("core")
-      .from("organisations")
-      .select("id, name, slug, is_active")
-      .eq("slug", orgSlug)
-      .single()
-
-    console.log("[v0] Organization check:", orgCheck || "Not found")
-
-    // Query to check if device exists for this org
-    if (orgCheck) {
-      const { data: deviceCheck } = await supabase
-        .schema("core")
-        .from("devices")
-        .select("id, name, slug, slug_is_active, org_id")
-        .eq("org_id", orgCheck.id)
-        .eq("slug", deviceSlug)
-        .single()
-
-      console.log("[v0] Device check:", deviceCheck || "Not found")
-    }
-
     notFound()
   }
 
-  console.log("[v0] Device found:", deviceData.accesspoint_name)
+  console.log("[v0] Found access point:", {
+    deviceId: accessPoint.device_id,
+    deviceName: accessPoint.device_name,
+    orgName: accessPoint.org_name,
+  })
 
   if (qr) {
     try {
@@ -79,15 +60,14 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
         .from("qr_scans")
         .insert({
           qr_instance_id: qr,
-          device_id: deviceData.device_id,
-          org_id: deviceData.org_id,
+          device_id: accessPoint.device_id,
+          org_id: accessPoint.org_id,
           source: source || "qr",
           scanned_at: new Date().toISOString(),
         })
       console.log("[v0] QR scan tracked:", qr)
-    } catch (error) {
-      // Don't block page load if tracking fails
-      console.error("[v0] Failed to track QR scan:", error)
+    } catch (qrError) {
+      console.error("[v0] QR tracking failed (non-fatal):", qrError)
     }
   }
 
@@ -101,14 +81,14 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
         }
       >
         <PassPurchaseForm
-          organizationId={deviceData.org_id}
-          organizationName={deviceData.org_name}
-          organizationLogo={deviceData.custom_logo_url}
-          siteId={deviceData.site_id}
-          siteName={deviceData.site_name}
-          deviceId={deviceData.device_id}
-          deviceName={deviceData.accesspoint_name}
-          deviceDescription={deviceData.custom_description}
+          organizationId={accessPoint.org_id}
+          organizationName={accessPoint.org_name}
+          organizationLogo={accessPoint.org_logo_url}
+          siteId={accessPoint.site_id}
+          siteName={accessPoint.site_name}
+          deviceId={accessPoint.device_id}
+          deviceName={accessPoint.device_name}
+          deviceDescription={accessPoint.site_description}
         />
       </Suspense>
     </main>
