@@ -1,159 +1,122 @@
-import { Suspense } from "react"
-import { redirect } from "next/navigation"
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { PassPurchaseForm } from "@/components/pass-purchase-form"
 import { Spinner } from "@/components/ui/spinner"
-import { createServiceClient } from "@/lib/supabase/server"
+import { Button } from "@/components/ui/button"
+import Image from "next/image"
 
-export const dynamic = "force-dynamic"
-
-interface PageProps {
-  params: Promise<{
-    orgSlug: string
-    deviceSlug: string
-  }>
-  searchParams: Promise<{
-    qr?: string
-    source?: string
-  }>
+interface AccessPointData {
+  organizationId: string
+  organizationName: string
+  organizationLogo?: string | null
+  siteId?: string
+  siteName: string
+  deviceId: string
+  deviceName: string
+  deviceDescription?: string | null
 }
 
-export default async function DevicePassPage({ params, searchParams }: PageProps) {
-  const { orgSlug, deviceSlug } = await params
-  const { qr, source } = await searchParams
+export default function DevicePassPage() {
+  const [showPurchaseForm, setShowPurchaseForm] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [accessPointData, setAccessPointData] = useState<AccessPointData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
-  const supabase = createServiceClient()
+  useEffect(() => {
+    async function fetchAccessPoint() {
+      try {
+        const response = await fetch(window.location.pathname + "/api" + window.location.search)
 
-  console.log("[v0] Querying for:", { orgSlug, deviceSlug })
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to load access point")
+        }
 
-  // Join through: devices → floors → buildings → sites → organisations
-  const { data: accessPoint, error } = await supabase
-    .schema("core")
-    .from("devices")
-    .select(`
-      id,
-      name,
-      custom_name,
-      custom_description,
-      custom_logo_url,
-      code,
-      org_id,
-      slug,
-      slug_is_active,
-      floor_id,
-      floors:floor_id (
-        id,
-        building_id,
-        buildings:building_id (
-          id,
-          site_id,
-          sites:site_id (
-            id,
-            name,
-            city,
-            state,
-            org_id,
-            organisations:org_id (
-              id,
-              name,
-              slug,
-              timezone
-            )
-          )
-        )
-      )
-    `)
-    .eq("slug", deviceSlug)
-    .eq("slug_is_active", true)
-    .eq("floors.buildings.sites.organisations.slug", orgSlug)
-    .single()
-
-  if (error || !accessPoint) {
-    console.error("[v0] Access point lookup failed:", {
-      error: error?.message,
-      code: error?.code,
-      details: error?.details,
-      hint: error?.hint,
-      orgSlug,
-      deviceSlug,
-    })
-
-    const errorParams = new URLSearchParams({
-      orgSlug,
-      deviceSlug,
-      errorMessage: error?.message || "No data returned",
-      errorCode: error?.code || "UNKNOWN",
-      errorDetails: error?.details || "N/A",
-      errorHint: error?.hint || "N/A",
-    })
-
-    redirect(`/p/error?${errorParams.toString()}`)
-  }
-
-  const floor = Array.isArray(accessPoint.floors) ? accessPoint.floors[0] : accessPoint.floors
-  const building = floor && (Array.isArray(floor.buildings) ? floor.buildings[0] : floor.buildings)
-  const site = building && (Array.isArray(building.sites) ? building.sites[0] : building.sites)
-  const org = site && (Array.isArray(site.organisations) ? site.organisations[0] : site.organisations)
-
-  if (!org) {
-    console.error("[v0] Organization not found in joined data")
-
-    const errorParams = new URLSearchParams({
-      orgSlug,
-      deviceSlug,
-      errorMessage: "Organization not found",
-      errorCode: "ORG_NOT_FOUND",
-      errorDetails: "The organization data could not be retrieved",
-      errorHint: "Check that the device is properly linked to an organization",
-    })
-
-    redirect(`/p/error?${errorParams.toString()}`)
-  }
-
-  console.log("[v0] Found access point:", {
-    deviceId: accessPoint.id,
-    deviceName: accessPoint.custom_name || accessPoint.name,
-    orgName: org?.name,
-    siteName: site?.name,
-  })
-
-  if (qr) {
-    try {
-      await supabase
-        .schema("analytics")
-        .from("qr_scans")
-        .insert({
-          qr_instance_id: qr,
-          device_id: accessPoint.id,
-          org_id: accessPoint.org_id,
-          source: source || "qr",
-          scanned_at: new Date().toISOString(),
-        })
-      console.log("[v0] QR scan tracked:", qr)
-    } catch (qrError) {
-      console.error("[v0] QR tracking failed (non-fatal):", qrError)
+        const data = await response.json()
+        setAccessPointData(data)
+        setLoading(false)
+      } catch (err) {
+        console.error("[v0] Error fetching access point:", err)
+        setError(err instanceof Error ? err.message : "Unknown error")
+        setLoading(false)
+      }
     }
+
+    fetchAccessPoint()
+  }, [])
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+        <Spinner />
+      </main>
+    )
+  }
+
+  if (error || !accessPointData) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="text-white text-center">
+          <h1 className="text-2xl font-bold mb-4">Error Loading Access Point</h1>
+          <p>{error || "Access point not found"}</p>
+          <Button onClick={() => router.push("/")} className="mt-4">
+            Go Home
+          </Button>
+        </div>
+      </main>
+    )
+  }
+
+  if (!showPurchaseForm) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col items-center justify-center px-4">
+        <div className="absolute top-[15%]">
+          <Image
+            src="/images/zezamii-pass-logo.png"
+            alt="Zezamii Pass"
+            width={400}
+            height={120}
+            priority
+            className="object-contain"
+          />
+        </div>
+
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold text-white">Day Pass</h1>
+            <p className="text-xl text-slate-300">{accessPointData.deviceName}</p>
+            <p className="text-lg text-slate-400">{accessPointData.siteName}</p>
+          </div>
+
+          <Button
+            onClick={() => setShowPurchaseForm(true)}
+            className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700"
+            size="lg"
+          >
+            Buy Pass
+          </Button>
+        </div>
+
+        <footer className="absolute bottom-8 text-center text-slate-400 text-sm">Powered by Zezamii</footer>
+      </main>
+    )
   }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center min-h-screen">
-            <Spinner />
-          </div>
-        }
-      >
-        <PassPurchaseForm
-          organizationId={accessPoint.org_id}
-          organizationName={org?.name || "Organization"}
-          organizationLogo={accessPoint.custom_logo_url}
-          siteId={site?.id}
-          siteName={site?.name || "Site"}
-          deviceId={accessPoint.id}
-          deviceName={accessPoint.custom_name || accessPoint.name}
-          deviceDescription={accessPoint.custom_description}
-        />
-      </Suspense>
+      <PassPurchaseForm
+        organizationId={accessPointData.organizationId}
+        organizationName={accessPointData.organizationName}
+        organizationLogo={accessPointData.organizationLogo}
+        siteId={accessPointData.siteId}
+        siteName={accessPointData.siteName}
+        deviceId={accessPointData.deviceId}
+        deviceName={accessPointData.deviceName}
+        deviceDescription={accessPointData.deviceDescription}
+      />
     </main>
   )
 }

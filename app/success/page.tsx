@@ -2,18 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { z } from "zod"
+import { sessionQuerySchema } from "@/lib/schemas/api.schema"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
 import { WifiOff, MessageSquare, AlertTriangle, Copy } from "lucide-react"
 import Image from "next/image"
-
-const SuccessParamsSchema = z.object({
-  session_id: z.string().min(1).optional(),
-  payment_intent: z.string().startsWith("pi_").optional(),
-})
 
 interface PassDetails {
   accessPointName: string
@@ -41,14 +36,13 @@ export default function SuccessPage() {
 
   const rawParams = Object.fromEntries(searchParams.entries())
 
-  const paramsValidation = SuccessParamsSchema.safeParse({
+  const paramsValidation = sessionQuerySchema.safeParse({
     session_id: searchParams.get("session_id"),
     payment_intent: searchParams.get("payment_intent"),
   })
 
   console.log("[v0] Success page loaded")
   console.log("[v0] Raw searchParams:", rawParams)
-
   console.log("[v0] Validation result:", paramsValidation)
 
   useEffect(() => {

@@ -64,10 +64,14 @@ export type WebhookSubscriptionUpdate = z.infer<typeof webhookSubscriptionUpdate
 // QUERY SCHEMAS - For URL search parameters
 // ============================================================================
 
-export const sessionQuerySchema = z.object({
-  session_id: z.string().min(1, "Session ID is required").optional(),
-  payment_intent: z.string().min(1, "Payment Intent ID is required").optional(),
-})
+export const sessionQuerySchema = z
+  .object({
+    session_id: z.string().startsWith("cs_", "Session ID must start with cs_").optional(),
+    payment_intent: z.string().startsWith("pi_", "Payment Intent ID must start with pi_").optional(),
+  })
+  .refine((data) => data.session_id || data.payment_intent, {
+    message: "Either session_id or payment_intent is required",
+  })
 export type SessionQuery = z.infer<typeof sessionQuerySchema>
 
 export const walletSaveQuerySchema = z.object({
