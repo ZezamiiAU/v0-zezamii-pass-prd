@@ -2,7 +2,6 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.21.0",
   "scripts": {
     "prebuild": "tsx scripts/ensure-build-scripts.ts",
     "build": "tsx scripts/check-next-route-params.ts && next build",
@@ -96,6 +95,7 @@
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   },
+  "packageManager": "pnpm@10.21.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",
