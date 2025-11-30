@@ -137,14 +137,17 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
       console.log("[v0] Querying v_pass_payments for payment intent:", intentId)
 
       const { data: payment, error: paymentError } = await supabase
-        .schema("public")
-        .from("v_pass_payments")
+        .schema("pass")
+        .from("payments")
         .select(`
-          *,
-          pass:v_passes(
-            *,
-            pass_type:v_pass_types(name, code, duration_minutes)
-          )
+          id,
+          pass_id,
+          stripe_checkout_session,
+          stripe_payment_intent,
+          amount_cents,
+          currency,
+          status,
+          created_at
         `)
         .eq("stripe_payment_intent", intentId)
         .single()
@@ -164,13 +167,64 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
         throw paymentError
       }
 
-      console.log("[v0] Payment found:", {
-        hasPayment: !!payment,
-        hasPass: !!payment?.pass,
-        paymentStatus: payment?.status,
-      })
+      if (!payment) {
+        console.log("[v0] No payment found")
+        return null
+      }
 
-      return payment as PaymentWithPass
+      console.log("[v0] Payment found, fetching pass data")
+
+      const { data: pass, error: passError } = await supabase
+        .schema("pass")
+        .from("passes")
+        .select(`
+          id,
+          pass_type_id,
+          device_id,
+          site_id,
+          org_id,
+          valid_from,
+          valid_to,
+          status,
+          purchaser_email,
+          vehicle_plate,
+          single_use,
+          created_at,
+          terms_accepted_at
+        `)
+        .eq("id", payment.pass_id)
+        .single()
+
+      if (passError || !pass) {
+        console.error("[v0] Pass query error:", passError)
+        return null
+      }
+
+      console.log("[v0] Pass found, fetching pass type")
+
+      const { data: passType, error: passTypeError } = await supabase
+        .schema("pass")
+        .from("pass_types")
+        .select("id, name, code, duration_minutes")
+        .eq("id", pass.pass_type_id)
+        .single()
+
+      if (passTypeError || !passType) {
+        console.error("[v0] Pass type query error:", passTypeError)
+        return null
+      }
+
+      const result = {
+        ...payment,
+        pass: {
+          ...pass,
+          pass_type: passType,
+        },
+      } as PaymentWithPass
+
+      console.log("[v0] Successfully constructed payment with pass data")
+
+      return result
     })
   } catch (error) {
     console.error("[v0] Error fetching pass by payment intent:", error)
