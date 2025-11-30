@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { PassPurchaseForm } from "@/components/pass-purchase-form"
 import { Spinner } from "@/components/ui/spinner"
-import { createCoreServiceClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
@@ -21,7 +21,7 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
   const { orgSlug, deviceSlug } = await params
   const { qr, source } = await searchParams
 
-  const supabase = createCoreServiceClient()
+  const supabase = createServiceClient()
 
   console.log("[v0] Querying device:", { orgSlug, deviceSlug })
 
@@ -32,7 +32,6 @@ export default async function DevicePassPage({ params, searchParams }: PageProps
     .eq("org_slug", orgSlug)
     .eq("device_slug", deviceSlug)
     .eq("device_is_active", true)
-    .eq("slug_is_active", true)
     .single()
 
   if (error || !deviceData) {
