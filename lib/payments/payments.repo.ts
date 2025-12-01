@@ -21,7 +21,6 @@ export async function createStripePaymentIntent(input: CheckoutInput, idempotenc
     throw new Error("Invalid pass type")
   }
 
-  // Validate pricing data
   if (!passType.price_cents || passType.price_cents <= 0) {
     throw new Error("Pass type has invalid pricing configuration")
   }
@@ -30,8 +29,15 @@ export async function createStripePaymentIntent(input: CheckoutInput, idempotenc
     throw new Error("Pass type has invalid currency configuration")
   }
 
-  // Use Stripe Price ID if available (preferred), otherwise use unit_amount
+  // Ensure amount is always a valid integer
+  const amount = Math.round(passType.price_cents)
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error(`Invalid payment amount: ${amount}. Must be a positive integer in smallest currency unit.`)
+  }
+
+  // Create PaymentIntent with required amount field
   const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
+    amount, // Required: amount in smallest currency unit (cents)
     currency: passType.currency.toLowerCase(),
     metadata: {
       accessPointId: input.accessPointId,
@@ -41,14 +47,6 @@ export async function createStripePaymentIntent(input: CheckoutInput, idempotenc
       phone: input.phone ?? "",
     },
     automatic_payment_methods: { enabled: true },
-  }
-
-  if (passType.stripe_price_id) {
-    // Preferred: Use Stripe Price ID for consistent pricing
-    paymentIntentParams.amount = passType.price_cents
-  } else {
-    // Fallback: Use unit_amount from database
-    paymentIntentParams.amount = passType.price_cents
   }
 
   return stripe.paymentIntents.create(paymentIntentParams, { idempotencyKey })
