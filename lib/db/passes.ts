@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/server"
+import logger from "@/lib/logger"
 
 export interface Pass {
   id: string
@@ -13,6 +14,11 @@ export interface Pass {
   valid_from: string | null
   valid_to: string | null
   created_at: string
+  pin_code?: string | null
+  pin_status?: string | null
+  lock_request_id?: string | null
+  lock_request_error?: string | null
+  lock_requested_at?: string | null
 }
 
 export interface PassWithType extends Pass {
@@ -100,4 +106,82 @@ export async function getPassById(passId: string): Promise<PassWithType | null> 
   }
 
   return data
+}
+
+export async function updatePassPinCode(passId: string, pinCode: string): Promise<boolean> {
+  const supabase = createServiceClient()
+
+  const { error } = await supabase
+    .schema("pass")
+    .from("passes")
+    .update({
+      pin_code: pinCode,
+      pin_status: "generated",
+    })
+    .eq("id", passId)
+
+  if (error) {
+    logger.error({ passId, error: error.message }, "[Pass] Error updating PIN code")
+    return false
+  }
+
+  logger.info({ passId }, "[Pass] PIN code generated successfully")
+  return true
+}
+
+export async function updatePassPinStatus(
+  passId: string,
+  status: "pending" | "generated" | "failed",
+): Promise<boolean> {
+  const supabase = createServiceClient()
+
+  const { error } = await supabase.schema("pass").from("passes").update({ pin_status: status }).eq("id", passId)
+
+  if (error) {
+    logger.error({ passId, error: error.message }, "[Pass] Error updating pass PIN status")
+    return false
+  }
+
+  return true
+}
+
+export async function updatePassWithLockRequest(passId: string, lockRequestId: string): Promise<boolean> {
+  const supabase = createServiceClient()
+
+  const { error } = await supabase
+    .schema("pass")
+    .from("passes")
+    .update({
+      lock_request_id: lockRequestId,
+      lock_requested_at: new Date().toISOString(),
+      pin_status: "pending",
+    })
+    .eq("id", passId)
+
+  if (error) {
+    logger.error({ passId, error: error.message }, "[Pass] Error updating lock request")
+    return false
+  }
+
+  return true
+}
+
+export async function updatePassWithLockError(passId: string, errorMessage: string): Promise<boolean> {
+  const supabase = createServiceClient()
+
+  const { error } = await supabase
+    .schema("pass")
+    .from("passes")
+    .update({
+      pin_status: "failed",
+      lock_request_error: errorMessage,
+    })
+    .eq("id", passId)
+
+  if (error) {
+    logger.error({ passId, error: error.message }, "[Pass] Error updating lock error")
+    return false
+  }
+
+  return true
 }

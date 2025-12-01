@@ -17,6 +17,10 @@ const ServerEnvSchema = z.object({
   PASS_DEV_MODE: z.string().optional(),
   SUPPORT_EMAIL: z.string().email().optional(),
   ADMIN_TOKEN: z.string().min(1, "Missing ADMIN_TOKEN").optional(),
+  LOCK_API_URL: z.string().url().optional(),
+  LOCK_PROPERTY_ID: z.string().optional(),
+  LOCK_WEBHOOK_TOKEN: z.string().optional(),
+  LOCK_CALLBACK_SECRET: z.string().optional(),
 })
 
 const ClientEnvSchema = z.object({
@@ -54,6 +58,10 @@ function getServerEnv() {
     PASS_DEV_MODE: process.env.PASS_DEV_MODE,
     SUPPORT_EMAIL: process.env.SUPPORT_EMAIL,
     ADMIN_TOKEN: process.env.ADMIN_TOKEN,
+    LOCK_API_URL: process.env.LOCK_API_URL,
+    LOCK_PROPERTY_ID: process.env.LOCK_PROPERTY_ID,
+    LOCK_WEBHOOK_TOKEN: process.env.LOCK_WEBHOOK_TOKEN,
+    LOCK_CALLBACK_SECRET: process.env.LOCK_CALLBACK_SECRET,
   })
 
   if (!result.success) {
@@ -130,6 +138,18 @@ export const ENV = {
   },
   get ADMIN_TOKEN() {
     return getServerEnv().ADMIN_TOKEN
+  },
+  get LOCK_API_URL() {
+    return getServerEnv().LOCK_API_URL
+  },
+  get LOCK_PROPERTY_ID() {
+    return getServerEnv().LOCK_PROPERTY_ID
+  },
+  get LOCK_WEBHOOK_TOKEN() {
+    return getServerEnv().LOCK_WEBHOOK_TOKEN
+  },
+  get LOCK_CALLBACK_SECRET() {
+    return getServerEnv().LOCK_CALLBACK_SECRET
   },
 }
 
