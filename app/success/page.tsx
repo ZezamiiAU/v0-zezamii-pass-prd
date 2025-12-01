@@ -305,63 +305,22 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
           )}
 
           {error && (
-            <div className="space-y-2">
-              <Alert variant="destructive" className={isOffline ? "border-orange-500 bg-orange-50" : ""}>
-                {isOffline ? <WifiOff className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                <AlertDescription className={isOffline ? "text-orange-800 text-sm" : "text-sm"}>
-                  {error}
-                  {isOffline && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 w-full bg-transparent text-sm h-8"
-                      onClick={() => window.location.reload()}
-                    >
-                      Retry when online
-                    </Button>
-                  )}
-                </AlertDescription>
-              </Alert>
-
-              {errorDetails && (
-                <Collapsible open={isTechnicalDetailsOpen} onOpenChange={setIsTechnicalDetailsOpen}>
-                  <div className="bg-muted rounded-md border">
-                    <CollapsibleTrigger className="w-full">
-                      <div className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
-                        <p className="font-semibold text-muted-foreground text-sm">Technical Details</p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              copyErrorDetails()
-                            }}
-                          >
-                            <Copy className="h-3 w-3 mr-1" />
-                            {copiedToClipboard ? "Copied!" : "Copy"}
-                          </Button>
-                          <ChevronDown
-                            className={`h-4 w-4 transition-transform ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
-                          />
-                        </div>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="px-3 pb-3 space-y-2">
-                        <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-2 rounded border">
-                          {errorDetails}
-                        </pre>
-                        <p className="text-muted-foreground text-xs">
-                          Please copy these details and send them to <strong>{supportEmail}</strong>
-                        </p>
-                      </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              )}
-            </div>
+            <Alert variant="destructive" className={isOffline ? "border-orange-500 bg-orange-50" : ""}>
+              {isOffline ? <WifiOff className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+              <AlertDescription className={isOffline ? "text-orange-800 text-sm" : "text-sm"}>
+                {error}
+                {isOffline && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full bg-transparent text-sm h-8"
+                    onClick={() => window.location.reload()}
+                  >
+                    Retry when online
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
 
           {passDetails && (
@@ -454,6 +413,45 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                 </Button>
               </div>
             </div>
+          )}
+
+          {errorDetails && (
+            <Collapsible open={isTechnicalDetailsOpen} onOpenChange={setIsTechnicalDetailsOpen}>
+              <div className="bg-muted rounded-md border">
+                <CollapsibleTrigger className="w-full">
+                  <div className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
+                    <p className="font-semibold text-muted-foreground text-sm">Technical Details</p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          copyErrorDetails()
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        {copiedToClipboard ? "Copied!" : "Copy"}
+                      </Button>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-3 pb-3 space-y-2">
+                    <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-2 rounded border">
+                      {errorDetails}
+                    </pre>
+                    <p className="text-muted-foreground text-xs">
+                      Please copy these details and send them to <strong>{supportEmail}</strong>
+                    </p>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           )}
         </CardContent>
       </Card>
