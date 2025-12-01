@@ -10,6 +10,9 @@ const ServerEnvSchema = z.object({
   PUBLIC_BASE_URL: z.string().url().optional(),
   APP_ORIGIN: z.string().url().optional(),
   JWT_SECRET: z.string().min(16).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().email().optional(),
+  EMAIL_REPLY_TO: z.string().email().optional(),
 })
 
 // Client-safe environment variables (always available)
@@ -26,6 +29,9 @@ const serverEnv =
         PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
         APP_ORIGIN: process.env.APP_ORIGIN,
         JWT_SECRET: process.env.JWT_SECRET,
+        RESEND_API_KEY: process.env.RESEND_API_KEY,
+        EMAIL_FROM: process.env.EMAIL_FROM,
+        EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
       })
     : ({} as z.infer<typeof ServerEnvSchema>)
 

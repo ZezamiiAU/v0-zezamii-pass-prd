@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PaymentForm } from "@/components/payment-form"
 import { createPaymentIntent } from "@/lib/api/payments"
+import { getOrCreatePaymentAttemptKey, clearPaymentAttempt } from "@/lib/http/idempotency"
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 if (!publishableKey) {
@@ -88,6 +89,10 @@ export function PassPurchaseForm({
     }
   }, [organizationId]) // dependency updated
 
+  useEffect(() => {
+    clearPaymentAttempt()
+  }, [])
+
   const selectedPassType = passTypes.find((pt) => pt.id === selectedPassTypeId)
 
   const currency = selectedPassType?.currency?.toUpperCase() || "AUD"
@@ -120,9 +125,7 @@ export function PassPurchaseForm({
         phone: phone || "",
       })
 
-      const key =
-        (typeof crypto !== "undefined" && "randomUUID" in crypto && crypto.randomUUID()) ||
-        `${Date.now()}-${Math.random()}`
+      const key = getOrCreatePaymentAttemptKey()
 
       const data = await createPaymentIntent(
         {
