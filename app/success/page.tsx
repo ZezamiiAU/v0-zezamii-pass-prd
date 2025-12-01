@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle, Copy } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown } from "lucide-react"
 import Image from "next/image"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface PassDetails {
   accessPointName: string
@@ -33,6 +34,7 @@ export default function SuccessPage() {
   const [codeWarning, setCodeWarning] = useState(false)
   const [supportEmail, setSupportEmail] = useState("support@zezamii.com")
   const [copiedToClipboard, setCopiedToClipboard] = useState(false)
+  const [isTechnicalDetailsOpen, setIsTechnicalDetailsOpen] = useState(false)
 
   const rawParams = Object.fromEntries(searchParams.entries())
 
@@ -322,21 +324,42 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
               </Alert>
 
               {errorDetails && (
-                <div className="bg-muted p-3 rounded-md text-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-muted-foreground">Technical Details</p>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={copyErrorDetails}>
-                      <Copy className="h-3 w-3 mr-1" />
-                      {copiedToClipboard ? "Copied!" : "Copy"}
-                    </Button>
+                <Collapsible open={isTechnicalDetailsOpen} onOpenChange={setIsTechnicalDetailsOpen}>
+                  <div className="bg-muted rounded-md border">
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
+                        <p className="font-semibold text-muted-foreground text-sm">Technical Details</p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              copyErrorDetails()
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            {copiedToClipboard ? "Copied!" : "Copy"}
+                          </Button>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
+                          />
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-3 pb-3 space-y-2">
+                        <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-2 rounded border">
+                          {errorDetails}
+                        </pre>
+                        <p className="text-muted-foreground text-xs">
+                          Please copy these details and send them to <strong>{supportEmail}</strong>
+                        </p>
+                      </div>
+                    </CollapsibleContent>
                   </div>
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-2 rounded border">
-                    {errorDetails}
-                  </pre>
-                  <p className="text-muted-foreground text-xs">
-                    Please copy these details and send them to <strong>{supportEmail}</strong>
-                  </p>
-                </div>
+                </Collapsible>
               )}
             </div>
           )}
@@ -407,13 +430,15 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                     <button
                       onClick={handleAddToGoogleWallet}
                       className="w-full flex items-center justify-center hover:opacity-90 transition-opacity"
+                      aria-label="Add to Google Wallet"
                     >
                       <Image
-                        src="/googlewallet.png"
+                        src="/add-to-google-wallet.png"
                         alt="Add to Google Wallet"
-                        width={180}
-                        height={40}
-                        className="h-10 w-auto"
+                        width={260}
+                        height={60}
+                        className="h-12 w-auto"
+                        priority
                       />
                     </button>
                   </>
