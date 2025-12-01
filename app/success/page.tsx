@@ -433,7 +433,7 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                       aria-label="Add to Google Wallet"
                     >
                       <Image
-                        src="/add-to-google-wallet.png"
+                        src="/google-wallet-button.png"
                         alt="Add to Google Wallet"
                         width={260}
                         height={60}

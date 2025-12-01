@@ -57,6 +57,7 @@ export function PassPurchaseForm({
   const [termsAccepted, setTermsAccepted] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -107,9 +108,18 @@ export function PassPurchaseForm({
       return
     }
 
+    setError(null)
     setIsLoading(true)
 
     try {
+      console.log("[v0] Creating payment intent with data:", {
+        accessPointId: deviceId,
+        passTypeId: selectedPassTypeId,
+        plate: vehiclePlate || "",
+        email: email || "",
+        phone: phone || "",
+      })
+
       const key =
         (typeof crypto !== "undefined" && "randomUUID" in crypto && crypto.randomUUID()) ||
         `${Date.now()}-${Math.random()}`
@@ -125,6 +135,8 @@ export function PassPurchaseForm({
         key,
       )
 
+      console.log("[v0] Payment intent response:", data)
+
       if (data.clientSecret) {
         setClientSecret(data.clientSecret)
       } else {
@@ -133,7 +145,9 @@ export function PassPurchaseForm({
 
       setIsLoading(false)
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Something went wrong. Please try again.")
+      console.error("[v0] Payment intent error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again."
+      setError(errorMessage)
       setIsLoading(false)
     }
   }
@@ -320,6 +334,12 @@ export function PassPurchaseForm({
               for pass usage
             </Label>
           </div>
+
+          {error && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2 mt-2">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
 
           <Button
             type="submit"
