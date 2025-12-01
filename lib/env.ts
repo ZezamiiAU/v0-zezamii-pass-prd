@@ -16,6 +16,7 @@ const ServerEnvSchema = z.object({
   JWT_SECRET: z.string().min(16).optional(),
   PASS_DEV_MODE: z.string().optional(),
   SUPPORT_EMAIL: z.string().email().optional(),
+  ADMIN_TOKEN: z.string().min(1, "Missing ADMIN_TOKEN").optional(),
 })
 
 const ClientEnvSchema = z.object({
@@ -52,6 +53,7 @@ function getServerEnv() {
     JWT_SECRET: process.env.JWT_SECRET,
     PASS_DEV_MODE: process.env.PASS_DEV_MODE,
     SUPPORT_EMAIL: process.env.SUPPORT_EMAIL,
+    ADMIN_TOKEN: process.env.ADMIN_TOKEN,
   })
 
   if (!result.success) {
@@ -125,6 +127,9 @@ export const ENV = {
   },
   get NEXT_PUBLIC_DEFAULT_ORG_ID() {
     return getClientEnv().NEXT_PUBLIC_DEFAULT_ORG_ID
+  },
+  get ADMIN_TOKEN() {
+    return getServerEnv().ADMIN_TOKEN
   },
 }
 
