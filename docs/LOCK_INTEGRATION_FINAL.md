@@ -82,67 +82,103 @@ See `docs/PIN_CODE_SECURITY.md` for complete security analysis.
 
 ## Tomorrow's Checklist with Duvan
 
-### Critical Values Needed:
+### ✅ Confirmed Values from Duvan:
 
-1. **API Base URL**
+1. **Production API Endpoint**
    \`\`\`
-   Dev:  ________________
-   Prod: ________________
-   \`\`\`
-
-2. **Webhook Path**
-   \`\`\`
-   Current: /reservation/{reservation_id}
-   Actual:  ________________
+   https://sender.rooms.zezamii.com/webhooks/zezamiiPass/reservation/z71owzgoNUxJtxOC
    \`\`\`
 
-3. **Property ID** (your organization identifier)
+2. **Dev API Endpoint**
    \`\`\`
-   Value: ________________
-   \`\`\`
-
-4. **Reservation ID Prefix**
-   \`\`\`
-   Current: SAMPLE
-   New:     ________________
+   Not available (need local deployment or Kishan's dev environment)
    \`\`\`
 
-5. **Response Field Name**
+3. **Authentication**
    \`\`\`
-   Is it: pincode, pin_code, or pin?
-   Answer: ________________
+   None required for webhook
    \`\`\`
 
-6. **PIN Format**
+4. **PIN Format**
    \`\`\`
-   Length: _____ digits (4? 6? 8?)
+   4 digits (numeric only)
+   Example: "4345"
    \`\`\`
+
+5. **Response Field**
+   \`\`\`
+   Can be: pincode, pin_code, pin, or code
+   System checks all variants
+   \`\`\`
+
+6. **Gateway Limitation**
+   \`\`\`
+   Can only process ONE task at a time
+   Don't send concurrent requests
+   \`\`\`
+
+### ⏳ Still Need from Duvan:
+
+7. **Property ID** (your organization identifier in their system)
+   \`\`\`
+   Value: ________________ (REQUIRED)
+   \`\`\`
+
+8. **Lock ID** (specific lock/gate device identifier)
+   \`\`\`
+   Value: ________________ (REQUIRED)
+   \`\`\`
+
+9. **Your Organisation ID** (run this query):
+   \`\`\`sql
+   SELECT id, name FROM api.organisations WHERE name ILIKE '%your-org%';
+   \`\`\`
+
+10. **Your Site ID** (run this query):
+    \`\`\`sql
+    SELECT id, name FROM api.sites WHERE org_id = 'your-org-id';
+    \`\`\`
+
+### Request Payload Structure (Confirmed):
+
+\`\`\`json
+{
+  "propertyId": "REQUIRED - Get from Duvan",
+  "reservationId": "pass-uuid-from-your-db",
+  "arrivalDate": "2025-12-02T10:00:00Z",
+  "departureDate": "2025-12-02T22:00:00Z",
+  "lockId": "REQUIRED - Get from Duvan",
+  "guestId": "optional",
+  "guestName": "optional",
+  "guestEmail": "optional",
+  "guestPhone": "optional"
+}
+\`\`\`
+
+### Response Format (Confirmed):
+
+\`\`\`json
+{
+  "success": true,
+  "pincode": "4345"
+}
+\`\`\`
+
+Or returns error:
+\`\`\`json
+{
+  "error": "Property ID not found"
+}
+\`\`\`
+
+Note: Duvan's system returns 200 OK even for errors to prevent retries.
 
 ### Database Update Script:
 
 \`\`\`sql
--- Update integration config with Duvan's values
-UPDATE core.integrations
-SET 
-  config = jsonb_build_object(
-    'base_url', 'https://FILL_FROM_DUVAN',
-    'webhook_path', 'FILL_FROM_DUVAN'
-  ),
-  credentials = jsonb_build_object(
-    'reservation_id_prefix', 'FILL_FROM_DUVAN'
-  ),
-  status = 'active'
-WHERE integration_type = 'rooms_event_hub'
-  AND organisation_id = (SELECT id FROM core.organisations LIMIT 1);
+-- See scripts/016_configure_rooms_integration.sql
+-- Update with actual values from Duvan tomorrow
 \`\`\`
-
-### Testing Steps:
-
-1. Verify config: `SELECT * FROM core.integrations WHERE integration_type = 'rooms_event_hub'`
-2. Make test payment in Stripe test mode
-3. Check logs: `SELECT * FROM core.integration_logs ORDER BY created_at DESC LIMIT 5`
-4. Verify PIN: `SELECT * FROM pass.lock_codes ORDER BY created_at DESC LIMIT 5`
-5. Test success page displays PIN
 
 ## Files That Already Work
 
@@ -190,7 +226,3 @@ Consider the complex `access.credentials` system only if:
 The lock integration is **already built and production-ready**. Tomorrow is just a configuration session, not a development session.
 
 **Time estimate:** 15-30 minutes of configuration + testing.
-\`\`\`
-
-```md file="docs/PASS_CREDENTIAL_INTEGRATION.md" isDeleted="true"
-...deleted...

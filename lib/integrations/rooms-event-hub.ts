@@ -3,12 +3,14 @@ import logger from "@/lib/logger"
 
 export interface RoomsReservationPayload {
   propertyId: string
+  reservationId: string // Added - required by Duvan's API
   arrivalDate: string // ISO date
   departureDate: string // ISO date
   lockId: string
-  guestName: string
+  guestId?: string // Made optional per Duvan's spec
+  guestName?: string // Made optional
   guestPhone?: string
-  guestEmail: string
+  guestEmail?: string // Made optional
 }
 
 export interface RoomsReservationResponse {
@@ -51,11 +53,7 @@ export async function createRoomsReservation(
     const config = integration.config as { base_url: string; webhook_path: string }
     const credentials = integration.credentials as { reservation_id_prefix?: string }
 
-    // Generate unique reservation ID
-    const reservationId = `${credentials.reservation_id_prefix || "SAMPLE"}${Date.now()}${Math.random().toString(36).substring(2, 9)}`
-
-    // Build full URL
-    const url = `${config.base_url}/${config.webhook_path}/${reservationId}`
+    const url = `${config.base_url}${config.webhook_path}`
 
     console.log("[v0] Calling Rooms Event Hub:", url)
 
@@ -107,7 +105,7 @@ export async function createRoomsReservation(
     }
 
     // Extract pincode from response
-    const pincode = responseBody.pincode || responseBody.pin_code || responseBody.pin
+    const pincode = responseBody.pincode || responseBody.pin_code || responseBody.pin || responseBody.code
 
     if (!pincode) {
       logger.error({ organisationId, responseBody }, "Rooms API did not return pincode")
@@ -120,7 +118,7 @@ export async function createRoomsReservation(
     logger.info(
       {
         organisationId,
-        reservationId,
+        reservationId: payload.reservationId,
         duration,
       },
       "Rooms reservation created successfully",
@@ -128,8 +126,8 @@ export async function createRoomsReservation(
 
     return {
       success: true,
-      pincode,
-      reservationId,
+      pincode: String(pincode), // Ensure it's a string (Duvan returns 4-digit number)
+      reservationId: payload.reservationId,
       statusCode: response.status,
     }
   } catch (error) {

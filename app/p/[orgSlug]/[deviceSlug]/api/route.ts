@@ -13,7 +13,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
 
   console.log("[v0] API: Querying for:", { orgSlug, deviceSlug })
 
-  const { data: accessPoint, error } = await supabase
+  // First, get the device with basic joins
+  const { data: devices, error: deviceError } = await supabase
     .schema("core")
     .from("devices")
     .select(`
@@ -26,52 +27,65 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
       org_id,
       slug,
       slug_is_active,
-      floor_id,
-      floors:floor_id (
+      floor_id
+    `)
+    .eq("slug", deviceSlug)
+    .eq("slug_is_active", true)
+
+  if (deviceError || !devices || devices.length === 0) {
+    console.error("[v0] API: Device lookup failed:", {
+      error: deviceError?.message,
+      code: deviceError?.code,
+    })
+    return NextResponse.json({ error: deviceError?.message || "Access point not found" }, { status: 404 })
+  }
+
+  const device = devices[0]
+
+  // Then, get the floor → building → site → org chain
+  const { data: floor, error: floorError } = await supabase
+    .schema("core")
+    .from("floors")
+    .select(`
+      id,
+      building_id,
+      buildings:building_id (
         id,
-        building_id,
-        buildings:building_id (
+        site_id,
+        sites:site_id (
           id,
-          site_id,
-          sites:site_id (
+          name,
+          city,
+          state,
+          org_id,
+          organisations:org_id (
             id,
             name,
-            city,
-            state,
-            org_id,
-            organisations:org_id (
-              id,
-              name,
-              slug,
-              timezone
-            )
+            slug,
+            timezone
           )
         )
       )
     `)
-    .eq("slug", deviceSlug)
-    .eq("slug_is_active", true)
-    .eq("floors.buildings.sites.organisations.slug", orgSlug)
+    .eq("id", device.floor_id)
     .single()
 
-  if (error || !accessPoint) {
-    console.error("[v0] API: Access point lookup failed:", {
-      error: error?.message,
-      code: error?.code,
-    })
-
-    return NextResponse.json({ error: error?.message || "Access point not found" }, { status: 404 })
+  if (floorError || !floor) {
+    console.error("[v0] API: Floor lookup failed:", floorError)
+    return NextResponse.json({ error: "Site configuration not found" }, { status: 404 })
   }
 
-  const floor = Array.isArray(accessPoint.floors) ? accessPoint.floors[0] : accessPoint.floors
-  const building = floor && (Array.isArray(floor.buildings) ? floor.buildings[0] : floor.buildings)
-  const site = building && (Array.isArray(building.sites) ? building.sites[0] : building.sites)
-  const org = site && (Array.isArray(site.organisations) ? site.organisations[0] : site.organisations)
+  const building = floor.buildings
+  const site = building?.sites
+  const org = site?.organisations
 
-  if (!org) {
-    return NextResponse.json({ error: "Organization not found" }, { status: 404 })
+  // Verify the org slug matches
+  if (!org || org.slug !== orgSlug) {
+    console.error("[v0] API: Organization slug mismatch:", { expected: orgSlug, actual: org?.slug })
+    return NextResponse.json({ error: "Access point not found" }, { status: 404 })
   }
 
+  // Track QR scan if present
   if (qr) {
     try {
       await supabase
@@ -79,8 +93,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
         .from("qr_scans")
         .insert({
           qr_instance_id: qr,
-          device_id: accessPoint.id,
-          org_id: accessPoint.org_id,
+          device_id: device.id,
+          org_id: device.org_id,
           source: source || "qr",
           scanned_at: new Date().toISOString(),
         })
@@ -91,13 +105,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
   }
 
   return NextResponse.json({
-    organizationId: accessPoint.org_id,
+    organizationId: device.org_id,
     organizationName: org.name || "Organization",
-    organizationLogo: accessPoint.custom_logo_url,
+    organizationLogo: device.custom_logo_url,
     siteId: site?.id,
     siteName: site?.name || "Site",
-    deviceId: accessPoint.id,
-    deviceName: accessPoint.custom_name || accessPoint.name,
-    deviceDescription: accessPoint.custom_description,
+    deviceId: device.id,
+    deviceName: device.custom_name || device.name,
+    deviceDescription: device.custom_description,
   })
 }
