@@ -56,6 +56,10 @@ export async function GET(
     }
 
     // Step 3: Get device by slug and site_id
+    const { data: allDevices } = await coreDb.from("devices").select("id, slug, name, active").eq("site_id", site.id)
+
+    console.log("[v0] All devices for site:", allDevices)
+
     const { data: device, error: deviceError } = await coreDb
       .from("devices")
       .select("id, name, custom_name, custom_description, custom_logo_url, lock_id, slug, active")
@@ -70,7 +74,11 @@ export async function GET(
       return NextResponse.json(
         {
           error: "Device not found",
-          debug: { searchedSlug: deviceSlug, error: deviceError?.message },
+          debug: {
+            searchedSlug: deviceSlug,
+            error: deviceError?.message,
+            availableDevices: allDevices?.map((d) => ({ slug: d.slug, name: d.name, active: d.active })),
+          },
         },
         { status: 404 },
       )
