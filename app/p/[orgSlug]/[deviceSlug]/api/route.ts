@@ -66,7 +66,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
     return NextResponse.json({ error: "Site configuration not found" }, { status: 404 })
   }
 
-  const org = site.organisations
+  const org = Array.isArray(site.organisations) ? site.organisations[0] : site.organisations
 
   if (!org || org.slug !== orgSlug) {
     console.error("[v0] API: Organization slug mismatch:", { expected: orgSlug, actual: org?.slug })
