@@ -1,22 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createSchemaServiceClient } from "@/lib/supabase/server"
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ orgSlug: string; siteSlug: string; deviceSlug: string }> },
 ) {
   try {
-    const supabase = await createClient()
+    const coreDb = createSchemaServiceClient("core")
     const { orgSlug, siteSlug, deviceSlug } = await context.params
 
     console.log("[v0] Fetching device:", { orgSlug, siteSlug, deviceSlug })
 
     // Step 1: Get organization by slug
-    const { data: org, error: orgError } = await supabase
+    const { data: org, error: orgError } = await coreDb
       .from("organisations")
       .select("id, name, brand_settings, slug")
       .eq("slug", orgSlug)
-      .single()
+      .maybeSingle()
 
     console.log("[v0] Organization query result:", { org, orgError, searchedSlug: orgSlug })
 
@@ -35,12 +35,12 @@ export async function GET(
     }
 
     // Step 2: Get site by slug and org_id
-    const { data: site, error: siteError } = await supabase
+    const { data: site, error: siteError } = await coreDb
       .from("sites")
       .select("id, name, slug")
       .eq("slug", siteSlug)
       .eq("org_id", org.id)
-      .single()
+      .maybeSingle()
 
     console.log("[v0] Site query result:", { site, siteError, searchedSlug: siteSlug })
 
@@ -56,12 +56,12 @@ export async function GET(
     }
 
     // Step 3: Get device by slug and site_id
-    const { data: device, error: deviceError } = await supabase
+    const { data: device, error: deviceError } = await coreDb
       .from("devices")
       .select("id, name, custom_name, custom_description, custom_logo_url, lock_id, slug, active")
       .eq("slug", deviceSlug)
       .eq("site_id", site.id)
-      .single()
+      .maybeSingle()
 
     console.log("[v0] Device query result:", { device, deviceError, searchedSlug: deviceSlug })
 
