@@ -129,6 +129,7 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
 
   const roomsResult = await createRoomsReservation(org.id, {
     propertyId: "z71owzgoNUxJtxOC",
+    reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
     arrivalDate: new Date(startsAt).toISOString().split("T")[0],
     departureDate: new Date(endsAt).toISOString().split("T")[0],
     lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
@@ -264,6 +265,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
 
   const roomsResult = await createRoomsReservation(org.id, {
     propertyId: "z71owzgoNUxJtxOC",
+    reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
     arrivalDate: new Date(startsAt).toISOString().split("T")[0],
     departureDate: new Date(endsAt).toISOString().split("T")[0],
     lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
