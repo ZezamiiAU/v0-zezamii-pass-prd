@@ -6,17 +6,19 @@ The QR code tracking system enables analytics and usage monitoring for physical 
 
 ## Architecture
 
-### URL Structure (Org-Scoped)
+### URL Structure (Site-Scoped)
 
 **Current Format:**
 \`\`\`
-https://yourdomain.com/p/{org-slug}/{device-slug}?qr={qr_instance_id}&source=qr
+https://yourdomain.com/p/{org-slug}/{site-slug}/{device-slug}?qr={qr_instance_id}&source=qr
 \`\`\`
 
 **Example:**
 \`\`\`
-https://zezamii-pass.vercel.app/p/big-parks/scenic-vista?qr=550e8400-e29b-41d4-a716-446655440000&source=qr
+https://zezamii-pass.vercel.app/p/zezamii-parks/boom-gate-hq/main-entrance?qr=550e8400-e29b-41d4-a716-446655440000&source=qr
 \`\`\`
+
+**Important:** Device slugs are now unique **per site**, not per organization. The site-slug is required to uniquely identify devices since multiple sites can have devices with the same slug.
 
 **Legacy Format (Redirects to new format):**
 \`\`\`
@@ -25,16 +27,21 @@ https://yourdomain.com/p/{device-slug}
 
 ### Resolution Logic
 
-1. **New route** `/p/[orgSlug]/[deviceSlug]`: Looks up device by org slug + device slug
+1. **New route** `/p/[orgSlug]/[siteSlug]/[deviceSlug]`: Looks up device by org + site + device slug
 2. **Legacy route** `/p/[slug]`: Redirects to new format after lookup
 3. **QR parameter**: Used for tracking which physical QR code was scanned
 
 ### Database Schema
 
 **`core.devices` table:**
-- `slug` (text, unique per org): Device URL identifier
+- `slug` (text, unique per site): Device URL identifier
+- `site_id` (uuid): Site the device belongs to (required)
 - `qr_instance_id` (uuid): Unique identifier for physical QR code instance
-- `org_id` (uuid): Organization the device belongs to
+- `lock_id` (integer): Lock system identifier
+
+**`core.sites` table:**
+- `slug` (text, unique per org): Site URL identifier
+- `org_id` (uuid): Organization the site belongs to
 
 **`analytics.qr_scans` tracking table:**
 - `device_id` (uuid): Which device was accessed
@@ -81,30 +88,33 @@ The admin portal queries `core.qr_ready_devices` view which provides:
 ### Scenario 1: Standard QR Code
 
 \`\`\`sql
--- Organisation: Big Parks
-org_slug = 'big-parks'
+-- Organisation: Zezamii Parks
+org_slug = 'zezamii-parks'
 
--- Device: Scenic Vista Main Entrance  
-device_slug = 'scenic-vista'
+-- Site: Boom Gate HQ
+site_slug = 'boom-gate-hq'
+
+-- Device: Main Entrance  
+device_slug = 'main-entrance'
 qr_instance_id = '550e8400-e29b-41d4-a716-446655440000'
 \`\`\`
 
 QR Code URL:
 \`\`\`
-https://zezamii-pass.vercel.app/p/big-parks/scenic-vista?qr=550e8400-e29b-41d4-a716-446655440000&source=qr
+https://zezamii-pass.vercel.app/p/zezamii-parks/boom-gate-hq/main-entrance?qr=550e8400-e29b-41d4-a716-446655440000&source=qr
 \`\`\`
 
-### Scenario 2: Multiple Organisations, Same Device Slug
+### Scenario 2: Multiple Sites, Same Device Slug
 
 \`\`\`sql
--- Big Parks
-https://zezamii-pass.vercel.app/p/big-parks/main-entrance
+-- Site: Downtown Office
+https://zezamii-pass.vercel.app/p/zezamii-parks/downtown-office/main-entrance
 
--- Scenic Valley  
-https://zezamii-pass.vercel.app/p/scenic-valley/main-entrance
+-- Site: North Branch  
+https://zezamii-pass.vercel.app/p/zezamii-parks/north-branch/main-entrance
 \`\`\`
 
-Each organisation can reuse device slugs because they're org-scoped.
+Each site can reuse device slugs because they're site-scoped.
 
 ## Analytics Queries
 
@@ -157,11 +167,16 @@ ORDER BY scans DESC;
 
 ### Organisation Slugs
 - Use lowercase, URL-safe identifiers
-- Examples: `big-parks`, `scenic-valley`, `mountain-resort`
+- Examples: `zezamii-parks`, `acme-corp`, `mountain-resort`
 - Must be unique across all organisations
 
-### Device Slugs  
+### Site Slugs
 - Unique within each organisation (org-scoped)
+- Examples: `boom-gate-hq`, `downtown-office`, `north-branch`
+- Must be unique per organization
+
+### Device Slugs  
+- Unique within each site (site-scoped)
 - Descriptive and memorable
 - Examples: `main-entrance`, `north-gate`, `visitor-center`
 
@@ -179,9 +194,10 @@ ORDER BY scans DESC;
 
 ### QR Code Returns 404
 1. Check organisation has `slug` set and `is_active = true`
-2. Verify device has `slug` set and `slug_is_active = true`
-3. Confirm org slug and device slug match QR code URL
-4. Check `core.qr_ready_devices` view for device status
+2. Check site has `slug` set and belongs to correct org
+3. Verify device has `slug` set and belongs to correct site
+4. Confirm org slug, site slug, and device slug all match QR code URL
+5. Check `core.qr_ready_devices` view for device status
 
 ### Tracking Not Working
 1. Verify `analytics.qr_scans` table exists
