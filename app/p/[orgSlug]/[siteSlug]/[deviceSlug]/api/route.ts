@@ -3,11 +3,11 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgSlug: string; siteSlug: string; deviceSlug: string } },
+  context: { params: Promise<{ orgSlug: string; siteSlug: string; deviceSlug: string }> },
 ) {
   try {
     const supabase = await createClient()
-    const { orgSlug, siteSlug, deviceSlug } = params
+    const { orgSlug, siteSlug, deviceSlug } = await context.params
 
     console.log("[v0] Fetching device:", { orgSlug, siteSlug, deviceSlug })
 
