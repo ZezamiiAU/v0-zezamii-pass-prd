@@ -13,8 +13,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
 
   console.log("[v0] API: Querying for:", { orgSlug, deviceSlug })
 
-  // First, get the device with basic joins
-  const { data: devices, error: deviceError } = await supabase
+  // Query device with site_id directly (devices now have site_id, not just floor_id)
+  const { data: device, error: deviceError } = await supabase
     .schema("core")
     .from("devices")
     .select(`
@@ -25,14 +25,16 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
       custom_logo_url,
       code,
       org_id,
+      site_id,
       slug,
       slug_is_active,
       floor_id
     `)
     .eq("slug", deviceSlug)
     .eq("slug_is_active", true)
+    .single()
 
-  if (deviceError || !devices || devices.length === 0) {
+  if (deviceError || !device) {
     console.error("[v0] API: Device lookup failed:", {
       error: deviceError?.message,
       code: deviceError?.code,
@@ -40,46 +42,32 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
     return NextResponse.json({ error: deviceError?.message || "Access point not found" }, { status: 404 })
   }
 
-  const device = devices[0]
-
-  // Then, get the floor → building → site → org chain
-  const { data: floor, error: floorError } = await supabase
+  const { data: site, error: siteError } = await supabase
     .schema("core")
-    .from("floors")
+    .from("sites")
     .select(`
       id,
-      building_id,
-      buildings:building_id (
+      name,
+      city,
+      state,
+      org_id,
+      organisations:org_id (
         id,
-        site_id,
-        sites:site_id (
-          id,
-          name,
-          city,
-          state,
-          org_id,
-          organisations:org_id (
-            id,
-            name,
-            slug,
-            timezone
-          )
-        )
+        name,
+        slug,
+        timezone
       )
     `)
-    .eq("id", device.floor_id)
+    .eq("id", device.site_id)
     .single()
 
-  if (floorError || !floor) {
-    console.error("[v0] API: Floor lookup failed:", floorError)
+  if (siteError || !site) {
+    console.error("[v0] API: Site lookup failed:", siteError)
     return NextResponse.json({ error: "Site configuration not found" }, { status: 404 })
   }
 
-  const building = floor.buildings
-  const site = building?.sites
-  const org = site?.organisations
+  const org = site.organisations
 
-  // Verify the org slug matches
   if (!org || org.slug !== orgSlug) {
     console.error("[v0] API: Organization slug mismatch:", { expected: orgSlug, actual: org?.slug })
     return NextResponse.json({ error: "Access point not found" }, { status: 404 })
@@ -108,8 +96,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
     organizationId: device.org_id,
     organizationName: org.name || "Organization",
     organizationLogo: device.custom_logo_url,
-    siteId: site?.id,
-    siteName: site?.name || "Site",
+    siteId: site.id,
+    siteName: site.name || "Site",
     deviceId: device.id,
     deviceName: device.custom_name || device.name,
     deviceDescription: device.custom_description,
