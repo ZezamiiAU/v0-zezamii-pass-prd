@@ -11,37 +11,56 @@ export async function GET(
 
     console.log("[v0] Fetching device:", { orgSlug, siteSlug, deviceSlug })
 
-    const { data: device, error: deviceError } = await supabase
-      .from("core.qr_ready_devices")
-      .select("*")
-      .eq("org_slug", orgSlug)
-      .eq("site_slug", siteSlug)
-      .eq("device_slug", deviceSlug)
-      .eq("is_qr_ready", true)
-      .maybeSingle()
+    // Step 1: Get organization by slug
+    const { data: org, error: orgError } = await supabase
+      .from("core.organisations")
+      .select("id, name, brand_settings")
+      .eq("slug", orgSlug)
+      .single()
 
-    console.log("[v0] Device query result:", { device, deviceError })
-
-    if (deviceError) {
-      console.error("[v0] Database error:", deviceError)
-      return NextResponse.json({ error: "Database error" }, { status: 500 })
+    if (orgError || !org) {
+      console.log("[v0] Organization not found:", orgSlug, orgError)
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 })
     }
 
-    if (!device) {
-      console.log("[v0] Device not found with slugs:", { orgSlug, siteSlug, deviceSlug })
+    // Step 2: Get site by slug and org_id
+    const { data: site, error: siteError } = await supabase
+      .from("core.sites")
+      .select("id, name")
+      .eq("slug", siteSlug)
+      .eq("org_id", org.id)
+      .single()
+
+    if (siteError || !site) {
+      console.log("[v0] Site not found:", siteSlug, siteError)
+      return NextResponse.json({ error: "Site not found" }, { status: 404 })
+    }
+
+    // Step 3: Get device by slug and site_id
+    const { data: device, error: deviceError } = await supabase
+      .from("core.devices")
+      .select("id, name, custom_name, custom_description, custom_logo_url, lock_id")
+      .eq("slug", deviceSlug)
+      .eq("site_id", site.id)
+      .single()
+
+    if (deviceError || !device) {
+      console.log("[v0] Device not found:", deviceSlug, deviceError)
       return NextResponse.json({ error: "Device not found" }, { status: 404 })
     }
 
+    console.log("[v0] Device found successfully:", device.id)
+
     return NextResponse.json({
-      organizationId: device.org_id,
-      organizationName: device.org_name,
-      organizationLogo: device.org_brand_settings?.logo_url || null,
-      siteId: device.site_id,
-      siteName: device.site_name,
-      deviceId: device.device_id,
-      deviceName: device.device_custom_name || device.device_name,
-      deviceDescription: device.device_custom_description || null,
-      deviceLogo: device.device_custom_logo_url || null,
+      organizationId: org.id,
+      organizationName: org.name,
+      organizationLogo: org.brand_settings?.logo_url || null,
+      siteId: site.id,
+      siteName: site.name,
+      deviceId: device.id,
+      deviceName: device.custom_name || device.name,
+      deviceDescription: device.custom_description || null,
+      deviceLogo: device.custom_logo_url || null,
       lockId: device.lock_id,
     })
   } catch (error) {
