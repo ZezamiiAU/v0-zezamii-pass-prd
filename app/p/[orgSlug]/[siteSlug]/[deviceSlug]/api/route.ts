@@ -12,49 +12,64 @@ export async function GET(
     console.log("[v0] Fetching device:", { orgSlug, siteSlug, deviceSlug })
 
     const { data: device, error: deviceError } = await supabase
-      .from("core.qr_ready_devices")
-      .select(
-        `
-        device_id,
-        device_name,
-        device_custom_name,
-        device_custom_description,
-        device_custom_logo_url,
-        lock_id,
-        org_id,
-        org_name,
-        org_slug,
-        site_id,
-        site_name,
-        site_slug,
-        device_slug,
-        org_brand_settings
-      `,
-      )
-      .eq("org_slug", orgSlug)
-      .eq("site_slug", siteSlug)
-      .eq("device_slug", deviceSlug)
-      .eq("is_qr_ready", true)
-      .single()
+      .from("core.devices")
+      .select("id, name, custom_name, custom_description, custom_logo_url, lock_id, site_id, slug, org_id")
+      .eq("slug", deviceSlug)
+      .maybeSingle()
 
-    if (deviceError || !device) {
-      console.error("[v0] Device not found:", deviceError)
+    console.log("[v0] Device query result:", { device, deviceError })
+
+    if (!device) {
+      console.log("[v0] Device not found with slug:", deviceSlug)
       return NextResponse.json({ error: "Device not found" }, { status: 404 })
     }
 
-    console.log("[v0] Found device:", device)
+    const { data: site, error: siteError } = await supabase
+      .from("core.sites")
+      .select("id, name, slug, org_id")
+      .eq("id", device.site_id)
+      .single()
 
-    // Return the access point data
+    console.log("[v0] Site query result:", { site, siteError })
+
+    if (!site) {
+      console.log("[v0] Site not found for device.site_id:", device.site_id)
+      return NextResponse.json({ error: "Device not found" }, { status: 404 })
+    }
+
+    if (site.slug !== siteSlug) {
+      console.log("[v0] Site slug mismatch. Expected:", siteSlug, "Got:", site.slug)
+      return NextResponse.json({ error: "Device not found" }, { status: 404 })
+    }
+
+    const { data: org, error: orgError } = await supabase
+      .from("core.organisations")
+      .select("id, name, slug, brand_settings")
+      .eq("id", site.org_id)
+      .single()
+
+    console.log("[v0] Organization query result:", { org, orgError })
+
+    if (!org) {
+      console.log("[v0] Organization not found for site.org_id:", site.org_id)
+      return NextResponse.json({ error: "Device not found" }, { status: 404 })
+    }
+
+    if (org.slug !== orgSlug) {
+      console.log("[v0] Org slug mismatch. Expected:", orgSlug, "Got:", org.slug)
+      return NextResponse.json({ error: "Device not found" }, { status: 404 })
+    }
+
     return NextResponse.json({
-      organizationId: device.org_id,
-      organizationName: device.org_name,
-      organizationLogo: device.org_brand_settings?.logo_url || null,
-      siteId: device.site_id,
-      siteName: device.site_name,
-      deviceId: device.device_id,
-      deviceName: device.device_custom_name || device.device_name,
-      deviceDescription: device.device_custom_description || null,
-      deviceLogo: device.device_custom_logo_url || null,
+      organizationId: org.id,
+      organizationName: org.name,
+      organizationLogo: org.brand_settings?.logo_url || null,
+      siteId: site.id,
+      siteName: site.name,
+      deviceId: device.id,
+      deviceName: device.custom_name || device.name,
+      deviceDescription: device.custom_description || null,
+      deviceLogo: device.custom_logo_url || null,
       lockId: device.lock_id,
     })
   } catch (error) {
