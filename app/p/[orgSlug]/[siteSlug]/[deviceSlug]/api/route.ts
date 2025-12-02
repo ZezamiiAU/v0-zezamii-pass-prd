@@ -11,13 +11,9 @@ export async function GET(
 
     console.log("[v0] Fetching device:", { orgSlug, siteSlug, deviceSlug })
 
-    const { data: testOrgs, error: testError } = await supabase.from("core.organisations").select("slug").limit(5)
-
-    console.log("[v0] Test query - all accessible orgs:", testOrgs, testError)
-
     // Step 1: Get organization by slug
     const { data: org, error: orgError } = await supabase
-      .from("core.organisations")
+      .from("organisations")
       .select("id, name, brand_settings, slug")
       .eq("slug", orgSlug)
       .single()
@@ -32,7 +28,6 @@ export async function GET(
           debug: {
             searchedSlug: orgSlug,
             error: orgError?.message,
-            availableOrgs: testOrgs?.map((o) => o.slug),
           },
         },
         { status: 404 },
@@ -41,7 +36,7 @@ export async function GET(
 
     // Step 2: Get site by slug and org_id
     const { data: site, error: siteError } = await supabase
-      .from("core.sites")
+      .from("sites")
       .select("id, name, slug")
       .eq("slug", siteSlug)
       .eq("org_id", org.id)
@@ -62,7 +57,7 @@ export async function GET(
 
     // Step 3: Get device by slug and site_id
     const { data: device, error: deviceError } = await supabase
-      .from("core.devices")
+      .from("devices")
       .select("id, name, custom_name, custom_description, custom_logo_url, lock_id, slug, active")
       .eq("slug", deviceSlug)
       .eq("site_id", site.id)
