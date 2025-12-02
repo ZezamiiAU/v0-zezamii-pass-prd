@@ -1,34 +1,66 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 
+type SiteJoin = { slug: string }
+type DeviceRow = {
+  slug: string
+  site_id: string | null
+  sites?: SiteJoin[] | SiteJoin | null
+}
+
 export default async function SitePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orgSlug: string; siteSlug: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { orgSlug, siteSlug } = await params
-
-  console.log("[v0] SitePage accessed with orgSlug:", orgSlug, "siteSlug:", siteSlug)
+  const sp = searchParams ? await searchParams : {}
 
   const supabase = await createClient()
 
   // Try to find a device with this slug under this org
   const { data: device } = await supabase
     .from("core.devices")
-    .select("slug, site_id, core.sites!inner(slug, org_id, core.organisations!inner(slug))")
+    .select(`
+      slug,
+      site_id,
+      sites:core.sites!inner(
+        slug,
+        org_id,
+        core.organisations!inner(slug)
+      )
+    `)
     .eq("slug", siteSlug)
-    .eq("core.sites.core.organisations.slug", orgSlug)
-    .single()
+    .eq("sites.core.organisations.slug", orgSlug)
+    .single<DeviceRow>()
 
   if (device) {
-    // This is an old-format URL: /p/{org}/{device}
-    // Redirect to new format: /p/{org}/{site}/{device}
-    const site = Array.isArray(device["core.sites"]) ? device["core.sites"][0] : device["core.sites"]
+    // old format: /p/{org}/{device}
+    // new format: /p/{org}/{site}/{device}
+    const rawSites = device.sites
+    const site = Array.isArray(rawSites) ? rawSites[0] : rawSites
 
-    const queryString = typeof window !== "undefined" ? window.location.search : ""
-    const newUrl = `/p/${orgSlug}/${site.slug}/${siteSlug}${queryString}`
+    if (!site?.slug) {
+      // device exists but site join missing somehow
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900">Invalid Access Point</h1>
+            <p className="mt-2 text-gray-600">This device is not linked to a site.</p>
+          </div>
+        </div>
+      )
+    }
 
-    console.log("[v0] Redirecting old URL format to:", newUrl)
+    const queryString = new URLSearchParams(
+      Object.entries(sp).flatMap(([k, v]) =>
+        Array.isArray(v) ? v.map((vv) => [k, vv]) : v ? [[k, v]] : []
+      )
+    ).toString()
+
+    const newUrl = `/p/${orgSlug}/${site.slug}/${siteSlug}${queryString ? `?${queryString}` : ""}`
     redirect(newUrl)
   }
 
