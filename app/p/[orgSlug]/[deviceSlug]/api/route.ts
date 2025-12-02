@@ -13,23 +13,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
 
   console.log("[v0] API: Querying for:", { orgSlug, deviceSlug })
 
-  // Query device with site_id directly (devices now have site_id, not just floor_id)
   const { data: device, error: deviceError } = await supabase
     .schema("core")
     .from("devices")
-    .select(`
-      id,
-      name,
-      custom_name,
-      custom_description,
-      custom_logo_url,
-      code,
-      org_id,
-      site_id,
-      slug,
-      slug_is_active,
-      floor_id
-    `)
+    .select("id, name, custom_name, custom_description, custom_logo_url, code, org_id, site_id, slug, slug_is_active")
     .eq("slug", deviceSlug)
     .eq("slug_is_active", true)
     .single()
@@ -42,22 +29,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
     return NextResponse.json({ error: deviceError?.message || "Access point not found" }, { status: 404 })
   }
 
+  console.log("[v0] API: Found device:", device.id, "site_id:", device.site_id)
+
   const { data: site, error: siteError } = await supabase
     .schema("core")
     .from("sites")
-    .select(`
-      id,
-      name,
-      city,
-      state,
-      org_id,
-      organisations:org_id (
-        id,
-        name,
-        slug,
-        timezone
-      )
-    `)
+    .select("id, name, city, state, org_id")
     .eq("id", device.site_id)
     .single()
 
@@ -66,10 +43,24 @@ export async function GET(request: NextRequest, context: { params: Promise<{ org
     return NextResponse.json({ error: "Site configuration not found" }, { status: 404 })
   }
 
-  const org = Array.isArray(site.organisations) ? site.organisations[0] : site.organisations
+  console.log("[v0] API: Found site:", site.id, "org_id:", site.org_id)
 
-  if (!org || org.slug !== orgSlug) {
-    console.error("[v0] API: Organization slug mismatch:", { expected: orgSlug, actual: org?.slug })
+  const { data: org, error: orgError } = await supabase
+    .schema("core")
+    .from("organisations")
+    .select("id, name, slug, timezone")
+    .eq("id", site.org_id)
+    .single()
+
+  if (orgError || !org) {
+    console.error("[v0] API: Organization lookup failed:", orgError)
+    return NextResponse.json({ error: "Organization not found" }, { status: 404 })
+  }
+
+  console.log("[v0] API: Found org:", org.id, "slug:", org.slug)
+
+  if (org.slug !== orgSlug) {
+    console.error("[v0] API: Organization slug mismatch:", { expected: orgSlug, actual: org.slug })
     return NextResponse.json({ error: "Access point not found" }, { status: 404 })
   }
 
