@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     const { data: device, error: deviceError } = await coreClient
       .from("devices")
-      .select("id, floor_id")
+      .select("id, site_id, floor_id")
       .eq("id", accessPointId)
       .single()
 
@@ -98,41 +98,47 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0] Device found:", device)
-    console.log("[v0] Fetching floor for floor_id:", device.floor_id)
 
-    const { data: floor, error: floorError } = await coreClient
-      .from("floors")
-      .select("id, building_id")
-      .eq("id", device.floor_id)
-      .single()
+    let siteId: string | null = device.site_id || null
 
-    if (floorError || !floor) {
-      console.log("[v0] Floor fetch failed:", floorError)
-      logger.error({ floorId: device.floor_id, error: floorError }, "Failed to fetch floor")
-      return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
+    // If no direct site_id, try the old hierarchy: device → floor → building → site
+    if (!siteId && device.floor_id) {
+      console.log("[v0] No direct site_id, fetching floor for floor_id:", device.floor_id)
+
+      const { data: floor, error: floorError } = await coreClient
+        .from("floors")
+        .select("id, building_id")
+        .eq("id", device.floor_id)
+        .single()
+
+      if (floorError || !floor) {
+        console.log("[v0] Floor fetch failed:", floorError)
+        logger.error({ floorId: device.floor_id, error: floorError }, "Failed to fetch floor")
+        return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
+      }
+
+      console.log("[v0] Floor found:", floor)
+      console.log("[v0] Fetching building for building_id:", floor.building_id)
+
+      const { data: building, error: buildingError } = await coreClient
+        .from("buildings")
+        .select("id, site_id")
+        .eq("id", floor.building_id)
+        .single()
+
+      if (buildingError || !building) {
+        console.log("[v0] Building fetch failed:", buildingError)
+        logger.error({ buildingId: floor.building_id, error: buildingError }, "Failed to fetch building")
+        return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
+      }
+
+      console.log("[v0] Building found:", building)
+      siteId = building.site_id
     }
-
-    console.log("[v0] Floor found:", floor)
-    console.log("[v0] Fetching building for building_id:", floor.building_id)
-
-    const { data: building, error: buildingError } = await coreClient
-      .from("buildings")
-      .select("id, site_id")
-      .eq("id", floor.building_id)
-      .single()
-
-    if (buildingError || !building) {
-      console.log("[v0] Building fetch failed:", buildingError)
-      logger.error({ buildingId: floor.building_id, error: buildingError }, "Failed to fetch building")
-      return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
-    }
-
-    console.log("[v0] Building found:", building)
-    const siteId = building.site_id
 
     if (!siteId) {
-      console.log("[v0] Building has no site_id")
-      logger.error({ buildingId: building.id }, "Building has no associated site")
+      console.log("[v0] Device has no site_id")
+      logger.error({ deviceId: device.id }, "Device has no associated site")
       return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
     }
 
