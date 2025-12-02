@@ -11,20 +11,30 @@ export async function GET(
 
     console.log("[v0] Fetching device:", { orgSlug, siteSlug, deviceSlug })
 
-    // Step 1: Get the device with site filtering
     const { data: device, error: deviceError } = await supabase
-      .from("core.devices")
+      .from("core.qr_ready_devices")
       .select(
         `
-        id,
-        name,
-        description,
-        slug,
+        device_id,
+        device_name,
+        device_custom_name,
+        device_custom_description,
+        device_custom_logo_url,
+        lock_id,
+        org_id,
+        org_name,
+        org_slug,
         site_id,
-        lock_id
+        site_name,
+        site_slug,
+        device_slug,
+        org_brand_settings
       `,
       )
-      .eq("slug", deviceSlug)
+      .eq("org_slug", orgSlug)
+      .eq("site_slug", siteSlug)
+      .eq("device_slug", deviceSlug)
+      .eq("is_qr_ready", true)
       .single()
 
     if (deviceError || !device) {
@@ -34,60 +44,17 @@ export async function GET(
 
     console.log("[v0] Found device:", device)
 
-    // Step 2: Get the site with slug validation
-    const { data: site, error: siteError } = await supabase
-      .from("core.sites")
-      .select(
-        `
-        id,
-        name,
-        slug,
-        org_id
-      `,
-      )
-      .eq("id", device.site_id)
-      .eq("slug", siteSlug)
-      .single()
-
-    if (siteError || !site) {
-      console.error("[v0] Site not found or slug mismatch:", siteError)
-      return NextResponse.json({ error: "Site not found" }, { status: 404 })
-    }
-
-    console.log("[v0] Found site:", site)
-
-    // Step 3: Get the organization with slug validation
-    const { data: organization, error: orgError } = await supabase
-      .from("core.organisations")
-      .select(
-        `
-        id,
-        name,
-        slug,
-        logo_url
-      `,
-      )
-      .eq("id", site.org_id)
-      .eq("slug", orgSlug)
-      .single()
-
-    if (orgError || !organization) {
-      console.error("[v0] Organization not found or slug mismatch:", orgError)
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 })
-    }
-
-    console.log("[v0] Found organization:", organization)
-
     // Return the access point data
     return NextResponse.json({
-      organizationId: organization.id,
-      organizationName: organization.name,
-      organizationLogo: organization.logo_url,
-      siteId: site.id,
-      siteName: site.name,
-      deviceId: device.id,
-      deviceName: device.name,
-      deviceDescription: device.description,
+      organizationId: device.org_id,
+      organizationName: device.org_name,
+      organizationLogo: device.org_brand_settings?.logo_url || null,
+      siteId: device.site_id,
+      siteName: device.site_name,
+      deviceId: device.device_id,
+      deviceName: device.device_custom_name || device.device_name,
+      deviceDescription: device.device_custom_description || null,
+      deviceLogo: device.device_custom_logo_url || null,
       lockId: device.lock_id,
     })
   } catch (error) {
