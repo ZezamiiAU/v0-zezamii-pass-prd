@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         created_at,
         device:devices ( id, name ),
         pass_type:pass_types ( id, name )
-      `
+      `,
       )
       .eq("id", passId)
       .single()
@@ -74,10 +74,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Google Wallet not configured",
-          message:
-            "Please add WALLET_ISSUER_ID, GOOGLE_WALLET_SA_JSON, and APP_ORIGIN environment variables",
+          message: "Please add WALLET_ISSUER_ID, GOOGLE_WALLET_SA_JSON, and APP_ORIGIN environment variables",
         },
-        { status: 501 }
+        { status: 501 },
       )
     }
 
@@ -99,11 +98,11 @@ export async function GET(request: NextRequest) {
     }
 
     const pinCode = pass.lock_code?.[0]?.code || "N/A"
-    const accessPointName = pass.device?.name || "Entry Access Point"
-    const passTypeName = pass.pass_type?.name || "Day Pass"
+    const accessPointName = pass.device?.[0]?.name || "Entry Access Point"
+    const passTypeName = pass.pass_type?.[0]?.name || "Day Pass"
 
     const instructions = `Enter this PIN at the keypad at ${accessPointName} to gain access. Your pass is valid until ${fmt(
-      pass.valid_to ?? undefined
+      pass.valid_to ?? undefined,
     )}.`
 
     // ----- Generic Object (dynamic per pass) -----
@@ -195,10 +194,7 @@ export async function GET(request: NextRequest) {
     const origins = [APP_ORIGIN].filter(Boolean)
     if (origins.length === 0) {
       logger.error("No valid origins configured for Google Wallet")
-      return NextResponse.json(
-        { error: "APP_ORIGIN environment variable is required" },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: "APP_ORIGIN environment variable is required" }, { status: 500 })
     }
 
     // ----- JWT claims -----
@@ -238,8 +234,15 @@ export async function GET(request: NextRequest) {
     const privateKeyPem = serviceAccount.private_key
     const privateKey = await importPKCS8(privateKeyPem, "RS256")
 
+    // ----- Added kid to protected header for Google Wallet JWT validation -----
     const token = await new SignJWT(claims)
-      .setProtectedHeader({ alg: "RS256", typ: "JWT" })
+      .setProtectedHeader({
+        alg: "RS256",
+        typ: "JWT",
+        kid: serviceAccount.private_key_id,
+      })
+      .setIssuedAt()
+      .setExpirationTime("1h")
       .sign(privateKey)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
@@ -249,9 +252,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ url: saveUrl, token })
   } catch (error) {
     logger.error({ error, passId }, "Google Wallet pass generation error")
-    return NextResponse.json(
-      { error: "Failed to generate Google Wallet pass" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to generate Google Wallet pass" }, { status: 500 })
   }
 }
