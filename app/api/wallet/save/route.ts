@@ -62,7 +62,9 @@ export async function GET(req: NextRequest) {
     const validFrom = queryParams.validFrom || ""
     const validTo = queryParams.validTo || ""
     const accessPointName = queryParams.accessPoint || "Entry Access Point"
-    const objectId = `${ISSUER_ID}.${userId}`.toLowerCase()
+
+    const timestamp = Date.now()
+    const objectId = `${ISSUER_ID}.${userId}_${timestamp}`.toLowerCase()
 
     let unlockUri = "https://zezamii.com/coming-soon"
     if (deviceId) {
