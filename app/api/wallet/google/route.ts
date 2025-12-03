@@ -47,7 +47,33 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const serviceAccount = JSON.parse(serviceAccountJson)
+    let serviceAccount: any
+    try {
+      // Handle escaped newlines from Vercel env vars
+      const normalizedJson = serviceAccountJson.replace(/\\n/g, "\n")
+      serviceAccount = JSON.parse(normalizedJson)
+    } catch (parseError) {
+      logger.error({ parseError }, "Failed to parse GOOGLE_WALLET_SA_JSON")
+      return NextResponse.json(
+        {
+          error: "Google Wallet configuration error",
+          message: "Invalid service account JSON format",
+        },
+        { status: 500 },
+      )
+    }
+
+    if (!serviceAccount.client_email || !serviceAccount.private_key || !serviceAccount.private_key_id) {
+      logger.error("Service account JSON missing required fields")
+      return NextResponse.json(
+        {
+          error: "Google Wallet configuration error",
+          message: "Service account JSON is missing required fields (client_email, private_key, private_key_id)",
+        },
+        { status: 500 },
+      )
+    }
+
     const classId = `${issuerId}.zezamii_day_pass`
     const objectId = `${issuerId}.${pass.id}`
 
@@ -246,11 +272,19 @@ export async function GET(request: NextRequest) {
     const privateKeyPem: string = serviceAccount.private_key
     const privateKey = await importPKCS8(privateKeyPem, "RS256")
 
-    const token = await new SignJWT(claims).setProtectedHeader({ alg: "RS256", typ: "JWT" }).sign(privateKey)
+    const token = await new SignJWT(claims)
+      .setProtectedHeader({
+        alg: "RS256",
+        kid: serviceAccount.private_key_id, // CRITICAL: Required by Google for key validation
+        typ: "JWT", // CRITICAL: Required by Google Wallet API
+      })
+      .setIssuedAt() // CRITICAL: Adds iat claim with current timestamp
+      .setExpirationTime("2h") // Best practice: Token expires in 2 hours
+      .sign(privateKey)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
-    logger.info({ passId }, "Google Wallet pass generated")
+    logger.info({ passId, objectId }, "Google Wallet pass generated")
 
     return NextResponse.json({
       url: saveUrl,
@@ -258,6 +292,12 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     logger.error({ error, passId }, "Google Wallet pass generation error")
-    return NextResponse.json({ error: "Failed to generate Google Wallet pass" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to generate Google Wallet pass",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

@@ -274,12 +274,25 @@ export async function GET(req: NextRequest) {
       aud: "google",
       typ: "savetowallet",
       origins: origins,
-      iat: Math.floor(Date.now() / 1000),
       payload: {
         genericClasses: [genericClass],
         genericObjects: [genericObject],
       },
     }
+
+    console.log(
+      "[v0] Google Wallet JWT Payload:",
+      JSON.stringify(
+        {
+          objectId,
+          classId: CLASS_ID,
+          issuerId: ISSUER_ID,
+          origins,
+        },
+        null,
+        2,
+      ),
+    )
 
     const privateKey = await jose.importPKCS8(svc.private_key, "RS256")
 
@@ -287,9 +300,12 @@ export async function GET(req: NextRequest) {
       .setProtectedHeader({
         alg: "RS256",
         kid: svc.private_key_id,
-        typ: "JWT", // ⚠️ CRITICAL: This field is required by Google Wallet API
+        typ: "JWT",
       })
+      .setIssuedAt()
       .sign(privateKey)
+
+    console.log("[v0] Google Wallet JWT generated successfully for objectId:", objectId)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
@@ -299,6 +315,7 @@ export async function GET(req: NextRequest) {
       jwtPayload: payload,
     })
   } catch (error) {
+    console.error("[v0] Google Wallet error:", error)
     if (error instanceof ZodError) {
       return handleValidationError(error)
     }
