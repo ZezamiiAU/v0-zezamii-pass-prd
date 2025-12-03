@@ -56,30 +56,14 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = (queryParams.userId || "dev-001").toLowerCase().replace(/[^a-z0-9_-]/g, "")
+    const objectId = `${ISSUER_ID}.${userId}`.toLowerCase()
+
     const deviceId = queryParams.deviceId || ""
     const passType = queryParams.passType || "Day Pass"
     const code = queryParams.code || ""
     const validFrom = queryParams.validFrom || ""
     const validTo = queryParams.validTo || ""
     const accessPointName = queryParams.accessPoint || "Entry Access Point"
-
-    const passTypeSanitized = passType.toLowerCase().replace(/[^a-z0-9_-]/g, "_")
-    const timestamp = Date.now()
-    const passId = `${ISSUER_ID}.${userId}_${passTypeSanitized}_${code}_${timestamp}`.toLowerCase()
-
-    let unlockUri = "https://zezamii.com/coming-soon"
-    if (deviceId) {
-      try {
-        const unlockJwtResponse = await fetch(
-          `${APP_ORIGIN}/api/wallet/unlock-jwt?userId=${userId}&deviceId=${deviceId}`,
-        )
-
-        if (unlockJwtResponse.ok) {
-          const { token } = await unlockJwtResponse.json()
-          unlockUri = `https://api.zezamii.com/unlock?j=${token}`
-        }
-      } catch (error) {}
-    }
 
     const asset = (p: string) => `${APP_ORIGIN}${p}`
     const fmt = (iso?: string) => {
@@ -101,7 +85,7 @@ export async function GET(req: NextRequest) {
       : "Tap a link below to unlock, or enter your PIN at the keypad."
 
     const genericObject = {
-      id: passId, // Use the unique passId instead of objectId
+      id: objectId,
       classId: CLASS_ID,
       cardTitle: {
         defaultValue: {
@@ -169,7 +153,7 @@ export async function GET(req: NextRequest) {
       ],
       linksModuleData: {
         uris: [
-          { id: "unlock-dynamic", uri: unlockUri, description: "Remote Unlock" },
+          { id: "unlock-dynamic", uri: "https://zezamii.com/coming-soon", description: "Remote Unlock" },
           { id: "support", uri: "https://zezamii.com/support", description: "Help & Support" },
         ],
       },
@@ -263,6 +247,22 @@ export async function GET(req: NextRequest) {
       },
     }
 
+    let unlockUri = "https://zezamii.com/coming-soon"
+    if (deviceId) {
+      try {
+        const unlockJwtResponse = await fetch(
+          `${APP_ORIGIN}/api/wallet/unlock-jwt?userId=${userId}&deviceId=${deviceId}`,
+        )
+
+        if (unlockJwtResponse.ok) {
+          const { token } = await unlockJwtResponse.json()
+          unlockUri = `https://api.zezamii.com/unlock?j=${token}`
+        }
+      } catch (error) {}
+    }
+
+    genericObject.linksModuleData.uris[0].uri = unlockUri
+
     const requestOrigin = req.headers.get("origin") || req.headers.get("referer")?.split("/").slice(0, 3).join("/")
     const origins = [APP_ORIGIN]
 
@@ -277,6 +277,7 @@ export async function GET(req: NextRequest) {
       aud: "google",
       typ: "savetowallet",
       origins: origins,
+      iat: Math.floor(Date.now() / 1000),
       payload: {
         genericClasses: [genericClass],
         genericObjects: [genericObject],
@@ -287,7 +288,7 @@ export async function GET(req: NextRequest) {
       "[v0] Google Wallet JWT Payload:",
       JSON.stringify(
         {
-          passId, // Log passId instead of objectId
+          objectId,
           classId: CLASS_ID,
           issuerId: ISSUER_ID,
           origins,
@@ -305,16 +306,15 @@ export async function GET(req: NextRequest) {
         kid: svc.private_key_id,
         typ: "JWT",
       })
-      .setIssuedAt()
       .sign(privateKey)
 
-    console.log("[v0] Google Wallet JWT generated successfully for passId:", passId) // Log passId
+    console.log("[v0] Google Wallet JWT generated successfully for objectId:", objectId)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
     return NextResponse.json({
       saveUrl,
-      objectId: passId, // Return passId as objectId for backward compatibility
+      objectId,
       jwtPayload: payload,
     })
   } catch (error) {
