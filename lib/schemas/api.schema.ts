@@ -76,7 +76,7 @@ export const sessionQuerySchema = z
 export type SessionQuery = z.infer<typeof sessionQuerySchema>
 
 export const walletSaveQuerySchema = z.object({
-  passId: z.string().uuid("passId must be a UUID"),
+  passId: z.string().uuid("passId must be a UUID").optional(),
   platform: z.enum(["apple", "google"]).optional(),
   userId: z.string().optional(),
   deviceId: z.string().optional(),
