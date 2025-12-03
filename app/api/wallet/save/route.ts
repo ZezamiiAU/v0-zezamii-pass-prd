@@ -62,7 +62,10 @@ export async function GET(req: NextRequest) {
     const validFrom = queryParams.validFrom || ""
     const validTo = queryParams.validTo || ""
     const accessPointName = queryParams.accessPoint || "Entry Access Point"
-    const objectId = `${ISSUER_ID}.${userId}`.toLowerCase()
+
+    const passTypeSanitized = passType.toLowerCase().replace(/[^a-z0-9_-]/g, "_")
+    const timestamp = Date.now()
+    const passId = `${ISSUER_ID}.${userId}_${passTypeSanitized}_${code}_${timestamp}`.toLowerCase()
 
     let unlockUri = "https://zezamii.com/coming-soon"
     if (deviceId) {
@@ -98,7 +101,7 @@ export async function GET(req: NextRequest) {
       : "Tap a link below to unlock, or enter your PIN at the keypad."
 
     const genericObject = {
-      id: objectId,
+      id: passId, // Use the unique passId instead of objectId
       classId: CLASS_ID,
       cardTitle: {
         defaultValue: {
@@ -284,7 +287,7 @@ export async function GET(req: NextRequest) {
       "[v0] Google Wallet JWT Payload:",
       JSON.stringify(
         {
-          objectId,
+          passId, // Log passId instead of objectId
           classId: CLASS_ID,
           issuerId: ISSUER_ID,
           origins,
@@ -305,13 +308,13 @@ export async function GET(req: NextRequest) {
       .setIssuedAt()
       .sign(privateKey)
 
-    console.log("[v0] Google Wallet JWT generated successfully for objectId:", objectId)
+    console.log("[v0] Google Wallet JWT generated successfully for passId:", passId) // Log passId
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
     return NextResponse.json({
       saveUrl,
-      objectId,
+      objectId: passId, // Return passId as objectId for backward compatibility
       jwtPayload: payload,
     })
   } catch (error) {
