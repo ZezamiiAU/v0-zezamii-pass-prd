@@ -284,7 +284,7 @@ export async function GET(req: NextRequest) {
     const privateKey = await jose.importPKCS8(svc.private_key, "RS256")
 
     const token = await new jose.SignJWT(payload as any)
-      .setProtectedHeader({ alg: "RS256", kid: svc.private_key_id })
+      .setProtectedHeader({ alg: "RS256", kid: svc.private_key_id, typ: "JWT" })
       .sign(privateKey)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
