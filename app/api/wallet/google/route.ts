@@ -246,7 +246,14 @@ export async function GET(request: NextRequest) {
     const privateKeyPem: string = serviceAccount.private_key
     const privateKey = await importPKCS8(privateKeyPem, "RS256")
 
-    const token = await new SignJWT(claims).setProtectedHeader({ alg: "RS256", typ: "JWT" }).sign(privateKey)
+    const token = await new SignJWT(claims)
+      .setProtectedHeader({
+        alg: "RS256",
+        typ: "JWT",
+        kid: serviceAccount.private_key_id,
+      })
+      .setIssuedAt()
+      .sign(privateKey)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
