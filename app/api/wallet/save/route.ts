@@ -274,7 +274,6 @@ export async function GET(req: NextRequest) {
       aud: "google",
       typ: "savetowallet",
       origins: origins,
-      iat: Math.floor(Date.now() / 1000),
       payload: {
         genericClasses: [genericClass],
         genericObjects: [genericObject],
@@ -283,9 +282,20 @@ export async function GET(req: NextRequest) {
 
     const privateKey = await jose.importPKCS8(svc.private_key, "RS256")
 
-    const token = await new jose.SignJWT(payload as any)
+    let jwtBuilder = new jose.SignJWT(payload as any)
       .setProtectedHeader({ alg: "RS256", kid: svc.private_key_id, typ: "JWT" })
-      .sign(privateKey)
+      .setIssuedAt()
+
+    if (validTo) {
+      const expirationDate = new Date(validTo)
+      jwtBuilder = jwtBuilder.setExpirationTime(expirationDate)
+    }
+
+    const token = await jwtBuilder.sign(privateKey)
+
+    console.log("[v0] Google Wallet JWT Payload:", JSON.stringify(payload, null, 2))
+    console.log("[v0] Generic Object ID:", objectId)
+    console.log("[v0] Class ID:", CLASS_ID)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
