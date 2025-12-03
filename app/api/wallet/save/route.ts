@@ -62,10 +62,7 @@ export async function GET(req: NextRequest) {
     const validFrom = queryParams.validFrom || ""
     const validTo = queryParams.validTo || ""
     const accessPointName = queryParams.accessPoint || "Entry Access Point"
-
-    const timestamp = Date.now()
-    const uniqueString = `${userId}_${passType.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${code || timestamp}`
-    const passId = `${ISSUER_ID}.${uniqueString}`.toLowerCase()
+    const objectId = `${ISSUER_ID}.${userId}`.toLowerCase()
 
     let unlockUri = "https://zezamii.com/coming-soon"
     if (deviceId) {
@@ -101,7 +98,7 @@ export async function GET(req: NextRequest) {
       : "Tap a link below to unlock, or enter your PIN at the keypad."
 
     const genericObject = {
-      id: passId, // Use the explicitly named passId variable
+      id: objectId,
       classId: CLASS_ID,
       cardTitle: {
         defaultValue: {
@@ -277,6 +274,7 @@ export async function GET(req: NextRequest) {
       aud: "google",
       typ: "savetowallet",
       origins: origins,
+      iat: Math.floor(Date.now() / 1000),
       payload: {
         genericClasses: [genericClass],
         genericObjects: [genericObject],
@@ -285,26 +283,19 @@ export async function GET(req: NextRequest) {
 
     const privateKey = await jose.importPKCS8(svc.private_key, "RS256")
 
-    let jwtBuilder = new jose.SignJWT(payload as any)
-      .setProtectedHeader({ alg: "RS256", kid: svc.private_key_id, typ: "JWT" })
-      .setIssuedAt()
-
-    if (validTo) {
-      const expirationDate = new Date(validTo)
-      jwtBuilder = jwtBuilder.setExpirationTime(expirationDate)
-    }
-
-    const token = await jwtBuilder.sign(privateKey)
-
-    console.log("[v0] Google Wallet JWT Payload:", JSON.stringify(payload, null, 2))
-    console.log("[v0] Generic Object Pass ID:", passId) // Log the passId for debugging
-    console.log("[v0] Class ID:", CLASS_ID)
+    const token = await new jose.SignJWT(payload as any)
+      .setProtectedHeader({
+        alg: "RS256",
+        kid: svc.private_key_id,
+        typ: "JWT", // ⚠️ CRITICAL: This field is required by Google Wallet API
+      })
+      .sign(privateKey)
 
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
     return NextResponse.json({
       saveUrl,
-      objectId: passId, // Return passId as objectId for consistency
+      objectId,
       jwtPayload: payload,
     })
   } catch (error) {
