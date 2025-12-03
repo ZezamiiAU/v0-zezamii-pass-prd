@@ -107,12 +107,12 @@ export async function GET(req: NextRequest) {
         },
       },
       heroImage: {
-        sourceUri: { uri: "https://www.zezamii.com/images/zezamii-logo-horizontal.png" },
+        sourceUri: { uri: "https://my-domain.com/images/zezami-banner.png" },
       },
       logo: {
         sourceUri: { uri: "https://www.zezamii.com/images/zezamii-logo-horizontal.png" },
       },
-      hexBackgroundColor: "#0B1E3D",
+      hexBackgroundColor: "#1F2937",
       state: "ACTIVE",
       textModulesData: [
         ...(code
@@ -164,14 +164,6 @@ export async function GET(req: NextRequest) {
           { id: "support", uri: "https://zezamii.com/support", description: "Help & Support" },
         ],
       },
-      ...(code
-        ? {
-            barcode: {
-              type: "QR_CODE",
-              value: code,
-            },
-          }
-        : {}),
     }
 
     const genericClass = {
