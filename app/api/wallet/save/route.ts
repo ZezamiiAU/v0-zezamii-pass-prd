@@ -13,6 +13,13 @@ export async function GET(req: NextRequest) {
     const CLASS_ID = process.env.WALLET_CLASS_ID
     const APP_ORIGIN = process.env.APP_ORIGIN
 
+    console.log("[v0] Google Wallet Configuration:", {
+      ISSUER_ID,
+      CLASS_ID,
+      APP_ORIGIN,
+      hasServiceAccount: !!GOOGLE_WALLET_SA_JSON,
+    })
+
     if (!GOOGLE_WALLET_SA_JSON || !ISSUER_ID || !CLASS_ID || !APP_ORIGIN) {
       return NextResponse.json(
         {
@@ -284,19 +291,7 @@ export async function GET(req: NextRequest) {
       },
     }
 
-    console.log(
-      "[v0] Google Wallet JWT Payload:",
-      JSON.stringify(
-        {
-          objectId,
-          classId: CLASS_ID,
-          issuerId: ISSUER_ID,
-          origins,
-        },
-        null,
-        2,
-      ),
-    )
+    console.log("[v0] Complete Google Wallet JWT Payload:", JSON.stringify(payload, null, 2))
 
     const privateKey = await jose.importPKCS8(svc.private_key, "RS256")
 
