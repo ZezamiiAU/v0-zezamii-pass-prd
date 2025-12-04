@@ -38,22 +38,39 @@ export async function POST(request) {
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
     }
 
+    let body
+    try {
+      body = await request.clone().json()
+      console.log("[v0] payment-intents request body:", JSON.stringify(body))
+    } catch (e) {
+      console.log("[v0] Failed to parse request body:", e.message)
+    }
+
     // Validate request body
     const validation = await safeValidateBody(request, checkoutSchema, corsHeaders)
-    if (!validation.ok) return validation.response
+    if (!validation.ok) {
+      console.log("[v0] Validation failed:", validation.response)
+      return validation.response
+    }
 
     const { accessPointId, passTypeId, email, plate, phone } = validation.data
+    console.log("[v0] Validated data:", { accessPointId, passTypeId, email, plate, phone })
 
     // Get idempotency key for Stripe
     const idempotencyKey = getIdempotencyKey(request, { accessPointId, passTypeId, email, plate, phone })
 
+    console.log("[v0] Calling createPaymentIntentService...")
+
     // Create payment intent via service
     const result = await createPaymentIntentService({ accessPointId, passTypeId, email, plate, phone }, idempotencyKey)
 
+    console.log("[v0] Payment intent created:", result)
     logger.info({ passTypeId, accessPointId }, "Payment intent created successfully")
 
     return NextResponse.json(result, { status: 200, headers: corsHeaders })
   } catch (error) {
+    console.log("[v0] Error in payment-intents:", error.message)
+    console.log("[v0] Error stack:", error.stack)
     logger.error({ error: error.message, stack: error.stack }, "Error creating payment intent")
 
     // Handle specific error types
