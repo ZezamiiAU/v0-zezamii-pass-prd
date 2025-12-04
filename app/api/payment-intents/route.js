@@ -5,7 +5,7 @@ import { safeValidateBody } from "@/lib/utils/validate-request"
 import logger from "@/lib/logger"
 import { getAllowedOrigin } from "@/lib/utils/cors"
 import { createPaymentIntentService } from "@/lib/payments/payments.service"
-import { getIdempotencyKey } from "@/lib/http/idempotency"
+import { newIdemKey } from "@/lib/http/idempotency"
 
 export async function OPTIONS(request) {
   const allowedOrigin = getAllowedOrigin(request)
@@ -56,8 +56,7 @@ export async function POST(request) {
     const { accessPointId, passTypeId, email, plate, phone } = validation.data
     console.log("[v0] Validated data:", { accessPointId, passTypeId, email, plate, phone })
 
-    // Get idempotency key for Stripe
-    const idempotencyKey = getIdempotencyKey(request, { accessPointId, passTypeId, email, plate, phone })
+    const idempotencyKey = request.headers.get("X-Idempotency-Key") || newIdemKey()
 
     console.log("[v0] Calling createPaymentIntentService...")
 
@@ -79,7 +78,11 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { error: "An error occurred while processing your request." },
+      {
+        error: "An error occurred while processing your request.",
+        debug_error: error.message,
+        debug_stack: error.stack?.split("\n").slice(0, 5),
+      },
       { status: 500, headers: corsHeaders },
     )
   }
