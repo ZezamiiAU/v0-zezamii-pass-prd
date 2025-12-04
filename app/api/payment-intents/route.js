@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server"
+import Stripe from "stripe"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { checkoutSchema } from "@/lib/schemas/api.schema"
 import { safeValidateBody } from "@/lib/utils/validate-request"
 import logger from "@/lib/logger"
 import { getAllowedOrigin } from "@/lib/utils/cors"
-import { createPaymentIntentService } from "@/lib/payments/payments.service"
-import { newIdemKey } from "@/lib/http/idempotency"
+import { ENV } from "@/lib/env"
+import { getPassTypeById } from "@/lib/db/pass-types"
+import { createPass } from "@/lib/db/passes"
+import { createPayment } from "@/lib/db/payments"
+import { resolveOrgFromAccessPoint } from "@/lib/config/org-context"
 
 export async function OPTIONS(request) {
   const allowedOrigin = getAllowedOrigin(request)
@@ -38,51 +42,108 @@ export async function POST(request) {
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
     }
 
-    let body
-    try {
-      body = await request.clone().json()
-      console.log("[v0] payment-intents request body:", JSON.stringify(body))
-    } catch (e) {
-      console.log("[v0] Failed to parse request body:", e.message)
+    const serverEnv = ENV.server()
+    if (!serverEnv.STRIPE_SECRET_KEY) {
+      logger.error("[PaymentIntents] STRIPE_SECRET_KEY is missing")
+      return NextResponse.json({ error: "Payment system not configured" }, { status: 500, headers: corsHeaders })
     }
+
+    const stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY)
 
     // Validate request body
     const validation = await safeValidateBody(request, checkoutSchema, corsHeaders)
     if (!validation.ok) {
-      console.log("[v0] Validation failed:", validation.response)
       return validation.response
     }
 
     const { accessPointId, passTypeId, email, plate, phone } = validation.data
-    console.log("[v0] Validated data:", { accessPointId, passTypeId, email, plate, phone })
 
-    const idempotencyKey = request.headers.get("X-Idempotency-Key") || newIdemKey()
+    const orgContext = await resolveOrgFromAccessPoint(accessPointId)
+    if (!orgContext) {
+      logger.error({ accessPointId }, "[PaymentIntents] Could not resolve organization")
+      return NextResponse.json({ error: "Invalid access point" }, { status: 400, headers: corsHeaders })
+    }
 
-    console.log("[v0] Calling createPaymentIntentService...")
+    const passType = await getPassTypeById(passTypeId)
+    if (!passType) {
+      logger.error({ passTypeId }, "[PaymentIntents] Pass type not found")
+      return NextResponse.json({ error: "Invalid pass type" }, { status: 400, headers: corsHeaders })
+    }
 
-    // Create payment intent via service
-    const result = await createPaymentIntentService({ accessPointId, passTypeId, email, plate, phone }, idempotencyKey)
+    if (!passType.price_cents || passType.price_cents <= 0) {
+      logger.error({ passTypeId, price: passType.price_cents }, "[PaymentIntents] Invalid pricing")
+      return NextResponse.json({ error: "Pass type has invalid pricing" }, { status: 400, headers: corsHeaders })
+    }
 
-    console.log("[v0] Payment intent created:", result)
-    logger.info({ passTypeId, accessPointId }, "Payment intent created successfully")
+    const passResult = await createPass({
+      passTypeId,
+      vehiclePlate: plate,
+      purchaserEmail: email,
+      orgId: orgContext.org_id,
+      deviceId: accessPointId,
+      siteId: orgContext.site_id,
+    })
 
-    return NextResponse.json(result, { status: 200, headers: corsHeaders })
+    if (!passResult.success) {
+      logger.error({ passTypeId, error: passResult.error }, "[PaymentIntents] Failed to create pass")
+      return NextResponse.json({ error: "Failed to create pass" }, { status: 500, headers: corsHeaders })
+    }
+
+    const pass = passResult.data
+
+    // Get idempotency key
+    const idempotencyKey = request.headers.get("X-Idempotency-Key") || `pi_${pass.id}_${Date.now()}`
+
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: passType.price_cents,
+        currency: passType.currency.toLowerCase(),
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          passId: pass.id,
+          passTypeId: passTypeId,
+          accessPointId: accessPointId,
+          orgId: orgContext.org_id,
+          plate: plate || "",
+          email: email || "",
+          phone: phone || "",
+        },
+        receipt_email: email || undefined,
+        description: `${passType.name} - ${orgContext.org_name || "Zezamii Pass"}`,
+      },
+      { idempotencyKey },
+    )
+
+    await createPayment({
+      passId: pass.id,
+      stripePaymentIntent: paymentIntent.id,
+      amountCents: passType.price_cents,
+      currency: passType.currency,
+      status: "pending",
+    })
+
+    logger.info(
+      { paymentIntentId: paymentIntent.id, passId: pass.id, passTypeId, orgId: orgContext.org_id },
+      "[PaymentIntents] Payment intent created successfully",
+    )
+
+    return NextResponse.json(
+      {
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        passId: pass.id,
+      },
+      { status: 200, headers: corsHeaders },
+    )
   } catch (error) {
-    console.log("[v0] Error in payment-intents:", error.message)
-    console.log("[v0] Error stack:", error.stack)
     logger.error({ error: error.message, stack: error.stack }, "Error creating payment intent")
 
-    // Handle specific error types
     if (error.message.includes("Invalid pass type") || error.message.includes("invalid pricing")) {
       return NextResponse.json({ error: error.message }, { status: 400, headers: corsHeaders })
     }
 
     return NextResponse.json(
-      {
-        error: "An error occurred while processing your request.",
-        debug_error: error.message,
-        debug_stack: error.stack?.split("\n").slice(0, 5),
-      },
+      { error: "An error occurred while processing your request." },
       { status: 500, headers: corsHeaders },
     )
   }
