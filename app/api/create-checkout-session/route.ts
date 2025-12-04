@@ -9,7 +9,7 @@ import { getAllowedOrigin } from "@/lib/utils/get-allowed-origin"
 import { getPassTypeById } from "@/lib/db/pass-types"
 import { createPass } from "@/lib/db/passes"
 import { createPayment } from "@/lib/db/payments"
-import { resolveOrgFromAccessPoint } from "@/lib/config/org-context"
+import { getOrgContextFromDevice } from "@/lib/config/org-context"
 
 export async function OPTIONS(request) {
   const allowedOrigin = getAllowedOrigin(request)
@@ -55,8 +55,7 @@ export async function POST(request) {
 
     const { accessPointId, passTypeId, email, plate, phone, baseUrl: clientBaseUrl } = validation.data
 
-    // Resolve organization from access point
-    const orgContext = await resolveOrgFromAccessPoint(accessPointId)
+    const orgContext = await getOrgContextFromDevice(accessPointId)
     if (!orgContext) {
       logger.error({ accessPointId }, "[Checkout] Could not resolve organization")
       return NextResponse.json({ error: "Invalid access point" }, { status: 400, headers: corsHeaders })
@@ -74,14 +73,13 @@ export async function POST(request) {
       return NextResponse.json({ error: "Pass type has invalid pricing" }, { status: 400, headers: corsHeaders })
     }
 
-    // Create pending pass
     const passResult = await createPass({
       passTypeId,
       vehiclePlate: plate,
       purchaserEmail: email,
-      orgId: orgContext.org_id,
+      orgId: orgContext.orgId,
       deviceId: accessPointId,
-      siteId: orgContext.site_id,
+      siteId: orgContext.siteId,
     })
 
     if (!passResult.success) {
@@ -111,7 +109,6 @@ export async function POST(request) {
     // Determine success/cancel URLs
     const baseUrl = clientBaseUrl || serverEnv.APP_ORIGIN || "https://zezamii-pass.vercel.app"
 
-    // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
@@ -123,7 +120,7 @@ export async function POST(request) {
         passId: pass.id,
         passTypeId: passTypeId,
         accessPointId: accessPointId,
-        orgId: orgContext.org_id,
+        orgId: orgContext.orgId,
         plate: plate || "",
         email: email || "",
         phone: phone || "",
@@ -141,7 +138,7 @@ export async function POST(request) {
     })
 
     logger.info(
-      { sessionId: session.id, passId: pass.id, passTypeId, orgId: orgContext.org_id },
+      { sessionId: session.id, passId: pass.id, passTypeId, orgId: orgContext.orgId },
       "[Checkout] Session created successfully",
     )
 

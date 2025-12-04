@@ -9,7 +9,7 @@ import { ENV } from "@/lib/env"
 import { getPassTypeById } from "@/lib/db/pass-types"
 import { createPass } from "@/lib/db/passes"
 import { createPayment } from "@/lib/db/payments"
-import { resolveOrgFromAccessPoint } from "@/lib/config/org-context"
+import { getOrgContextFromDevice } from "@/lib/config/org-context"
 
 export async function OPTIONS(request) {
   const allowedOrigin = getAllowedOrigin(request)
@@ -58,7 +58,7 @@ export async function POST(request) {
 
     const { accessPointId, passTypeId, email, plate, phone } = validation.data
 
-    const orgContext = await resolveOrgFromAccessPoint(accessPointId)
+    const orgContext = await getOrgContextFromDevice(accessPointId)
     if (!orgContext) {
       logger.error({ accessPointId }, "[PaymentIntents] Could not resolve organization")
       return NextResponse.json({ error: "Invalid access point" }, { status: 400, headers: corsHeaders })
@@ -79,9 +79,9 @@ export async function POST(request) {
       passTypeId,
       vehiclePlate: plate,
       purchaserEmail: email,
-      orgId: orgContext.org_id,
+      orgId: orgContext.orgId,
       deviceId: accessPointId,
-      siteId: orgContext.site_id,
+      siteId: orgContext.siteId,
     })
 
     if (!passResult.success) {
@@ -103,13 +103,13 @@ export async function POST(request) {
           passId: pass.id,
           passTypeId: passTypeId,
           accessPointId: accessPointId,
-          orgId: orgContext.org_id,
+          orgId: orgContext.orgId,
           plate: plate || "",
           email: email || "",
           phone: phone || "",
         },
         receipt_email: email || undefined,
-        description: `${passType.name} - ${orgContext.org_name || "Zezamii Pass"}`,
+        description: `${passType.name} - ${orgContext.orgName || "Zezamii Pass"}`,
       },
       { idempotencyKey },
     )
@@ -123,7 +123,7 @@ export async function POST(request) {
     })
 
     logger.info(
-      { paymentIntentId: paymentIntent.id, passId: pass.id, passTypeId, orgId: orgContext.org_id },
+      { paymentIntentId: paymentIntent.id, passId: pass.id, passTypeId, orgId: orgContext.orgId },
       "[PaymentIntents] Payment intent created successfully",
     )
 
