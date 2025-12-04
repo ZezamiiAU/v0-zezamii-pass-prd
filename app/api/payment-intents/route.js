@@ -26,5 +26,13 @@ export async function POST(request) {
     if (!validation.ok) return validation.response
 
     const { accessPointId, passTypeId, email, plate, phone } = validation.data
-  } catch (error) {}
+
+    // Add code to process the payment intent
+    // Placeholder for payment intent processing logic
+    // Example: const paymentIntent = await createPaymentIntent(accessPointId, passTypeId, email, plate, phone);
+    // return NextResponse.json(paymentIntent, { status: 200, headers: corsHeaders });
+  } catch (error) {
+    logger.error({ error }, "Error processing payment intent")
+    return NextResponse.json({ error: "An error occurred while processing your request." }, { status: 500 })
+  }
 }

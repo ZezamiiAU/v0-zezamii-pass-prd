@@ -35,5 +35,30 @@ export async function POST(request) {
     if (!validation.ok) return validation.response
 
     const { accessPointId, passTypeId, email, plate, phone, baseUrl: clientBaseUrl } = validation.data
-  } catch (error) {}
+
+    // Add code to create a checkout session here
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Pass Type",
+            },
+            unit_amount: 1000, // Amount in cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${clientBaseUrl}/success`,
+      cancel_url: `${clientBaseUrl}/cancel`,
+    })
+
+    return NextResponse.json({ id: session.id }, { status: 200, headers: corsHeaders })
+  } catch (error) {
+    logger.error({ error }, "Failed to create checkout session")
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
