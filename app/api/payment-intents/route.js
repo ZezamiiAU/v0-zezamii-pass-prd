@@ -4,35 +4,66 @@ import { checkoutSchema } from "@/lib/schemas/api.schema"
 import { safeValidateBody } from "@/lib/utils/validate-request"
 import logger from "@/lib/logger"
 import { getAllowedOrigin } from "@/lib/utils/cors"
+import { createPaymentIntentService } from "@/lib/payments/payments.service"
+import { getIdempotencyKey } from "@/lib/http/idempotency"
+
+export async function OPTIONS(request) {
+  const allowedOrigin = getAllowedOrigin(request)
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, X-Idempotency-Key",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+    },
+  })
+}
 
 export async function POST(request) {
+  const allowedOrigin = getAllowedOrigin(request)
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Idempotency-Key",
+    "Access-Control-Allow-Credentials": "true",
+  }
+
   try {
+    // Rate limiting
     if (!rateLimit(request, 10, 60000)) {
-      const headers = getRateLimitHeaders(request, 10)
-      headers["Retry-After"] = "60"
+      const headers = { ...corsHeaders, ...getRateLimitHeaders(request, 10), "Retry-After": "60" }
       logger.warn({ ip: request.headers.get("x-forwarded-for") }, "Rate limit exceeded")
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
     }
 
-    const allowedOrigin = getAllowedOrigin(request)
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": allowedOrigin,
-      "Access-Control-Allow-Methods": "POST",
-      "Access-Control-Allow-Headers": "Content-Type, X-Idempotency-Key",
-      "Access-Control-Allow-Credentials": "true",
-    }
-
+    // Validate request body
     const validation = await safeValidateBody(request, checkoutSchema, corsHeaders)
     if (!validation.ok) return validation.response
 
     const { accessPointId, passTypeId, email, plate, phone } = validation.data
 
-    // Add code to process the payment intent
-    // Placeholder for payment intent processing logic
-    // Example: const paymentIntent = await createPaymentIntent(accessPointId, passTypeId, email, plate, phone);
-    // return NextResponse.json(paymentIntent, { status: 200, headers: corsHeaders });
+    // Get idempotency key for Stripe
+    const idempotencyKey = getIdempotencyKey(request, { accessPointId, passTypeId, email, plate, phone })
+
+    // Create payment intent via service
+    const result = await createPaymentIntentService({ accessPointId, passTypeId, email, plate, phone }, idempotencyKey)
+
+    logger.info({ passTypeId, accessPointId }, "Payment intent created successfully")
+
+    return NextResponse.json(result, { status: 200, headers: corsHeaders })
   } catch (error) {
-    logger.error({ error }, "Error processing payment intent")
-    return NextResponse.json({ error: "An error occurred while processing your request." }, { status: 500 })
+    logger.error({ error: error.message, stack: error.stack }, "Error creating payment intent")
+
+    // Handle specific error types
+    if (error.message.includes("Invalid pass type") || error.message.includes("invalid pricing")) {
+      return NextResponse.json({ error: error.message }, { status: 400, headers: corsHeaders })
+    }
+
+    return NextResponse.json(
+      { error: "An error occurred while processing your request." },
+      { status: 500, headers: corsHeaders },
+    )
   }
 }
