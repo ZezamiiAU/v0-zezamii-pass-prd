@@ -117,14 +117,6 @@ export function PassPurchaseForm({
     setIsLoading(true)
 
     try {
-      console.log("[v0] Creating payment intent with data:", {
-        accessPointId: deviceId,
-        passTypeId: selectedPassTypeId,
-        plate: vehiclePlate || "",
-        email: email || "",
-        phone: phone || "",
-      })
-
       const key = getOrCreatePaymentAttemptKey()
 
       const data = await createPaymentIntent(
@@ -138,8 +130,6 @@ export function PassPurchaseForm({
         key,
       )
 
-      console.log("[v0] Payment intent response:", data)
-
       if (data.clientSecret) {
         setClientSecret(data.clientSecret)
       } else {
@@ -148,7 +138,7 @@ export function PassPurchaseForm({
 
       setIsLoading(false)
     } catch (error) {
-      console.error("[v0] Payment intent error:", error)
+      console.error("Payment intent error:", error)
       const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again."
       setError(errorMessage)
       setIsLoading(false)

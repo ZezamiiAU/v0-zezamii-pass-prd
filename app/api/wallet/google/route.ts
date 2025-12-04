@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { SignJWT, importPKCS8 } from "jose"
+import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 
 // IMPORTANT: keep jose on Node runtime in Vercel
 export const runtime = "nodejs"
@@ -32,6 +33,11 @@ function parseServiceAccount(raw?: string) {
 }
 
 export async function GET(request: NextRequest) {
+  if (!rateLimit(request, 20, 60000)) {
+    const headers = getRateLimitHeaders(request, 20)
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
+  }
+
   const searchParams = request.nextUrl.searchParams
   const passId = searchParams.get("pass_id")
   const debugMode = searchParams.get("debug") === "1"

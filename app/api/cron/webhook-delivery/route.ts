@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import processWebhookDeliveries from "@/workers/webhook-delivery-worker"
+import logger from "@/lib/logger"
 
 // POST /api/cron/webhook-delivery - Cron endpoint for webhook delivery
 // Configure Vercel Cron to call this every 1-5 minutes
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Webhook delivery cron error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[Cron] Webhook delivery error")
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     await processWebhookDeliveries()
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Webhook delivery error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[Cron] Webhook delivery error")
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

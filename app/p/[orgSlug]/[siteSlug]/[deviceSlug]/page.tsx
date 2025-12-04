@@ -40,7 +40,6 @@ export default function DevicePassPage() {
         setAccessPointData(data)
         setLoading(false)
       } catch (err) {
-        console.error("[v0] Error fetching access point:", err)
         setError(err instanceof Error ? err.message : "Unknown error")
         setLoading(false)
       }

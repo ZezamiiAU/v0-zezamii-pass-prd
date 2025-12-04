@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createSchemaServiceClient } from "@/lib/supabase/server"
+import logger from "@/lib/logger"
 
 export async function GET(
   request: NextRequest,
@@ -45,7 +46,7 @@ export async function GET(
       .single()
 
     if (error || !data) {
-      console.error("[v0] Device lookup failed:", error)
+      logger.warn({ orgSlug, deviceSlug, error: error?.message }, "[Resolve] Device lookup failed")
       return NextResponse.json({ error: "Device not found or inactive" }, { status: 404 })
     }
 
@@ -71,7 +72,7 @@ export async function GET(
       site_name: site?.name,
     })
   } catch (error) {
-    console.error("[v0] Resolve API error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[Resolve] API error")
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

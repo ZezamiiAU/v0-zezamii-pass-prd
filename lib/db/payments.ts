@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server"
+import logger from "@/lib/logger"
 
 export interface Payment {
   id: string
@@ -61,7 +62,7 @@ export async function createPayment(data: {
     .single()
 
   if (error) {
-    console.error("Error creating payment:", error)
+    logger.error({ passId: data.passId, error: error.message }, "[Payments] Error creating payment")
     return null
   }
 
@@ -87,7 +88,7 @@ export async function updatePaymentStatus(
     .eq("stripe_checkout_session", checkoutSessionId)
 
   if (error) {
-    console.error("Error updating payment:", error)
+    logger.error({ checkoutSessionId, status, error: error.message }, "[Payments] Error updating payment")
     return false
   }
 
@@ -96,12 +97,8 @@ export async function updatePaymentStatus(
 
 export async function getPassByCheckoutSession(sessionId: string): Promise<PaymentWithPass | null> {
   try {
-    console.log("[v0] getPassByCheckoutSession called with sessionId:", sessionId)
-
     return await retryWithBackoff(async () => {
       const supabase = createServiceClient()
-
-      console.log("[v0] Querying payments for checkout session:", sessionId)
 
       const { data: payment, error: paymentError } = await supabase
         .schema("pass")
@@ -120,26 +117,26 @@ export async function getPassByCheckoutSession(sessionId: string): Promise<Payme
         .single()
 
       if (paymentError) {
-        console.error("[v0] Payment query error:", {
-          code: paymentError.code,
-          message: paymentError.message,
-          details: paymentError.details,
-          hint: paymentError.hint,
-        })
+        logger.error(
+          {
+            sessionId,
+            code: paymentError.code,
+            message: paymentError.message,
+            details: paymentError.details,
+            hint: paymentError.hint,
+          },
+          "[Payments] Payment query error",
+        )
 
         if (paymentError.code === "PGRST116") {
-          console.log("[v0] No payment found (PGRST116)")
           return null
         }
         throw paymentError
       }
 
       if (!payment) {
-        console.log("[v0] No payment found")
         return null
       }
-
-      console.log("[v0] Payment found, fetching pass data")
 
       const { data: pass, error: passError } = await supabase
         .schema("pass")
@@ -163,11 +160,9 @@ export async function getPassByCheckoutSession(sessionId: string): Promise<Payme
         .single()
 
       if (passError || !pass) {
-        console.error("[v0] Pass query error:", passError)
+        logger.error({ passId: payment.pass_id, error: passError?.message }, "[Payments] Pass query error")
         return null
       }
-
-      console.log("[v0] Pass found, fetching pass type")
 
       const { data: passType, error: passTypeError } = await supabase
         .schema("pass")
@@ -177,7 +172,10 @@ export async function getPassByCheckoutSession(sessionId: string): Promise<Payme
         .single()
 
       if (passTypeError || !passType) {
-        console.error("[v0] Pass type query error:", passTypeError)
+        logger.error(
+          { passTypeId: pass.pass_type_id, error: passTypeError?.message },
+          "[Payments] Pass type query error",
+        )
         return null
       }
 
@@ -189,24 +187,21 @@ export async function getPassByCheckoutSession(sessionId: string): Promise<Payme
         },
       } as PaymentWithPass
 
-      console.log("[v0] Successfully constructed payment with pass data")
-
       return result
     })
   } catch (error) {
-    console.error("[v0] Error fetching pass by session:", error)
+    logger.error(
+      { sessionId, error: error instanceof Error ? error.message : error },
+      "[Payments] Error fetching pass by session",
+    )
     return null
   }
 }
 
 export async function getPassByPaymentIntent(intentId: string): Promise<PaymentWithPass | null> {
   try {
-    console.log("[v0] getPassByPaymentIntent called with intentId:", intentId)
-
     return await retryWithBackoff(async () => {
       const supabase = createServiceClient()
-
-      console.log("[v0] Querying v_pass_payments for payment intent:", intentId)
 
       const { data: payment, error: paymentError } = await supabase
         .schema("pass")
@@ -225,26 +220,26 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
         .single()
 
       if (paymentError) {
-        console.error("[v0] Payment query error:", {
-          code: paymentError.code,
-          message: paymentError.message,
-          details: paymentError.details,
-          hint: paymentError.hint,
-        })
+        logger.error(
+          {
+            intentId,
+            code: paymentError.code,
+            message: paymentError.message,
+            details: paymentError.details,
+            hint: paymentError.hint,
+          },
+          "[Payments] Payment query error",
+        )
 
         if (paymentError.code === "PGRST116") {
-          console.log("[v0] No payment found (PGRST116)")
           return null
         }
         throw paymentError
       }
 
       if (!payment) {
-        console.log("[v0] No payment found")
         return null
       }
-
-      console.log("[v0] Payment found, fetching pass data")
 
       const { data: pass, error: passError } = await supabase
         .schema("pass")
@@ -268,11 +263,9 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
         .single()
 
       if (passError || !pass) {
-        console.error("[v0] Pass query error:", passError)
+        logger.error({ passId: payment.pass_id, error: passError?.message }, "[Payments] Pass query error")
         return null
       }
-
-      console.log("[v0] Pass found, fetching pass type")
 
       const { data: passType, error: passTypeError } = await supabase
         .schema("pass")
@@ -282,7 +275,10 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
         .single()
 
       if (passTypeError || !passType) {
-        console.error("[v0] Pass type query error:", passTypeError)
+        logger.error(
+          { passTypeId: pass.pass_type_id, error: passTypeError?.message },
+          "[Payments] Pass type query error",
+        )
         return null
       }
 
@@ -294,12 +290,13 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
         },
       } as PaymentWithPass
 
-      console.log("[v0] Successfully constructed payment with pass data")
-
       return result
     })
   } catch (error) {
-    console.error("[v0] Error fetching pass by payment intent:", error)
+    logger.error(
+      { intentId, error: error instanceof Error ? error.message : error },
+      "[Payments] Error fetching pass by payment intent",
+    )
     return null
   }
 }

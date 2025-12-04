@@ -5,6 +5,7 @@ import "./globals.css"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 import { OfflineToast } from "@/components/offline-toast"
 import { PoweredByZezamii } from "@/components/powered-by-zezamii"
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
 
 import {
   Inter,
@@ -34,8 +35,16 @@ const appDescription = process.env.NEXT_PUBLIC_APP_DESCRIPTION || "Quick and eas
 export const metadata: Metadata = {
   title: appTitle,
   description: appDescription,
-  manifest: "/api/manifest", // Dynamic manifest route
+  manifest: "/api/manifest",
   generator: "v0.app",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: appTitle,
+  },
+  formatDetection: {
+    telephone: false,
+  },
 }
 
 export const viewport: Viewport = {
@@ -43,6 +52,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
@@ -53,8 +63,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full overflow-hidden">
       <head>
-        <link rel="icon" href="/icon-192.jpg" />
-        <link rel="apple-touch-icon" href="/icon-192.jpg" />
+        <link rel="icon" type="image/jpeg" sizes="192x192" href="/icon-192.jpg" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.jpg" />
       </head>
       <body className={`${inter.className} h-full overflow-hidden`}>
         <div className="h-screen flex flex-col overflow-hidden">
@@ -63,6 +74,7 @@ export default function RootLayout({
         </div>
         <PWAInstallPrompt />
         <OfflineToast />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )

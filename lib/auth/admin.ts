@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { ENV } from "@/lib/env"
+import logger from "@/lib/logger"
 
 export interface AdminSession {
   user: {
@@ -44,7 +45,7 @@ export async function getServerAdminSession(): Promise<AdminSession | null> {
 
     return null
   } catch (error) {
-    console.error("[v0] Error checking admin session:", error)
+    logger.warn({ error: error instanceof Error ? error.message : error }, "[Admin] Error checking admin session")
     return null
   }
 }

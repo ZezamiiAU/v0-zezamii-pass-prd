@@ -1,15 +1,20 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { createSchemaServiceClient } from "@/lib/supabase/server"
+import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
+import logger from "@/lib/logger"
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ orgSlug: string; siteSlug: string; deviceSlug: string }> },
+  request: NextRequest,
+  { params }: { params: { orgSlug: string; siteSlug: string; deviceSlug: string } },
 ) {
-  try {
-    const { orgSlug, siteSlug, deviceSlug } = await params
-    const coreDb = createSchemaServiceClient("core")
+  if (!rateLimit(request, 60, 60000)) {
+    const headers = getRateLimitHeaders(request, 60)
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
+  }
 
-    console.log("[v0] API Route hit:", { orgSlug, siteSlug, deviceSlug })
+  try {
+    const { orgSlug, siteSlug, deviceSlug } = params
+    const coreDb = createSchemaServiceClient("core")
 
     // Get organization
     const { data: org, error: orgError } = await coreDb
@@ -72,7 +77,7 @@ export async function GET(
       lockId: device.lock_id,
     })
   } catch (error) {
-    console.error("[v0] API error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[DeviceAPI] API error")
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown" },
       { status: 500 },

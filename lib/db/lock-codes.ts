@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server"
+import logger from "@/lib/logger"
 
 export interface LockCode {
   id: string
@@ -40,7 +41,7 @@ export async function createLockCode(data: {
     .single()
 
   if (error) {
-    console.error("Error creating lock code:", error)
+    logger.error({ passId: data.passId, error: error.message }, "[LockCodes] Error creating lock code")
     return null
   }
 
@@ -57,7 +58,7 @@ export async function getLockCodeByPassId(passId: string): Promise<LockCode | nu
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`[v0] Attempting to fetch lock code for pass ${passId} (attempt ${attempt}/${MAX_RETRIES})`)
+      logger.debug({ passId, attempt, maxRetries: MAX_RETRIES }, "[LockCodes] Attempting to fetch lock code")
       const supabase = createServiceClient()
 
       const { data, error } = await supabase
@@ -69,15 +70,21 @@ export async function getLockCodeByPassId(passId: string): Promise<LockCode | nu
 
       if (error) {
         if (error.code === "PGRST116") {
-          console.log(`[v0] No lock code found for pass ${passId}`)
+          logger.debug({ passId }, "[LockCodes] No lock code found for pass")
           return null
         }
 
-        console.error(`[v0] Supabase error fetching lock code (attempt ${attempt}/${MAX_RETRIES}):`, {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-        })
+        logger.error(
+          {
+            passId,
+            attempt,
+            maxRetries: MAX_RETRIES,
+            code: error.code,
+            message: error.message,
+            details: error.details,
+          },
+          "[LockCodes] Supabase error fetching lock code",
+        )
 
         if (attempt < MAX_RETRIES) {
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY * attempt))
@@ -87,14 +94,18 @@ export async function getLockCodeByPassId(passId: string): Promise<LockCode | nu
         return null
       }
 
-      console.log(`[v0] Successfully fetched lock code for pass ${passId}`)
+      logger.debug({ passId }, "[LockCodes] Successfully fetched lock code")
       return data
     } catch (networkError) {
-      console.error(`[v0] Exception fetching lock code (attempt ${attempt}/${MAX_RETRIES}):`, {
-        error: networkError,
-        message: networkError instanceof Error ? networkError.message : String(networkError),
-        stack: networkError instanceof Error ? networkError.stack : undefined,
-      })
+      logger.error(
+        {
+          passId,
+          attempt,
+          maxRetries: MAX_RETRIES,
+          error: networkError instanceof Error ? networkError.message : String(networkError),
+        },
+        "[LockCodes] Exception fetching lock code",
+      )
 
       if (attempt < MAX_RETRIES) {
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY * attempt))
@@ -118,7 +129,7 @@ export async function deleteLockCode(lockCodeId: string): Promise<boolean> {
   const { error } = await supabase.schema("pass").from("lock_codes").delete().eq("id", lockCodeId)
 
   if (error) {
-    console.error("Error deleting lock code:", error)
+    logger.error({ lockCodeId, error: error.message }, "[LockCodes] Error deleting lock code")
     return false
   }
 

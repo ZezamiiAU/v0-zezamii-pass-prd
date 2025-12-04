@@ -59,7 +59,7 @@ export async function createPass(data: {
     .single()
 
   if (error) {
-    console.error("Error creating pass:", error)
+    logger.error({ passTypeId: data.passTypeId, error: error.message }, "[Passes] Error creating pass")
     return null
   }
 
@@ -81,7 +81,7 @@ export async function updatePassStatus(
   const { error } = await supabase.schema("pass").from("passes").update(updateData).eq("id", passId)
 
   if (error) {
-    console.error("Error updating pass status:", error)
+    logger.error({ passId, status, error: error.message }, "[Passes] Error updating pass status")
     return false
   }
 
@@ -101,7 +101,7 @@ export async function getPassById(passId: string): Promise<PassWithType | null> 
     .single()
 
   if (error) {
-    console.error("Error fetching pass:", error)
+    logger.error({ passId, error: error.message }, "[Passes] Error fetching pass")
     return null
   }
 

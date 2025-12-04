@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { deliverWebhook } from "@/lib/webhooks/delivery"
 import { assertDevOnly } from "@/lib/assertDevOnly"
+import logger from "@/lib/logger"
 
 // POST /api/webhooks/subscriptions/:id/test - Test webhook delivery
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       error: result.error,
     })
   } catch (error) {
-    console.error("[v0] Unexpected error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[Webhooks] Unexpected error in test")
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

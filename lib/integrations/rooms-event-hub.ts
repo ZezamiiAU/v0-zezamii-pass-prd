@@ -3,14 +3,14 @@ import logger from "@/lib/logger"
 
 export interface RoomsReservationPayload {
   propertyId: string
-  reservationId: string // Added - required by Duvan's API
-  arrivalDate: string // ISO date
-  departureDate: string // ISO date
+  reservationId: string
+  arrivalDate: string
+  departureDate: string
   lockId: string
-  guestId?: string // Made optional per Duvan's spec
-  guestName?: string // Made optional
+  guestId?: string
+  guestName?: string
   guestPhone?: string
-  guestEmail?: string // Made optional
+  guestEmail?: string
 }
 
 export interface RoomsReservationResponse {
@@ -55,8 +55,6 @@ export async function createRoomsReservation(
 
     const url = `${config.base_url}${config.webhook_path}`
 
-    console.log("[v0] Calling Rooms Event Hub:", url)
-
     // Make synchronous HTTP call to Rooms API
     const response = await fetch(url, {
       method: "POST",
@@ -64,13 +62,11 @@ export async function createRoomsReservation(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000), // 30 second timeout
+      signal: AbortSignal.timeout(30000),
     })
 
     const duration = Date.now() - startTime
     const responseBody = await response.json()
-
-    console.log("[v0] Rooms Event Hub response:", response.status, responseBody)
 
     // Log the API call
     await core.from("integration_logs").insert({
@@ -126,7 +122,7 @@ export async function createRoomsReservation(
 
     return {
       success: true,
-      pincode: String(pincode), // Ensure it's a string (Duvan returns 4-digit number)
+      pincode: String(pincode),
       reservationId: payload.reservationId,
       statusCode: response.status,
     }

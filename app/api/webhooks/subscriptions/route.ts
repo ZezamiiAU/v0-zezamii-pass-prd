@@ -4,6 +4,7 @@ import crypto from "node:crypto"
 import { validateBody, handleValidationError } from "@/lib/utils/validate-request"
 import { webhookSubscriptionBodySchema } from "@/lib/schemas/api.schema"
 import { ZodError } from "zod"
+import logger from "@/lib/logger"
 
 // GET /api/webhooks/subscriptions - List webhook subscriptions
 export async function GET(request: NextRequest) {
@@ -17,13 +18,13 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Error fetching subscriptions:", error)
+      logger.error({ error: error.message }, "[Webhooks] Error fetching subscriptions")
       return NextResponse.json({ error: "Failed to fetch subscriptions" }, { status: 500 })
     }
 
     return NextResponse.json({ subscriptions })
   } catch (error) {
-    console.error("Unexpected error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[Webhooks] Unexpected error in GET")
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("Error creating subscription:", error)
+      logger.error({ error: error.message, code: error.code }, "[Webhooks] Error creating subscription")
 
       // Handle duplicate URL
       if (error.code === "23505") {
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof ZodError) {
       return handleValidationError(error)
     }
-    console.error("Unexpected error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[Webhooks] Unexpected error in POST")
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

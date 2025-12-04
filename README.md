@@ -1,30 +1,73 @@
-# zezamiipassprd1
+# Zezamii Pass
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+A Progressive Web App (PWA) for purchasing and managing digital access passes with Google Wallet integration.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/zezamii/v0-zezamiipassprd1-5r)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/go71TCwbFmQ)
+## Features
 
-## Overview
+- **Digital Pass Purchase**: Buy day passes, camping passes, and more via Stripe
+- **Google Wallet Integration**: Add passes directly to Google Wallet
+- **PWA Support**: Install on mobile devices for offline access
+- **Multi-tenant**: Supports multiple organizations and sites
+- **QR Code Access**: Scan QR codes at access points to purchase passes
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+## Tech Stack
+
+- **Framework**: Next.js 15.5.7 (App Router)
+- **Database**: Supabase (PostgreSQL)
+- **Payments**: Stripe
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Wallet**: Google Wallet API
+
+## Environment Variables
+
+Required environment variables (set in Vercel):
+
+| Variable | Description |
+|----------|-------------|
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `STRIPE_SECRET_KEY` | Stripe secret key |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `WALLET_ISSUER_ID` | Google Wallet Issuer ID |
+| `WALLET_CLASS_ID` | Google Wallet Class ID |
+| `GOOGLE_WALLET_SA_JSON` | Google Wallet service account JSON |
+| `APP_ORIGIN` | Production URL (e.g., https://zezamii-pass.vercel.app) |
+
+## Project Structure
+
+\`\`\`
+app/
+├── api/                    # API routes
+│   ├── wallet/            # Google Wallet endpoints
+│   ├── passes/            # Pass management
+│   ├── webhooks/          # Stripe & subscription webhooks
+│   └── payment-intents/   # Stripe payment handling
+├── p/[org]/[site]/[device]/ # Dynamic pass purchase pages
+├── success/               # Post-purchase success page
+└── offline/               # PWA offline fallback
+
+components/
+├── ui/                    # shadcn/ui components
+├── pass-purchase-form.tsx # Main purchase form
+├── payment-form.tsx       # Stripe payment form
+└── pwa-install-prompt.tsx # PWA install prompt
+
+lib/
+├── db/                    # Database queries
+├── config/                # Configuration
+├── notifications/         # Email templates
+└── webhooks/              # Webhook handling
+
+scripts/
+├── 001-017_*.sql         # Database migrations
+└── node/                  # Node.js scripts
+\`\`\`
 
 ## Deployment
 
-Your project is live at:
+Deployed on Vercel: [zezamii-pass.vercel.app](https://zezamii-pass.vercel.app)
 
-**[https://vercel.com/zezamii/v0-zezamiipassprd1-5r](https://vercel.com/zezamii/v0-zezamiipassprd1-5r)**
+## License
 
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.app/chat/go71TCwbFmQ](https://v0.app/chat/go71TCwbFmQ)**
-
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+Proprietary - Zezamii Pty Ltd

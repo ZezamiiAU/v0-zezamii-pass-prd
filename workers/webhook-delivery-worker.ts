@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { deliverWebhook, calculateNextRetry, shouldRetry } from "@/lib/webhooks/delivery"
+import logger from "@/lib/logger"
 
 /**
  * Webhook delivery worker
@@ -18,7 +19,7 @@ export async function processWebhookDeliveries() {
     .limit(50)
 
   if (eventsError) {
-    console.error("Webhook delivery - error fetching events:", eventsError)
+    logger.error({ error: eventsError.message }, "[WebhookWorker] Error fetching events")
     return
   }
 
@@ -33,7 +34,7 @@ export async function processWebhookDeliveries() {
     .eq("status", "active")
 
   if (subsError) {
-    console.error("Webhook delivery - error fetching subscriptions:", subsError)
+    logger.error({ error: subsError.message }, "[WebhookWorker] Error fetching subscriptions")
     return
   }
 
@@ -113,7 +114,10 @@ async function deliverToSubscription(supabase: any, event: any, subscription: an
         .eq("id", subscription.id)
     }
   } catch (error) {
-    console.error(`Webhook delivery error for ${subscription.url}:`, error)
+    logger.error(
+      { url: subscription.url, error: error instanceof Error ? error.message : error },
+      "[WebhookWorker] Delivery error",
+    )
   }
 }
 

@@ -15,7 +15,7 @@ interface PassDetails {
   accessPointName: string
   timezone: string
   code: string | null
-  codeUnavailable?: boolean // Added flag to track code fetch issues
+  codeUnavailable?: boolean
   valid_from: string
   valid_to: string
   passType: string
@@ -42,10 +42,6 @@ export default function SuccessPage() {
     session_id: searchParams.get("session_id") || undefined,
     payment_intent: searchParams.get("payment_intent") || undefined,
   })
-
-  console.log("[v0] Success page loaded")
-  console.log("[v0] Raw searchParams:", rawParams)
-  console.log("[v0] Validation result:", paramsValidation)
 
   useEffect(() => {
     const email = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@zezamii.com"
@@ -87,8 +83,6 @@ export default function SuccessPage() {
 
     const { session_id: sessionId, payment_intent: paymentIntent } = paramsValidation.data
 
-    console.log("[v0] Validated params:", { sessionId, paymentIntent })
-
     if (!sessionId && !paymentIntent) {
       const errorInfo = {
         timestamp: new Date().toISOString(),
@@ -118,17 +112,12 @@ export default function SuccessPage() {
       try {
         const queryParam = sessionId ? `session_id=${sessionId}` : `payment_intent=${paymentIntent}`
 
-        console.log("[v0] Fetching pass details with:", { sessionId, paymentIntent })
-
         const response = await fetch(`/api/passes/by-session?${queryParam}`, {
           signal: abortController.signal,
         })
 
-        console.log("[v0] Response status:", response.status)
-
         if (!response.ok) {
           const errorData = await response.json()
-          console.log("[v0] Error response:", errorData)
 
           const errorInfo = {
             timestamp: new Date().toISOString(),
@@ -164,7 +153,7 @@ export default function SuccessPage() {
                 return
               }
             } catch (syncError) {
-              console.error("[v0] Error syncing payment:", syncError)
+              console.error("Error syncing payment:", syncError)
             }
 
             setError(`Lock not connected. Contact ${supportEmail}`)
@@ -176,7 +165,6 @@ export default function SuccessPage() {
         }
 
         const data = await response.json()
-        console.log("[v0] Pass details received:", data)
 
         if (data.code === null || data.codeUnavailable) {
           setCodeWarning(true)
@@ -188,7 +176,7 @@ export default function SuccessPage() {
         if (err instanceof Error && err.name === "AbortError") {
           return
         }
-        console.error("[v0] Error fetching pass details:", err)
+        console.error("Error fetching pass details:", err)
 
         const errorInfo = {
           timestamp: new Date().toISOString(),

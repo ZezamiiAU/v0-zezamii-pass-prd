@@ -3,8 +3,15 @@ import * as jose from "jose"
 import { validateSearchParams, handleValidationError } from "@/lib/utils/validate-request"
 import { walletSaveQuerySchema } from "@/lib/schemas/api.schema"
 import { ZodError } from "zod"
+import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
+import logger from "@/lib/logger"
 
 export async function GET(req: NextRequest) {
+  if (!rateLimit(req, 20, 60000)) {
+    const headers = getRateLimitHeaders(req, 20)
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
+  }
+
   try {
     const queryParams = validateSearchParams(req, walletSaveQuerySchema)
 
@@ -12,13 +19,6 @@ export async function GET(req: NextRequest) {
     const ISSUER_ID = process.env.WALLET_ISSUER_ID
     const CLASS_ID = process.env.WALLET_CLASS_ID
     const APP_ORIGIN = process.env.APP_ORIGIN
-
-    console.log("[v0] Google Wallet Configuration:", {
-      ISSUER_ID,
-      CLASS_ID,
-      APP_ORIGIN,
-      hasServiceAccount: !!GOOGLE_WALLET_SA_JSON,
-    })
 
     if (!GOOGLE_WALLET_SA_JSON || !ISSUER_ID || !CLASS_ID || !APP_ORIGIN) {
       return NextResponse.json(
@@ -283,8 +283,6 @@ export async function GET(req: NextRequest) {
       },
     }
 
-    console.log("[v0] Complete Google Wallet JWT Payload:", JSON.stringify(payload, null, 2))
-
     const privateKey = await jose.importPKCS8(svc.private_key, "RS256")
 
     const token = await new jose.SignJWT(payload as any)
@@ -295,8 +293,6 @@ export async function GET(req: NextRequest) {
       })
       .sign(privateKey)
 
-    console.log("[v0] Google Wallet JWT generated successfully for objectId:", objectId)
-
     const saveUrl = `https://pay.google.com/gp/v/save/${token}`
 
     return NextResponse.json({
@@ -305,7 +301,7 @@ export async function GET(req: NextRequest) {
       jwtPayload: payload,
     })
   } catch (error) {
-    console.error("[v0] Google Wallet error:", error)
+    logger.error({ error: error instanceof Error ? error.message : error }, "[Wallet] Google Wallet error")
     if (error instanceof ZodError) {
       return handleValidationError(error)
     }

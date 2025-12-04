@@ -1,4 +1,5 @@
 import { createCoreServiceClient } from "@/lib/supabase/server"
+import logger from "@/lib/logger"
 
 /**
  * Organization context for multi-tenant operations
@@ -48,7 +49,7 @@ export async function getOrgContextFromDevice(deviceId: string): Promise<OrgCont
     .single()
 
   if (error || !data) {
-    console.error("[v0] Failed to get org context from device:", error)
+    logger.warn({ deviceId, error: error?.message }, "[OrgContext] Failed to get org context from device")
     return null
   }
 
@@ -105,7 +106,7 @@ export async function getDeviceByQrInstanceId(qrInstanceId: string): Promise<Org
     .single()
 
   if (error || !data) {
-    console.error("[v0] Failed to get device by QR instance ID:", error)
+    logger.warn({ qrInstanceId, error: error?.message }, "[OrgContext] Failed to get device by QR instance ID")
     return null
   }
 
@@ -137,10 +138,10 @@ export async function getOrgContextFromSlug(slug: string): Promise<OrgContext | 
     if (error) {
       // Check if error is due to missing column (migration not run)
       if (error.message?.includes("does not exist") || error.code === "42703") {
-        console.error("[v0] Slug columns do not exist. Please run migration 010_merge_slugs_into_devices.sql")
+        logger.error("[OrgContext] Slug columns do not exist. Please run migration 010_merge_slugs_into_devices.sql")
         return null
       }
-      console.error("[v0] Failed to get org context from slug:", error)
+      logger.warn({ slug, error: error.message }, "[OrgContext] Failed to get org context from slug")
       return null
     }
 
@@ -157,7 +158,10 @@ export async function getOrgContextFromSlug(slug: string): Promise<OrgContext | 
       deviceName: data.name,
     }
   } catch (err) {
-    console.error("[v0] Exception in getOrgContextFromSlug:", err)
+    logger.error(
+      { slug, error: err instanceof Error ? err.message : err },
+      "[OrgContext] Exception in getOrgContextFromSlug",
+    )
     return null
   }
 }
@@ -184,7 +188,7 @@ export async function getDefaultOrgId(): Promise<string | null> {
     .single()
 
   if (error || !data) {
-    console.error("[v0] Failed to get default org:", error)
+    logger.warn({ error: error?.message }, "[OrgContext] Failed to get default org")
     return null
   }
 

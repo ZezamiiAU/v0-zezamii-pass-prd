@@ -2,8 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getPassByCheckoutSession, getPassByPaymentIntent } from "@/lib/db/payments"
 import { getLockCodeByPassId } from "@/lib/db/lock-codes"
 import logger from "@/lib/logger"
+import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 
 export async function GET(request: NextRequest) {
+  if (!rateLimit(request, 20, 60000)) {
+    const headers = getRateLimitHeaders(request, 20)
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
+  }
+
   const searchParams = request.nextUrl.searchParams
   const sessionId = searchParams.get("session_id")
   const intentId = searchParams.get("payment_intent")

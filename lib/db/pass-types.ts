@@ -1,5 +1,6 @@
 import { createClient, createSchemaServiceClient } from "@/lib/supabase/server"
 import { getDefaultOrgId } from "@/lib/config/org-context"
+import logger from "@/lib/logger"
 const Stripe = require("stripe")
 const { STRIPE_SECRET_KEY } = require("@/lib/env").ENV.server()
 
@@ -24,7 +25,7 @@ export async function getPassTypeByCode(code: string, orgId?: string): Promise<P
   const resolvedOrgId = orgId || (await getDefaultOrgId())
 
   if (!resolvedOrgId) {
-    console.error("[v0] No organization ID available for pass type lookup")
+    logger.warn({ code }, "[PassTypes] No organization ID available for pass type lookup")
     return null
   }
 
@@ -38,7 +39,7 @@ export async function getPassTypeByCode(code: string, orgId?: string): Promise<P
     .single()
 
   if (error) {
-    console.error("[v0] Error fetching pass type:", error)
+    logger.error({ code, orgId: resolvedOrgId, error: error.message }, "[PassTypes] Error fetching pass type")
     return null
   }
 
@@ -57,7 +58,7 @@ export async function getPassTypeById(id: string): Promise<PassType | null> {
     .single()
 
   if (error) {
-    console.error("Error fetching pass type by id:", error)
+    logger.error({ passTypeId: id, error: error.message }, "[PassTypes] Error fetching pass type by id")
     return null
   }
 
@@ -69,7 +70,7 @@ export async function getAllActivePassTypes(orgId?: string): Promise<PassType[]>
   const resolvedOrgId = orgId || (await getDefaultOrgId())
 
   if (!resolvedOrgId) {
-    console.error("[v0] No organization ID available for pass types lookup")
+    logger.warn("[PassTypes] No organization ID available for pass types lookup")
     return []
   }
 
@@ -82,7 +83,7 @@ export async function getAllActivePassTypes(orgId?: string): Promise<PassType[]>
     .order("price_cents", { ascending: true })
 
   if (error) {
-    console.error("[v0] Error fetching pass types:", error)
+    logger.error({ orgId: resolvedOrgId, error: error.message }, "[PassTypes] Error fetching pass types")
     return []
   }
 
@@ -143,7 +144,10 @@ export async function syncPassTypeWithStripe(passTypeId: string): Promise<{ prod
     .eq("id", passType.id)
 
   if (error) {
-    console.error("[v0] Failed to update pass type with Stripe IDs:", error)
+    logger.error(
+      { passTypeId: passType.id, error: error.message },
+      "[PassTypes] Failed to update pass type with Stripe IDs",
+    )
     throw new Error("Failed to link Stripe product to pass type")
   }
 

@@ -6,14 +6,19 @@ import { validateSearchParams, handleValidationError } from "@/lib/utils/validat
 import { sessionQuerySchema } from "@/lib/schemas/api.schema"
 import { ZodError } from "zod"
 import { ENV } from "@/lib/env"
+import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
+import logger from "@/lib/logger"
 
 export async function GET(request: NextRequest) {
+  if (!rateLimit(request, 30, 60000)) {
+    const headers = getRateLimitHeaders(request, 30)
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
+  }
+
   try {
     const devMode = ENV.server().PASS_DEV_MODE === "true"
 
     const { session_id: sessionId, payment_intent: intentId } = validateSearchParams(request, sessionQuerySchema)
-
-    console.log("[v0] /api/passes/by-session called with:", { sessionId, intentId, devMode })
 
     if (!sessionId && !intentId) {
       return NextResponse.json({ error: "Session ID or Payment Intent ID required" }, { status: 400 })
@@ -21,18 +26,10 @@ export async function GET(request: NextRequest) {
 
     let result
     if (sessionId) {
-      console.log("[v0] Fetching pass by checkout session:", sessionId)
       result = await getPassByCheckoutSession(sessionId)
     } else if (intentId) {
-      console.log("[v0] Fetching pass by payment intent:", intentId)
       result = await getPassByPaymentIntent(intentId)
     }
-
-    console.log(
-      "[v0] Query result:",
-      result ? "found" : "not found",
-      result ? { passId: result.pass?.id, paymentStatus: result.status } : null,
-    )
 
     if (!result) {
       if (devMode) {
@@ -104,7 +101,10 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (lookupError) {
-      console.error("[v0] Error fetching access point details:", lookupError)
+      logger.warn(
+        { error: lookupError instanceof Error ? lookupError.message : lookupError },
+        "[BySession] Error fetching access point details",
+      )
     }
 
     let lockCode = null
@@ -116,11 +116,17 @@ export async function GET(request: NextRequest) {
 
         if (lockCode === null) {
           lockCodeError = true
-          console.error("[v0] Lock code is null for active pass", pass.id)
+          logger.warn({ passId: pass.id }, "[BySession] Lock code is null for active pass")
         }
       } catch (lockCodeFetchError) {
         lockCodeError = true
-        console.error("[v0] Exception while fetching lock code:", lockCodeFetchError)
+        logger.error(
+          {
+            passId: pass.id,
+            error: lockCodeFetchError instanceof Error ? lockCodeFetchError.message : lockCodeFetchError,
+          },
+          "[BySession] Exception while fetching lock code",
+        )
       }
     }
 
@@ -143,7 +149,10 @@ export async function GET(request: NextRequest) {
       }),
     })
   } catch (error) {
-    console.error("[v0] Error in GET /api/passes/by-session:", error)
+    logger.error(
+      { error: error instanceof Error ? error.message : error },
+      "[BySession] Error in GET /api/passes/by-session",
+    )
     if (error instanceof ZodError) {
       return handleValidationError(error)
     }
