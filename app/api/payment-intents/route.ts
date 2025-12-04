@@ -1,149 +1,269 @@
-import { NextResponse } from "next/server"
-import Stripe from "stripe"
-import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
-import { checkoutSchema } from "@/lib/schemas/api.schema"
-import { safeValidateBody } from "@/lib/utils/validate-request"
-import logger from "@/lib/logger"
-import { getAllowedOrigin } from "@/lib/utils/cors"
+import { type NextRequest, NextResponse } from "next/server"
 import { ENV } from "@/lib/env"
-import { getPassTypeById } from "@/lib/db/pass-types"
+import Stripe from "stripe"
 import { createPass } from "@/lib/db/passes"
+import { getPassTypeById } from "@/lib/db/pass-types"
 import { createPayment } from "@/lib/db/payments"
-import { getOrgContextFromDevice } from "@/lib/config/org-context"
+import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
+import { checkoutSchema } from "@/lib/validation"
+import logger from "@/lib/logger"
+import { createCoreClient } from "@/lib/supabase/core-client"
+import { generateSecurePin } from "@/lib/pin-generator"
+import { createSchemaServiceClient } from "@/lib/supabase/server"
 
-export async function OPTIONS(request) {
-  const allowedOrigin = getAllowedOrigin(request)
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": allowedOrigin,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Idempotency-Key",
-      "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Max-Age": "86400",
-    },
-  })
+function getStripeClient() {
+  const { STRIPE_SECRET_KEY } = ENV.server()
+  return new Stripe(STRIPE_SECRET_KEY)
 }
 
-export async function POST(request) {
-  const allowedOrigin = getAllowedOrigin(request)
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Idempotency-Key",
-    "Access-Control-Allow-Credentials": "true",
+function getAllowedOrigin(request: NextRequest): string {
+  const origin = request.headers.get("origin")
+  const host = request.headers.get("host")
+
+  const allowedOrigins = [
+    ENV.PUBLIC_BASE_URL,
+    ENV.APP_ORIGIN,
+    process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : null,
+  ].filter(Boolean)
+
+  if (origin && allowedOrigins.includes(origin)) {
+    return origin
   }
 
+  if (origin && host && origin.includes(host)) {
+    return origin
+  }
+
+  if (origin && origin.endsWith(".vercel.app")) {
+    return origin
+  }
+
+  return ENV.PUBLIC_BASE_URL || "*"
+}
+
+export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
     if (!rateLimit(request, 10, 60000)) {
-      const headers = { ...corsHeaders, ...getRateLimitHeaders(request, 10), "Retry-After": "60" }
+      const headers = getRateLimitHeaders(request, 10)
+      headers["Retry-After"] = "60"
       logger.warn({ ip: request.headers.get("x-forwarded-for") }, "Rate limit exceeded")
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
     }
 
-    const serverEnv = ENV.server()
-    if (!serverEnv.STRIPE_SECRET_KEY) {
-      logger.error("[PaymentIntents] STRIPE_SECRET_KEY is missing")
-      return NextResponse.json({ error: "Payment system not configured" }, { status: 500, headers: corsHeaders })
+    const allowedOrigin = getAllowedOrigin(request)
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Methods": "POST",
+      "Access-Control-Allow-Headers": "Content-Type, X-Idempotency-Key",
+      "Access-Control-Allow-Credentials": "true",
     }
 
-    const stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY)
+    const body = await request.json()
 
-    // Validate request body
-    const validation = await safeValidateBody(request, checkoutSchema, corsHeaders)
-    if (!validation.ok) {
-      return validation.response
+    const validation = checkoutSchema.safeParse(body)
+    if (!validation.success) {
+      logger.warn({ errors: validation.error.errors }, "Validation failed")
+      return NextResponse.json(
+        { error: "Invalid input", details: validation.error.errors },
+        { status: 400, headers: corsHeaders },
+      )
     }
 
     const { accessPointId, passTypeId, email, plate, phone } = validation.data
 
-    const orgContext = await getOrgContextFromDevice(accessPointId)
-    if (!orgContext) {
-      logger.error({ accessPointId }, "[PaymentIntents] Could not resolve organization")
-      return NextResponse.json({ error: "Invalid access point" }, { status: 400, headers: corsHeaders })
+    const idempotencyKey = request.headers.get("x-idempotency-key") || undefined
+
+    const coreClient = createCoreClient()
+
+    const { data: device, error: deviceError } = await coreClient
+      .from("devices")
+      .select("id, site_id, floor_id")
+      .eq("id", accessPointId)
+      .single()
+
+    if (deviceError || !device) {
+      logger.error({ accessPointId, error: deviceError }, "Failed to fetch device")
+      return NextResponse.json({ error: "Invalid access point ID" }, { status: 400, headers: corsHeaders })
+    }
+
+    let siteId: string | null = device.site_id || null
+
+    if (!siteId && device.floor_id) {
+      const { data: floor, error: floorError } = await coreClient
+        .from("floors")
+        .select("id, building_id")
+        .eq("id", device.floor_id)
+        .single()
+
+      if (floorError || !floor) {
+        logger.error({ floorId: device.floor_id, error: floorError }, "Failed to fetch floor")
+        return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
+      }
+
+      const { data: building, error: buildingError } = await coreClient
+        .from("buildings")
+        .select("id, site_id")
+        .eq("id", floor.building_id)
+        .single()
+
+      if (buildingError || !building) {
+        logger.error({ buildingId: floor.building_id, error: buildingError }, "Failed to fetch building")
+        return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
+      }
+
+      siteId = building.site_id
+    }
+
+    if (!siteId) {
+      logger.error({ deviceId: device.id }, "Device has no associated site")
+      return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
     }
 
     const passType = await getPassTypeById(passTypeId)
     if (!passType) {
-      logger.error({ passTypeId }, "[PaymentIntents] Pass type not found")
+      logger.warn({ passTypeId }, "Invalid pass type")
       return NextResponse.json({ error: "Invalid pass type" }, { status: 400, headers: corsHeaders })
     }
 
-    if (!passType.price_cents || passType.price_cents <= 0) {
-      logger.error({ passTypeId, price: passType.price_cents }, "[PaymentIntents] Invalid pricing")
-      return NextResponse.json({ error: "Pass type has invalid pricing" }, { status: 400, headers: corsHeaders })
+    const { data: org, error: orgError } = await coreClient
+      .from("organisations")
+      .select("slug")
+      .eq("id", passType.org_id)
+      .single()
+
+    if (orgError || !org || !org.slug) {
+      logger.error({ orgId: passType.org_id, error: orgError }, "Failed to fetch organisation")
+      return NextResponse.json({ error: "Organisation configuration error" }, { status: 500, headers: corsHeaders })
     }
 
-    const passResult = await createPass({
+    const now = new Date()
+    const validFrom = now
+
+    let durationHours = 24
+    const passCode = passType.code?.toLowerCase()
+
+    if (passCode === "day" || passCode === "day-pass") {
+      durationHours = 12
+    } else if (passCode === "camping") {
+      durationHours = 24
+    }
+
+    const validTo = new Date(now.getTime() + durationHours * 60 * 60 * 1000)
+
+    const pass = await createPass({
       passTypeId,
-      vehiclePlate: plate,
-      purchaserEmail: email,
-      orgId: orgContext.orgId,
+      vehiclePlate: plate || undefined,
+      purchaserEmail: email || undefined,
+      orgId: passType.org_id,
       deviceId: accessPointId,
-      siteId: orgContext.siteId,
+      siteId,
+      validFrom,
+      validTo,
     })
 
-    if (!passResult.success) {
-      logger.error({ passTypeId, error: passResult.error }, "[PaymentIntents] Failed to create pass")
-      return NextResponse.json({ error: "Failed to create pass" }, { status: 500, headers: corsHeaders })
+    if (!pass) {
+      logger.error({ passTypeId, accessPointId }, "Failed to create pass")
+      return NextResponse.json({ error: "Failed to create pass record" }, { status: 500, headers: corsHeaders })
     }
 
-    const pass = passResult.data
+    const pin = generateSecurePin(6)
+    const passDb = createSchemaServiceClient("pass")
 
-    // Get idempotency key
-    const idempotencyKey = request.headers.get("X-Idempotency-Key") || `pi_${pass.id}_${Date.now()}`
+    const { error: lockCodeError } = await passDb.from("lock_codes").insert({
+      pass_id: pass.id,
+      code: pin,
+      provider: "zezamii",
+      starts_at: validFrom.toISOString(),
+      ends_at: validTo.toISOString(),
+    })
+
+    if (lockCodeError) {
+      logger.error({ passId: pass.id, error: lockCodeError }, "Failed to create lock code")
+    }
+
+    const customerIdentifier = email || phone || plate || "unknown"
+    const events = createSchemaServiceClient("events")
+
+    const currency = passType.currency?.toLowerCase() || "aud"
+
+    await events.from("outbox").insert({
+      topic: "pass.pass_paid.v1",
+      payload: {
+        org_id: passType.org_id,
+        product: "pass",
+        variant: passType.code || "standard",
+        pass_id: pass.id,
+        access_point_id: accessPointId,
+        gate_id: accessPointId,
+        pin_code: pin,
+        starts_at: validFrom.toISOString(),
+        ends_at: validTo.toISOString(),
+        customer_identifier: customerIdentifier,
+        customer_email: email || null,
+        customer_phone: phone || null,
+        customer_plate: plate || null,
+        provider: "stripe",
+        provider_session_id: null,
+        provider_intent_id: null,
+        amount_cents: passType.price_cents,
+        currency,
+        occurred_at: new Date().toISOString(),
+      },
+    })
+
+    const stripe = getStripeClient()
 
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: passType.price_cents,
-        currency: passType.currency.toLowerCase(),
-        automatic_payment_methods: { enabled: true },
-        metadata: {
-          passId: pass.id,
-          passTypeId: passTypeId,
-          accessPointId: accessPointId,
-          orgId: orgContext.orgId,
-          plate: plate || "",
-          email: email || "",
-          phone: phone || "",
+        currency,
+        automatic_payment_methods: {
+          enabled: true,
         },
-        receipt_email: email || undefined,
-        description: `${passType.name} - ${orgContext.orgName || "Zezamii Pass"}`,
+        metadata: {
+          org_slug: org.slug,
+          product: "pass",
+          variant: passType.code || "standard",
+          pass_id: pass.id,
+          access_point_id: accessPointId,
+          gate_id: accessPointId,
+          customer_email: email || "",
+          customer_phone: phone || "",
+          customer_plate: plate || "",
+        },
       },
-      { idempotencyKey },
+      idempotencyKey ? { idempotencyKey } : undefined,
     )
 
     await createPayment({
       passId: pass.id,
       stripePaymentIntent: paymentIntent.id,
       amountCents: passType.price_cents,
-      currency: passType.currency,
+      currency,
       status: "pending",
     })
 
-    logger.info(
-      { paymentIntentId: paymentIntent.id, passId: pass.id, passTypeId, orgId: orgContext.orgId },
-      "[PaymentIntents] Payment intent created successfully",
-    )
-
-    return NextResponse.json(
-      {
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        passId: pass.id,
-      },
-      { status: 200, headers: corsHeaders },
-    )
+    logger.info({ passId: pass.id, paymentIntentId: paymentIntent.id }, "Payment intent created")
+    return NextResponse.json({ clientSecret: paymentIntent.client_secret }, { headers: corsHeaders })
   } catch (error) {
-    logger.error({ error: error.message, stack: error.stack }, "Error creating payment intent")
+    logger.error(
+      { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) },
+      "Payment intent error",
+    )
 
-    if (error.message.includes("Invalid pass type") || error.message.includes("invalid pricing")) {
-      return NextResponse.json({ error: error.message }, { status: 400, headers: corsHeaders })
+    const allowedOrigin = getAllowedOrigin(request)
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Methods": "POST",
+      "Access-Control-Allow-Headers": "Content-Type, X-Idempotency-Key",
+      "Access-Control-Allow-Credentials": "true",
     }
 
     return NextResponse.json(
-      { error: "An error occurred while processing your request." },
+      {
+        error: error instanceof Error ? error.message : "Failed to create payment intent",
+        details: error instanceof Error ? error.stack : String(error),
+      },
       { status: 500, headers: corsHeaders },
     )
   }

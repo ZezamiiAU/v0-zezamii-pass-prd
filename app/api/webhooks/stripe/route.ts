@@ -1,216 +1,368 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
+import { z } from "zod"
+import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { ENV } from "@/lib/env"
-import { stripeMetaSchema } from "@/lib/schemas/api.schema"
-import { safeValidate } from "@/lib/utils/validate-request"
-import { createServiceClient } from "@/lib/supabase/server"
-import { updatePaymentStatus, getPassByPaymentIntent } from "@/lib/db/payments"
-import { updatePassStatus } from "@/lib/db/passes"
-import { getPassTypeById } from "@/lib/db/pass-types"
+import { createRoomsReservation } from "@/lib/integrations/rooms-event-hub"
 
-const { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } = ENV.server()
+export const runtime = "nodejs"
 
-/**
- * @param {Request} request
- */
-export async function POST(request) {
-  const body = await request.text()
-  const signature = request.headers.get("stripe-signature")
+const { STRIPE_SECRET_KEY } = ENV.server()
+const stripe = new Stripe(STRIPE_SECRET_KEY)
 
-  if (!signature) {
-    logger.warn("[Stripe Webhook] Missing stripe-signature header")
-    return NextResponse.json({ error: "Missing signature" }, { status: 400 })
-  }
+const Meta = z.object({
+  org_slug: z.string().min(1),
+  product: z.enum(["pass", "room"]),
+  variant: z.string().optional(),
+  access_point_id: z.string().uuid().optional(),
+  gate_id: z.string().uuid().optional(),
+  pass_id: z.string().uuid().optional(),
+  customer_email: z.string().optional(),
+  customer_phone: z.string().optional(),
+  customer_plate: z.string().optional(),
+})
 
-  if (!STRIPE_SECRET_KEY) {
-    logger.error("[Stripe Webhook] STRIPE_SECRET_KEY not configured")
-    return NextResponse.json({ error: "Stripe not configured" }, { status: 500 })
-  }
+export async function POST(req: NextRequest) {
+  const sig = req.headers.get("stripe-signature")
+  if (!sig) return NextResponse.json({ error: "Missing signature" }, { status: 400 })
 
-  const stripe = new Stripe(STRIPE_SECRET_KEY)
-
-  let event
+  const raw = Buffer.from(await req.arrayBuffer())
+  let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET || "")
-  } catch (err) {
-    logger.error({ error: err.message }, "[Stripe Webhook] Signature verification failed")
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
-  }
-
-  logger.info({ type: event.type, id: event.id }, "[Stripe Webhook] Received event")
-
-  try {
-    switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutComplete(event.data.object)
-        break
-
-      case "payment_intent.succeeded":
-        await handlePaymentIntentSucceeded(event.data.object)
-        break
-
-      case "payment_intent.payment_failed":
-        await handlePaymentIntentFailed(event.data.object)
-        break
-
-      default:
-        logger.info({ type: event.type }, "[Stripe Webhook] Unhandled event type")
+    const { STRIPE_WEBHOOK_SECRET } = ENV.server()
+    if (!STRIPE_WEBHOOK_SECRET) {
+      logger.error("STRIPE_WEBHOOK_SECRET is not configured")
+      return NextResponse.json({ error: "Webhook configuration error" }, { status: 500 })
     }
-
-    return NextResponse.json({ received: true })
-  } catch (error) {
-    logger.error({ error: error.message, type: event.type }, "[Stripe Webhook] Error handling event")
-    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 })
+    event = stripe.webhooks.constructEvent(raw, sig, STRIPE_WEBHOOK_SECRET)
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Webhook signature verification failed")
+    return NextResponse.json({ error: e.message }, { status: 400 })
   }
+
+  const passDb = createSchemaServiceClient("pass")
+  const { data: existing } = await passDb.from("processed_webhooks").select("id").eq("event_id", event.id).single()
+
+  if (existing) {
+    logger.info({ eventId: event.id }, "Webhook already processed, skipping")
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+
+  await passDb.from("processed_webhooks").insert({
+    event_id: event.id,
+    event_type: event.type,
+    processed_at: new Date().toISOString(),
+  })
+
+  if (event.type === "checkout.session.completed") {
+    return handleCheckoutSessionCompleted(event)
+  } else if (event.type === "payment_intent.succeeded") {
+    return handlePaymentIntentSucceeded(event)
+  } else if (event.type === "payment_intent.payment_failed") {
+    return handlePaymentIntentFailed(event)
+  }
+
+  return NextResponse.json({ ok: true })
 }
 
-/**
- * Handle checkout.session.completed event
- * @param {Stripe.Checkout.Session} session
- */
-async function handleCheckoutComplete(session) {
-  const metaResult = safeValidate(session.metadata ?? {}, stripeMetaSchema)
-  if (!metaResult.ok) {
-    logger.warn({ sessionId: session.id, errors: metaResult.error.errors }, "[Stripe Webhook] Invalid session metadata")
-    return
+async function handleCheckoutSessionCompleted(event: Stripe.Event) {
+  const session = event.data.object as Stripe.Checkout.Session
+  const meta = Meta.safeParse(session.metadata ?? {})
+  if (!meta.success) {
+    logger.warn({ issues: meta.error.issues }, "Invalid Stripe metadata")
+    return NextResponse.json({ error: "Invalid metadata" }, { status: 400 })
   }
 
-  const meta = metaResult.data
-  const passId = meta.passId || meta.pass_id
-  const passTypeId = meta.passTypeId || meta.pass_type_id
+  const core = createSchemaServiceClient("core")
+  const { data: org, error: orgErr } = await core
+    .from("organisations")
+    .select("id")
+    .eq("slug", meta.data.org_slug)
+    .single()
 
-  if (!passId || !passTypeId) {
-    logger.warn({ sessionId: session.id, meta }, "[Stripe Webhook] Missing passId or passTypeId in metadata")
-    return
+  if (orgErr || !org) {
+    logger.error({ slug: meta.data.org_slug, orgErr }, "Unknown organisation")
+    return NextResponse.json({ error: "Unknown organisation" }, { status: 400 })
   }
 
-  logger.info({ sessionId: session.id, passId, passTypeId }, "[Stripe Webhook] Processing checkout completion")
+  const passDb = createSchemaServiceClient("pass")
+  const amount = session.amount_total ?? 0
+  const currency = (session.currency ?? "aud").toLowerCase()
+  const intentId = String(session.payment_intent ?? "")
+  const checkoutId = session.id
 
-  // Get pass type for duration calculation
-  const passType = await getPassTypeById(passTypeId)
-  if (!passType) {
-    logger.error({ passTypeId }, "[Stripe Webhook] Pass type not found")
-    return
+  const { data: pass } = await passDb
+    .from("passes")
+    .select("id, valid_from, valid_to")
+    .eq("id", meta.data.pass_id!)
+    .single()
+
+  if (pass) {
+    const { error: activateError } = await passDb
+      .from("passes")
+      .update({ status: "active" })
+      .eq("id", pass.id)
+      .eq("schema", "pass")
+
+    if (activateError) {
+      return NextResponse.json({ error: "Failed to activate pass", details: activateError.message }, { status: 500 })
+    }
   }
 
-  // Calculate validity period
-  const now = new Date()
-  const validFrom = now
-  const validTo = new Date(now.getTime() + passType.duration_minutes * 60 * 1000)
-
-  // Update pass status to active with validity dates
-  const updateResult = await updatePassStatus(passId, "active", validFrom, validTo)
-  if (!updateResult.success) {
-    logger.error({ passId }, "[Stripe Webhook] Failed to activate pass")
-    return
-  }
-
-  // Update payment status
-  await updatePaymentStatus(session.id, "completed", session.payment_intent)
-
-  logger.info(
-    { passId, validFrom, validTo, durationMinutes: passType.duration_minutes },
-    "[Stripe Webhook] Pass activated successfully",
+  await passDb.from("payments").upsert(
+    {
+      pass_id: meta.data.pass_id ?? null,
+      stripe_checkout_session: checkoutId,
+      stripe_payment_intent: intentId,
+      amount_cents: amount,
+      currency,
+      status: "succeeded",
+    },
+    { onConflict: "stripe_checkout_session" },
   )
+
+  const startsAt = pass?.valid_from || new Date().toISOString()
+  const endsAt = pass?.valid_to || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  const customerEmail = meta.data.customer_email || "guest@example.com"
+  const customerName = customerEmail.split("@")[0]
+
+  const roomsResult = await createRoomsReservation(org.id, {
+    propertyId: "z71owzgoNUxJtxOC",
+    reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
+    arrivalDate: new Date(startsAt).toISOString().split("T")[0],
+    departureDate: new Date(endsAt).toISOString().split("T")[0],
+    lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
+    guestName: customerName,
+    guestPhone: meta.data.customer_phone,
+    guestEmail: customerEmail,
+  })
+
+  let pinCode = null
+
+  if (roomsResult.success && roomsResult.pincode) {
+    pinCode = roomsResult.pincode
+
+    const { error: lockCodeError } = await passDb.from("lock_codes").insert({
+      pass_id: meta.data.pass_id!,
+      code: pinCode,
+      provider: "rooms",
+      provider_ref: roomsResult.reservationId,
+      starts_at: startsAt,
+      ends_at: endsAt,
+    })
+
+    if (lockCodeError) {
+      logger.error({ passId: meta.data.pass_id, lockCodeError }, "Failed to store Rooms pincode")
+    }
+  } else {
+    logger.error({ passId: meta.data.pass_id, error: roomsResult.error }, "Rooms API failed, using fallback pincode")
+
+    const { data: existingCode } = await passDb
+      .from("lock_codes")
+      .select("code")
+      .eq("pass_id", meta.data.pass_id!)
+      .single()
+
+    if (existingCode) {
+      pinCode = existingCode.code
+    }
+  }
+
+  if (pinCode) {
+    const customerIdentifier =
+      meta.data.customer_email || meta.data.customer_phone || meta.data.customer_plate || "unknown"
+
+    const events = createSchemaServiceClient("events")
+    await events.from("outbox").insert({
+      topic: "pass.pass_paid.v1",
+      payload: {
+        org_id: org.id,
+        product: meta.data.product,
+        variant: meta.data.variant,
+        pass_id: meta.data.pass_id,
+        access_point_id: meta.data.access_point_id || meta.data.gate_id,
+        gate_id: meta.data.gate_id,
+        pin_code: pinCode,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        customer_identifier: customerIdentifier,
+        customer_email: meta.data.customer_email || null,
+        customer_phone: meta.data.customer_phone || null,
+        customer_plate: meta.data.customer_plate || null,
+        provider: "stripe",
+        provider_session_id: checkoutId,
+        provider_intent_id: intentId,
+        amount_cents: amount,
+        currency,
+        occurred_at: new Date().toISOString(),
+      },
+    })
+  }
+
+  logger.info({ passId: meta.data.pass_id, eventId: event.id }, "Checkout session completed")
+  return NextResponse.json({ received: true })
 }
 
-/**
- * Handle payment_intent.succeeded event
- * @param {Stripe.PaymentIntent} paymentIntent
- */
-async function handlePaymentIntentSucceeded(paymentIntent) {
-  const metaResult = safeValidate(paymentIntent.metadata ?? {}, stripeMetaSchema)
-  if (!metaResult.ok) {
-    logger.warn(
-      { paymentIntentId: paymentIntent.id, errors: metaResult.error.errors },
-      "[Stripe Webhook] Invalid payment intent metadata",
-    )
-    return
+async function handlePaymentIntentSucceeded(event: Stripe.Event) {
+  const paymentIntent = event.data.object as Stripe.PaymentIntent
+  const meta = Meta.safeParse(paymentIntent.metadata ?? {})
+  if (!meta.success) {
+    logger.warn({ issues: meta.error.issues }, "Invalid Stripe metadata")
+    return NextResponse.json({ error: "Invalid metadata" }, { status: 400 })
   }
 
-  const meta = metaResult.data
-  const passId = meta.passId || meta.pass_id
-  const passTypeId = meta.passTypeId || meta.pass_type_id
+  const core = createSchemaServiceClient("core")
+  const { data: org, error: orgErr } = await core
+    .from("organisations")
+    .select("id")
+    .eq("slug", meta.data.org_slug)
+    .single()
 
-  if (!passId) {
-    logger.warn({ paymentIntentId: paymentIntent.id }, "[Stripe Webhook] Missing passId in metadata")
-    return
+  if (orgErr || !org) {
+    logger.error({ slug: meta.data.org_slug, orgErr }, "Unknown organisation")
+    return NextResponse.json({ error: "Unknown organisation" }, { status: 400 })
   }
 
-  logger.info({ paymentIntentId: paymentIntent.id, passId }, "[Stripe Webhook] Payment succeeded")
+  const passDb = createSchemaServiceClient("pass")
+  const amount = paymentIntent.amount ?? 0
+  const currency = (paymentIntent.currency ?? "aud").toLowerCase()
+  const intentId = paymentIntent.id
 
-  // Check if pass already activated (by checkout.session.completed)
-  const existingPayment = await getPassByPaymentIntent(paymentIntent.id)
-  if (existingPayment && existingPayment.pass.status === "active") {
-    logger.info({ passId }, "[Stripe Webhook] Pass already activated, skipping")
-    return
+  const { data: pass } = await passDb
+    .from("passes")
+    .select("id, valid_from, valid_to")
+    .eq("id", meta.data.pass_id!)
+    .single()
+
+  if (pass) {
+    const { error: activateError } = await passDb
+      .from("passes")
+      .update({ status: "active" })
+      .eq("id", pass.id)
+      .eq("schema", "pass")
+
+    if (activateError) {
+      return NextResponse.json({ error: "Failed to activate pass", details: activateError.message }, { status: 500 })
+    }
   }
 
-  // Get pass type for duration calculation
-  const passType = passTypeId ? await getPassTypeById(passTypeId) : null
-  if (!passType) {
-    logger.error({ passTypeId }, "[Stripe Webhook] Pass type not found")
-    return
+  await passDb.from("payments").upsert(
+    {
+      pass_id: meta.data.pass_id ?? null,
+      stripe_payment_intent: intentId,
+      amount_cents: amount,
+      currency,
+      status: "succeeded",
+    },
+    { onConflict: "stripe_payment_intent" },
+  )
+
+  const startsAt = pass?.valid_from || new Date().toISOString()
+  const endsAt = pass?.valid_to || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  const customerEmail = meta.data.customer_email || "guest@example.com"
+  const customerName = customerEmail.split("@")[0]
+
+  const roomsResult = await createRoomsReservation(org.id, {
+    propertyId: "z71owzgoNUxJtxOC",
+    reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
+    arrivalDate: new Date(startsAt).toISOString().split("T")[0],
+    departureDate: new Date(endsAt).toISOString().split("T")[0],
+    lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
+    guestName: customerName,
+    guestPhone: meta.data.customer_phone,
+    guestEmail: customerEmail,
+  })
+
+  let pinCode = null
+
+  if (roomsResult.success && roomsResult.pincode) {
+    pinCode = roomsResult.pincode
+
+    const { error: lockCodeError } = await passDb.from("lock_codes").insert({
+      pass_id: meta.data.pass_id!,
+      code: pinCode,
+      provider: "rooms",
+      provider_ref: roomsResult.reservationId,
+      starts_at: startsAt,
+      ends_at: endsAt,
+    })
+
+    if (lockCodeError) {
+      logger.error({ passId: meta.data.pass_id, lockCodeError }, "Failed to store Rooms pincode")
+    }
+  } else {
+    logger.error({ passId: meta.data.pass_id, error: roomsResult.error }, "Rooms API failed, using fallback pincode")
+
+    const { data: existingCode } = await passDb
+      .from("lock_codes")
+      .select("code")
+      .eq("pass_id", meta.data.pass_id!)
+      .single()
+
+    if (existingCode) {
+      pinCode = existingCode.code
+    }
   }
 
-  // Calculate validity period
-  const now = new Date()
-  const validFrom = now
-  const validTo = new Date(now.getTime() + passType.duration_minutes * 60 * 1000)
+  if (pinCode) {
+    const customerIdentifier =
+      meta.data.customer_email || meta.data.customer_phone || meta.data.customer_plate || "unknown"
 
-  // Update pass status to active
-  const updateResult = await updatePassStatus(passId, "active", validFrom, validTo)
-  if (!updateResult.success) {
-    logger.error({ passId }, "[Stripe Webhook] Failed to activate pass")
-    return
+    const events = createSchemaServiceClient("events")
+    await events.from("outbox").insert({
+      topic: "pass.pass_paid.v1",
+      payload: {
+        org_id: org.id,
+        product: meta.data.product,
+        variant: meta.data.variant,
+        pass_id: meta.data.pass_id,
+        access_point_id: meta.data.access_point_id || meta.data.gate_id,
+        gate_id: meta.data.gate_id,
+        pin_code: pinCode,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        customer_identifier: customerIdentifier,
+        customer_email: meta.data.customer_email || null,
+        customer_phone: meta.data.customer_phone || null,
+        customer_plate: meta.data.customer_plate || null,
+        provider: "stripe",
+        provider_intent_id: intentId,
+        amount_cents: amount,
+        currency,
+        occurred_at: new Date().toISOString(),
+      },
+    })
   }
 
-  // Update payment record if exists
-  const supabase = createServiceClient()
-  await supabase
-    .schema("pass")
-    .from("payments")
-    .update({ status: "completed" })
-    .eq("stripe_payment_intent", paymentIntent.id)
-
-  logger.info({ passId, validFrom, validTo }, "[Stripe Webhook] Pass activated via payment_intent.succeeded")
+  logger.info({ passId: meta.data.pass_id, eventId: event.id }, "Payment intent succeeded")
+  return NextResponse.json({ received: true })
 }
 
-/**
- * Handle payment_intent.payment_failed event
- * @param {Stripe.PaymentIntent} paymentIntent
- */
-async function handlePaymentIntentFailed(paymentIntent) {
-  const metaResult = safeValidate(paymentIntent.metadata ?? {}, stripeMetaSchema)
-  if (!metaResult.ok) {
-    logger.warn(
-      { paymentIntentId: paymentIntent.id, errors: metaResult.error.errors },
-      "[Stripe Webhook] Invalid payment intent metadata",
-    )
-    return
+async function handlePaymentIntentFailed(event: Stripe.Event) {
+  const paymentIntent = event.data.object as Stripe.PaymentIntent
+  const meta = Meta.safeParse(paymentIntent.metadata ?? {})
+
+  if (!meta.success || !meta.data.pass_id) {
+    logger.warn({ issues: meta.error?.issues }, "Invalid metadata in failed payment")
+    return NextResponse.json({ received: true })
   }
 
-  const meta = metaResult.data
-  const passId = meta.passId || meta.pass_id
+  const passDb = createSchemaServiceClient("pass")
 
-  if (!passId) {
-    logger.warn({ paymentIntentId: paymentIntent.id }, "[Stripe Webhook] Missing passId in metadata")
-    return
+  const { error: deleteLockCodeError } = await passDb
+    .from("lock_codes")
+    .delete()
+    .eq("pass_id", meta.data.pass_id)
+    .eq("schema", "pass")
+
+  if (!deleteLockCodeError) {
   }
 
-  const failureMessage = paymentIntent.last_payment_error?.message || "Payment failed"
+  await passDb.from("passes").update({ status: "cancelled" }).eq("id", meta.data.pass_id)
 
-  logger.warn({ paymentIntentId: paymentIntent.id, passId, error: failureMessage }, "[Stripe Webhook] Payment failed")
+  await passDb.from("payments").update({ status: "failed" }).eq("stripe_payment_intent", paymentIntent.id)
 
-  // Update pass status to failed
-  await updatePassStatus(passId, "payment_failed")
-
-  // Update payment record
-  const supabase = createServiceClient()
-  await supabase
-    .schema("pass")
-    .from("payments")
-    .update({ status: "failed" })
-    .eq("stripe_payment_intent", paymentIntent.id)
+  logger.info({ passId: meta.data.pass_id, eventId: event.id }, "Payment failed - lock code deleted")
+  return NextResponse.json({ received: true })
 }

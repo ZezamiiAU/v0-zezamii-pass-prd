@@ -6,7 +6,6 @@ import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 import { OfflineToast } from "@/components/offline-toast"
 import { PoweredByZezamii } from "@/components/powered-by-zezamii"
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
-import { SWUpdateBanner } from "@/components/sw-update-banner"
 
 import {
   Inter,
@@ -76,7 +75,6 @@ export default function RootLayout({
         <PWAInstallPrompt />
         <OfflineToast />
         <ServiceWorkerRegistration />
-        <SWUpdateBanner />
       </body>
     </html>
   )
