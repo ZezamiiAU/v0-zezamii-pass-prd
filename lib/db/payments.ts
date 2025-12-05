@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
+import { type Result, ok, err } from "./result"
 
 export interface Payment {
   id: string
@@ -299,4 +300,45 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
     )
     return null
   }
+}
+
+/**
+ * Result-based wrapper functions
+ * These provide better error handling without breaking existing code
+ */
+
+export async function createPaymentResult(data: Parameters<typeof createPayment>[0]): Promise<Result<Payment>> {
+  const payment = await createPayment(data)
+  if (!payment) {
+    return err(new Error("Failed to create payment"))
+  }
+  return ok(payment)
+}
+
+export async function getPassByCheckoutSessionResult(sessionId: string): Promise<Result<PaymentWithPass>> {
+  const payment = await getPassByCheckoutSession(sessionId)
+  if (!payment) {
+    return err(new Error(`Payment not found for session: ${sessionId}`))
+  }
+  return ok(payment)
+}
+
+export async function getPassByPaymentIntentResult(intentId: string): Promise<Result<PaymentWithPass>> {
+  const payment = await getPassByPaymentIntent(intentId)
+  if (!payment) {
+    return err(new Error(`Payment not found for intent: ${intentId}`))
+  }
+  return ok(payment)
+}
+
+export async function updatePaymentStatusResult(
+  checkoutSessionId: string,
+  status: string,
+  paymentIntentId?: string,
+): Promise<Result<boolean>> {
+  const success = await updatePaymentStatus(checkoutSessionId, status, paymentIntentId)
+  if (!success) {
+    return err(new Error(`Failed to update payment status: ${checkoutSessionId}`))
+  }
+  return ok(true)
 }

@@ -21,6 +21,8 @@ import {
   sessionQuerySchema,
   walletSaveQuerySchema,
   unlockJwtQuerySchema,
+  checkoutSchema,
+  stripeMetaSchema,
 } from "./api.schema"
 
 // Import all type exports
@@ -35,6 +37,8 @@ import type {
   SessionQuery,
   WalletSaveQuery,
   UnlockJwtQuery,
+  CheckoutInput,
+  StripeMetadata,
 } from "./api.schema"
 
 // Verify all schemas are Zod schemas
@@ -49,6 +53,8 @@ const _schemaGuards: z.ZodTypeAny[] = [
   sessionQuerySchema,
   walletSaveQuerySchema,
   unlockJwtQuerySchema,
+  checkoutSchema,
+  stripeMetaSchema,
 ]
 
 // Verify all types are assignable (compile-time check)
@@ -63,6 +69,8 @@ const _typeGuards = {
   sessionQuery: {} as SessionQuery,
   walletSaveQuery: {} as WalletSaveQuery,
   unlockJwtQuery: {} as UnlockJwtQuery,
+  checkoutInput: {} as CheckoutInput,
+  stripeMetadata: {} as StripeMetadata,
 }
 
 // Export a marker so this module is not empty

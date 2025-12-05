@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
+import { type Result, ok, err } from "./result"
 
 export interface Pass {
   id: string
@@ -184,4 +185,38 @@ export async function updatePassWithLockError(passId: string, errorMessage: stri
   }
 
   return true
+}
+
+/**
+ * Result-based wrapper functions
+ * These provide better error handling without breaking existing code
+ */
+
+export async function createPassResult(data: Parameters<typeof createPass>[0]): Promise<Result<Pass>> {
+  const pass = await createPass(data)
+  if (!pass) {
+    return err(new Error("Failed to create pass"))
+  }
+  return ok(pass)
+}
+
+export async function getPassByIdResult(passId: string): Promise<Result<PassWithType>> {
+  const pass = await getPassById(passId)
+  if (!pass) {
+    return err(new Error(`Pass not found: ${passId}`))
+  }
+  return ok(pass)
+}
+
+export async function updatePassStatusResult(
+  passId: string,
+  status: string,
+  validFrom?: Date,
+  validTo?: Date,
+): Promise<Result<boolean>> {
+  const success = await updatePassStatus(passId, status, validFrom, validTo)
+  if (!success) {
+    return err(new Error(`Failed to update pass status: ${passId}`))
+  }
+  return ok(true)
 }

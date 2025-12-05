@@ -3,6 +3,7 @@ import { getDefaultOrgId } from "@/lib/config/org-context"
 import logger from "@/lib/logger"
 const Stripe = require("stripe")
 const { STRIPE_SECRET_KEY } = require("@/lib/env").ENV.server()
+import { type Result, ok, err } from "./result"
 
 export interface PassType {
   id: string
@@ -159,4 +160,36 @@ export async function syncPassTypeWithStripe(passTypeId: string): Promise<{ prod
 
 function getStripeClient() {
   return new Stripe(STRIPE_SECRET_KEY)
+}
+
+/**
+ * Result-based wrapper functions
+ * These provide better error handling without breaking existing code
+ */
+
+export async function getPassTypeByCodeResult(code: string, orgId?: string): Promise<Result<PassType>> {
+  const passType = await getPassTypeByCode(code, orgId)
+  if (!passType) {
+    return err(new Error(`Pass type not found: ${code}`))
+  }
+  return ok(passType)
+}
+
+export async function getPassTypeByIdResult(id: string): Promise<Result<PassType>> {
+  const passType = await getPassTypeById(id)
+  if (!passType) {
+    return err(new Error(`Pass type not found: ${id}`))
+  }
+  return ok(passType)
+}
+
+export async function syncPassTypeWithStripeResult(
+  passTypeId: string,
+): Promise<Result<{ productId: string; priceId: string }>> {
+  try {
+    const result = await syncPassTypeWithStripe(passTypeId)
+    return ok(result)
+  } catch (error) {
+    return err(error instanceof Error ? error : new Error(String(error)))
+  }
 }
