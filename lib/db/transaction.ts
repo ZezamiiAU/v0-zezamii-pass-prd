@@ -3,10 +3,10 @@
  * Uses Postgres advisory locks for coordination
  */
 
-import { createAdminClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
 
 export type TransactionContext = {
-  client: ReturnType<typeof createAdminClient>
+  client: ReturnType<typeof createServiceClient>
 }
 
 /**
@@ -17,7 +17,7 @@ export type TransactionContext = {
  * so this provides coordination via advisory locks
  */
 export async function withTransaction<T>(lockKey: number, fn: (ctx: TransactionContext) => Promise<T>): Promise<T> {
-  const client = createAdminClient()
+  const client = createServiceClient()
 
   // Acquire advisory lock
   const { error: lockError } = await client.rpc("pg_advisory_lock", { key: lockKey })
