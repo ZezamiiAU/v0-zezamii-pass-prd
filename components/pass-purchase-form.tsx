@@ -55,7 +55,7 @@ export function PassPurchaseForm({
   const [vehiclePlate, setVehiclePlate] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  const [termsAccepted, setTermsAccepted] = useState(true)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
