@@ -3,7 +3,8 @@
  */
 
 // Result types
-export { Result, ok, err, tryCatch, fromNullable } from "./result"
+export { ok, err, tryCatch, fromNullable } from "./result"
+export type { Result } from "./result"
 
 // Transaction support
 export { withTransaction, getLockKey, type TransactionContext } from "./transaction"
