@@ -12,6 +12,7 @@ import Image from "next/image"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface PassDetails {
+  pass_id: string
   accessPointName: string
   timezone: string
   code: string | null
@@ -265,11 +266,12 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
         deviceId: passDetails.device_id || "",
       })
 
-      const response = await fetch(`/api/wallet/save?${params.toString()}`)
+      const response = await fetch(`/api/wallet/google?pass_id=${passDetails.pass_id}`)
 
       const data = await response.json()
 
       if (!response.ok) {
+        console.error("[v0] Google Wallet error:", data)
         alert(
           data.error ||
             "Unable to add to Google Wallet. Please ensure you're accessing from the correct domain and try again.",
@@ -277,12 +279,13 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
         return
       }
 
-      if (data.saveUrl) {
-        window.location.href = data.saveUrl
+      if (data.url) {
+        window.location.href = data.url
       } else {
         alert("Unable to generate Google Wallet pass")
       }
     } catch (error) {
+      console.error("[v0] Google Wallet exception:", error instanceof Error ? error.message : String(error))
       alert("Unable to add to Google Wallet at this time")
     }
   }

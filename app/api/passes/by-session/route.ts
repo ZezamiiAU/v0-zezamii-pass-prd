@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      pass_id: pass.id,
       accessPointName,
       timezone,
       code: lockCode,
@@ -145,7 +146,6 @@ export async function GET(request: NextRequest) {
         devMode: true,
         status: pass.status,
         paymentStatus: payment.status,
-        pass_id: pass.id,
       }),
     })
   } catch (error) {
