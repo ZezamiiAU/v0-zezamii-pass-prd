@@ -24,20 +24,5 @@ GRANT SELECT ON pass.pass_types TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA pass TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA pass TO service_role;
 
--- Verify grants were applied
-DO $$
-DECLARE
-  schema_usage_count INTEGER;
-BEGIN
-  SELECT COUNT(*) INTO schema_usage_count
-  FROM information_schema.role_schema_grants
-  WHERE grantee IN ('anon', 'authenticated', 'service_role')
-    AND schema_name = 'pass'
-    AND privilege_type = 'USAGE';
-  
-  IF schema_usage_count >= 3 THEN
-    RAISE NOTICE 'Successfully granted USAGE on pass schema to all roles (% grants)', schema_usage_count;
-  ELSE
-    RAISE WARNING 'Expected 3+ USAGE grants on pass schema, found %', schema_usage_count;
-  END IF;
-END $$;
+-- Removed verification block that queried information_schema.role_schema_grants
+-- which doesn't exist in Supabase. Grants will succeed silently if already applied.

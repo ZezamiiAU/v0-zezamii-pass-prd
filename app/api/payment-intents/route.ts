@@ -60,8 +60,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    console.log("[v0] Payment intent request body:", JSON.stringify(body, null, 2))
+
     const validation = checkoutSchema.safeParse(body)
     if (!validation.success) {
+      console.log("[v0] Validation failed:", JSON.stringify(validation.error.format(), null, 2))
       logger.warn({ errors: validation.error.errors }, "Validation failed")
       return NextResponse.json(
         { error: "Invalid input", details: validation.error.errors },
@@ -108,7 +111,7 @@ export async function POST(request: NextRequest) {
 
       if (buildingError || !building) {
         logger.error({ buildingId: floor.building_id, error: buildingError }, "Failed to fetch building")
-        return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
+        return NextResponse.json({ error: "Organisation configuration error" }, { status: 500, headers: corsHeaders })
       }
 
       siteId = building.site_id

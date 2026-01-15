@@ -101,11 +101,16 @@ export type UnlockJwtQuery = z.infer<typeof unlockJwtQuerySchema>
 
 export const checkoutSchema = z.object({
   accessPointId: z.string().min(1, "Access Point ID is required"),
-  passTypeId: z.string().uuid("Invalid pass type ID"),
+  passTypeId: z
+    .string()
+    .regex(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      "Invalid pass type ID - must be UUID format",
+    ),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
   plate: z
     .string()
-    .regex(/^[A-Z0-9]{1,8}$/, "Invalid plate format")
+    .regex(/^[A-Z0-9\s-]{1,15}$/i, "Invalid plate format - use letters, numbers, hyphens, or spaces only")
     .optional()
     .or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),

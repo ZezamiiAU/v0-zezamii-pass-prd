@@ -23,6 +23,17 @@ interface PassDetails {
   device_id: string
 }
 
+function extractErrorMessage(errorData: any): string {
+  if (typeof errorData === "string") return errorData
+  if (typeof errorData === "object" && errorData !== null) {
+    if (typeof errorData.error === "string") return errorData.error
+    if (typeof errorData.message === "string") return errorData.message
+    if (Array.isArray(errorData.error)) return errorData.error.map((e: any) => e.message || String(e)).join(", ")
+    return JSON.stringify(errorData)
+  }
+  return String(errorData)
+}
+
 export default function SuccessPage() {
   const searchParams = useSearchParams()
 
@@ -105,12 +116,14 @@ export default function SuccessPage() {
 
     const abortController = new AbortController()
     let retryCount = 0
-    const MAX_RETRIES = 5
+    const MAX_RETRIES = 3
     let pollInterval: NodeJS.Timeout | null = null
 
     const fetchPassDetails = async () => {
       try {
         const queryParam = sessionId ? `session_id=${sessionId}` : `payment_intent=${paymentIntent}`
+
+        console.log(`[v0] Polling pass details (attempt ${retryCount + 1}/${MAX_RETRIES})`)
 
         const response = await fetch(`/api/passes/by-session?${queryParam}`, {
           signal: abortController.signal,
@@ -132,6 +145,12 @@ export default function SuccessPage() {
           const detailsText = `Error Details:\n${JSON.stringify(errorInfo, null, 2)}`
           setErrorDetails(detailsText)
 
+          if (response.status === 429) {
+            setError("Too many requests. Please try again later.")
+            setIsLoading(false)
+            return
+          }
+
           if ((errorData.status === "pending" || errorData.paymentStatus === "pending") && paymentIntent) {
             if (retryCount >= MAX_RETRIES) {
               setError(`Payment is taking longer than expected. Please contact ${supportEmail}`)
@@ -149,16 +168,21 @@ export default function SuccessPage() {
 
               if (syncResponse.ok) {
                 retryCount++
-                pollInterval = setTimeout(() => fetchPassDetails(), 2000)
+                const delay = 2000 * Math.pow(1.5, retryCount)
+                console.log(`[v0] Retrying in ${delay}ms`)
+                pollInterval = setTimeout(() => fetchPassDetails(), delay)
                 return
               }
             } catch (syncError) {
-              console.error("Error syncing payment:", syncError)
+              console.error(
+                "[v0] Error syncing payment:",
+                syncError instanceof Error ? syncError.message : JSON.stringify(syncError),
+              )
             }
 
             setError(`Lock not connected. Contact ${supportEmail}`)
           } else {
-            setError(errorData.error || "Unable to load pass details")
+            setError(extractErrorMessage(errorData) || "Unable to load pass details")
           }
           setIsLoading(false)
           return
@@ -176,7 +200,7 @@ export default function SuccessPage() {
         if (err instanceof Error && err.name === "AbortError") {
           return
         }
-        console.error("Error fetching pass details:", err)
+        console.error("[v0] Error fetching pass details:", err instanceof Error ? err.message : JSON.stringify(err))
 
         const errorInfo = {
           timestamp: new Date().toISOString(),
@@ -191,7 +215,7 @@ export default function SuccessPage() {
         if (!navigator.onLine) {
           setError("You're offline. PIN display requires an internet connection.")
         } else {
-          setError("Unable to load pass details. Please try again.")
+          setError(err instanceof Error ? err.message : "Unable to load pass details. Please try again.")
         }
         setIsLoading(false)
       }

@@ -41,7 +41,7 @@ export async function getAccessPointSlugs(accessPointId: string): Promise<Access
       .select("org_slug, site_slug, accesspoint_slug, is_active")
       .eq("device_id", accessPointId)
       .eq("is_active", true)
-      .single()
+      .maybeSingle()
 
     if (error) {
       if (PRIVILEGE_ERROR_CODES.includes(error.code as any)) {
@@ -50,22 +50,15 @@ export async function getAccessPointSlugs(accessPointId: string): Promise<Access
             accessPointId,
             errorCode: error.code,
             errorMessage: error.message,
-            errorDetails: error.details,
           },
-          "[AccessPoints] Database privilege error - missing GRANT on schema or table",
+          "[AccessPoints] Database privilege error",
         )
-        // Re-throw with structured error for better debugging
         throw new Error(
-          `Database access misconfigured: ${error.code} - ${error.message}. ` +
-            `Hint: Run migration scripts/022_fix_pass_schema_access_complete.sql`,
+          `Database misconfigured: Run migration scripts/022_fix_pass_schema_access_complete.sql (Error ${error.code})`,
         )
       }
 
-      // Not found or other DB error
-      logger.warn(
-        { accessPointId, error: error.message, code: error.code },
-        "[AccessPoints] Device not found or has no active slug",
-      )
+      logger.warn({ accessPointId, errorCode: error.code }, "[AccessPoints] Device query failed")
       return null
     }
 
@@ -75,11 +68,6 @@ export async function getAccessPointSlugs(accessPointId: string): Promise<Access
 
     return data as AccessPointSlugs
   } catch (error) {
-    // Re-throw structured errors
-    if (error instanceof Error && error.message.includes("Database access misconfigured")) {
-      throw error
-    }
-
     // Log unexpected errors
     logger.error(
       { accessPointId, error: error instanceof Error ? error.message : error },

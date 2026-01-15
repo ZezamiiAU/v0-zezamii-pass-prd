@@ -119,16 +119,16 @@ export function PassPurchaseForm({
     try {
       const key = getOrCreatePaymentAttemptKey()
 
-      const data = await createPaymentIntent(
-        {
-          accessPointId: deviceId,
-          passTypeId: selectedPassTypeId,
-          plate: vehiclePlate || "",
-          email: email || "",
-          phone: phone || "",
-        },
-        key,
-      )
+      const payload = {
+        accessPointId: deviceId,
+        passTypeId: selectedPassTypeId,
+        plate: vehiclePlate || "",
+        email: email || "",
+        phone: phone || "",
+      }
+      console.log("[v0] Sending payment intent request:", payload)
+
+      const data = await createPaymentIntent(payload, key)
 
       if (data.clientSecret) {
         setClientSecret(data.clientSecret)

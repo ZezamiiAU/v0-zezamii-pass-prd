@@ -17,7 +17,7 @@ export type PaymentWithPass = Payment & {
   pass: any
 }
 
-async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay = 100): Promise<T> {
+async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 2, initialDelay = 100): Promise<T> {
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
