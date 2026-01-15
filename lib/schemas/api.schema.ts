@@ -71,7 +71,7 @@ export const sessionQuerySchema = z
   })
   .refine((data) => data.session_id || data.payment_intent, {
     message: "Either session_id or payment_intent is required",
-    path: ["session_id"], // Show error on session_id field
+    path: ["session_id"],
   })
 export type SessionQuery = z.infer<typeof sessionQuerySchema>
 
@@ -96,6 +96,7 @@ export const unlockJwtQuerySchema = z.object({
 export type UnlockJwtQuery = z.infer<typeof unlockJwtQuerySchema>
 
 // ============================================================================
+// CHECKOUT & STRIPE SCHEMAS
 // ============================================================================
 
 export const checkoutSchema = z.object({
@@ -117,7 +118,7 @@ export const stripeMetaSchema = z.object({
   product: z.enum(["pass", "room"]),
   pass_id: z.string().uuid().optional(),
   access_point_id: z.string().uuid().optional(),
-  gate_id: z.string().uuid().optional(), // @deprecated - use access_point_id
+  gate_id: z.string().uuid().optional(),
   variant: z.string().optional(),
   customer_email: z.string().optional(),
   customer_phone: z.string().optional(),

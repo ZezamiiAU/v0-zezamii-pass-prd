@@ -65,7 +65,7 @@
     "jose": "latest",
     "lucide-react": "^0.454.0",
     "luxon": "latest",
-    "next": "15.5.7",
+    "next": "15.5.9",
     "next-themes": "latest",
     "path": "latest",
     "pino": "latest",

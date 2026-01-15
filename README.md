@@ -12,11 +12,40 @@ A Progressive Web App (PWA) for purchasing and managing digital access passes wi
 
 ## Tech Stack
 
-- **Framework**: Next.js 15.5.7 (App Router)
+- **Framework**: Next.js 15.5.9 (App Router)
 - **Database**: Supabase (PostgreSQL)
 - **Payments**: Stripe
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Wallet**: Google Wallet API
+
+## Setup
+
+### Database Migrations
+
+Run database migrations in order from `scripts/` directory:
+
+\`\`\`bash
+# Connect to your Supabase project
+psql $DATABASE_URL
+
+# Run migrations in order
+\i scripts/001_seed_pass_types.sql
+\i scripts/002_add_processed_webhooks.sql
+# ... continue with remaining migrations
+
+# CRITICAL: Grant schema access for public pass purchases
+\i scripts/022_fix_pass_schema_access_complete.sql
+\`\`\`
+
+**Important**: Script `022_fix_pass_schema_access_complete.sql` is required for `/ap/[accessPointId]` legacy routes and public pass type queries. Without it, you'll get error `42501: permission denied for schema pass`.
+
+### Supabase Configuration
+
+In your Supabase project settings, ensure the API is configured to expose the `pass` schema:
+
+1. Go to Settings → API
+2. Under "Exposed schemas", ensure `pass` is included alongside `public`
+3. Save changes
 
 ## Environment Variables
 
@@ -55,12 +84,15 @@ components/
 
 lib/
 ├── db/                    # Database queries
+├── server/                # Server-side utilities
+│   └── access-points.ts   # Access point slug resolution
 ├── config/                # Configuration
 ├── notifications/         # Email templates
 └── webhooks/              # Webhook handling
 
 scripts/
-├── 001-017_*.sql         # Database migrations
+├── 001-021_*.sql         # Database migrations
+├── 022_fix_pass_schema_access_complete.sql  # Schema permissions (CRITICAL)
 └── node/                  # Node.js scripts
 \`\`\`
 
@@ -71,3 +103,17 @@ Deployed on Vercel: [zezamii-pass.vercel.app](https://zezamii-pass.vercel.app)
 ## License
 
 Proprietary - Zezamii Pty Ltd
+
+## Troubleshooting
+
+### Error: "permission denied for schema pass"
+
+This error occurs when PostgreSQL roles lack USAGE grants on the `pass` schema. Even `service_role` needs explicit schema-level permissions.
+
+**Solution**: Run migration script `scripts/022_fix_pass_schema_access_complete.sql`
+
+### /ap/[UUID] routes return 404
+
+Legacy UUID-based routes redirect to slug-based URLs. Ensure:
+1. The device has an active entry in `pass.accesspoint_slugs`
+2. Schema permissions are granted (see above)
