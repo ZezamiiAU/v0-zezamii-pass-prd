@@ -8,6 +8,16 @@ import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
+interface PassType {
+  id: string
+  name: string
+  price_cents: number
+  currency: string
+  description?: string
+  duration_minutes?: number
+  code?: string
+}
+
 interface AccessPointData {
   organizationId: string
   organizationName: string
@@ -17,13 +27,15 @@ interface AccessPointData {
   deviceId: string
   deviceName: string
   deviceDescription?: string | null
+  passTypes?: PassType[]
 }
 
 export default function DevicePassPage() {
   const [showPurchaseForm, setShowPurchaseForm] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [accessPointData, setAccessPointData] = useState<AccessPointData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [accessPointData, setAccessPointData] = useState(null)
+  const [error, setError] = useState(null)
+  const [selectedPassType, setSelectedPassType] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -38,6 +50,9 @@ export default function DevicePassPage() {
 
         const data = await response.json()
         setAccessPointData(data)
+        if (data.passTypes && data.passTypes.length > 0) {
+          setSelectedPassType(data.passTypes[0])
+        }
         setLoading(false)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
@@ -47,6 +62,14 @@ export default function DevicePassPage() {
 
     fetchAccessPoint()
   }, [])
+
+  const formatPrice = (priceCents, currency = "AUD") => {
+    const price = priceCents / 100
+    return new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: currency,
+    }).format(price)
+  }
 
   if (loading) {
     return (
@@ -71,6 +94,8 @@ export default function DevicePassPage() {
   }
 
   if (!showPurchaseForm) {
+    const passTypes = accessPointData.passTypes || []
+
     return (
       <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
@@ -85,9 +110,35 @@ export default function DevicePassPage() {
                 <p className="text-base text-gray-600">Lake Wyangan</p>
               </div>
 
-              <div className="text-center">
-                <p className="text-xl font-semibold text-[#002147]">Day Pass — $25</p>
-              </div>
+              {passTypes.length > 0 ? (
+                <div className="space-y-3">
+                  {passTypes.map((passType) => (
+                    <button
+                      key={passType.id}
+                      onClick={() => setSelectedPassType(passType)}
+                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                        selectedPassType?.id === passType.id
+                          ? "border-[#002147] bg-[#002147]/5"
+                          : "border-gray-200 hover:border-[#002147]/50"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold text-[#002147]">{passType.name}</p>
+                          {passType.description && <p className="text-sm text-gray-500 mt-1">{passType.description}</p>}
+                        </div>
+                        <p className="text-lg font-bold text-[#002147]">
+                          {formatPrice(passType.price_cents, passType.currency)}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-xl font-semibold text-[#002147]">Day Pass — $25</p>
+                </div>
+              )}
 
               <div className="flex justify-center py-2">
                 <img src="/images/griffith-boat-club-logo.jpg" alt="Griffith Boat Club" className="h-28 w-auto" />
@@ -96,7 +147,8 @@ export default function DevicePassPage() {
               <div className="pt-2">
                 <Button
                   onClick={() => setShowPurchaseForm(true)}
-                  className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  disabled={passTypes.length > 0 && !selectedPassType}
+                  className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   size="lg"
                 >
                   Buy Pass
@@ -124,6 +176,7 @@ export default function DevicePassPage() {
         deviceId={accessPointData.deviceId}
         deviceName={accessPointData.deviceName}
         deviceDescription={accessPointData.deviceDescription}
+        selectedPassType={selectedPassType}
       />
     </main>
   )
