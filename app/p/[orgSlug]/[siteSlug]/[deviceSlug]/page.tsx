@@ -90,52 +90,41 @@ export default function DevicePassPage() {
         `}</style>
 
         <div className="w-full max-w-md fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 space-y-6">
-            <div className="flex justify-center">
-              <Image
-                src="https://griffithboatclub.com/wp-content/uploads/2024/03/cropped-GBC-LOGO-3-1.png"
-                alt="Griffith Boat Club"
-                width={200}
-                height={80}
-                priority
-                className="object-contain"
-              />
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div className="w-full h-40 relative">
+              <Image src="/images/image.png" alt="Lake Wyangan" fill className="object-cover" priority />
             </div>
 
-            <div className="text-center space-y-2">
-              <h1 className="text-4xl font-bold text-[#002147]">Day Pass</h1>
-              <p className="text-base text-gray-600">
-                {accessPointData.deviceName} — {accessPointData.siteName}
-              </p>
-            </div>
+            <div className="p-6 pb-6 space-y-4">
+              <div className="text-center space-y-1">
+                <h1 className="text-2xl font-bold text-[#002147]">Griffith Boat Club</h1>
+                <p className="text-base text-gray-600">Lake Wyangan</p>
+              </div>
 
-            <div className="flex justify-center py-2">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-slate-400"
-              >
-                <path
-                  d="M12 2C11.5 2 11 2.19 10.59 2.59L2.59 10.59C1.8 11.37 1.8 12.63 2.59 13.41C3.37 14.2 4.63 14.2 5.41 13.41L6 12.83V21C6 21.55 6.45 22 7 22H11V16H13V22H17C17.55 22 18 21.55 18 21V12.83L18.59 13.41C19.37 14.2 20.63 14.2 21.41 13.41C22.2 12.63 22.2 11.37 21.41 10.59L13.41 2.59C13 2.19 12.5 2 12 2Z"
-                  fill="currentColor"
-                  opacity="0.6"
+              <div className="text-center">
+                <p className="text-xl font-semibold text-[#002147]">Day Pass — $25</p>
+              </div>
+
+              <div className="flex flex-col items-center gap-4" style={{ minHeight: "120px" }}>
+                <Image
+                  src="https://griffithboatclub.com.au/wp-content/uploads/2023/02/logo.png"
+                  alt="Griffith Boat Club"
+                  width={144}
+                  height={144}
+                  priority
+                  className="object-contain h-36"
                 />
-              </svg>
+
+                <Button
+                  onClick={() => setShowPurchaseForm(true)}
+                  className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  size="lg"
+                >
+                  Buy Pass
+                </Button>
+              </div>
             </div>
-
-            <Button
-              onClick={() => setShowPurchaseForm(true)}
-              className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
-              size="lg"
-            >
-              Buy Pass
-            </Button>
           </div>
-
-          <footer className="text-center text-gray-300 text-sm mt-6">Powered by Zezamii</footer>
         </div>
       </main>
     )

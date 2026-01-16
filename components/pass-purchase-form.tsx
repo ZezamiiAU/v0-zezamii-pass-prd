@@ -52,9 +52,9 @@ export function PassPurchaseForm({
 }: PassPurchaseFormProps) {
   const [passTypes, setPassTypes] = useState<PassType[]>([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState("")
-  const [vehiclePlate, setVehiclePlate] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
+  const [contactMethod, setContactMethod] = useState("email")
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
@@ -103,8 +103,13 @@ export function PassPurchaseForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!email || !email.trim()) {
+    if (contactMethod === "email" && (!email || !email.trim())) {
       alert("Please enter your email address")
+      return
+    }
+
+    if (contactMethod === "mobile" && (!phone || !phone.trim())) {
+      alert("Please enter your mobile number")
       return
     }
 
@@ -122,9 +127,9 @@ export function PassPurchaseForm({
       const payload = {
         accessPointId: deviceId,
         passTypeId: selectedPassTypeId,
-        plate: vehiclePlate || "",
-        email: email || "",
-        phone: phone || "",
+        plate: "",
+        email: contactMethod === "email" ? email : "",
+        phone: contactMethod === "mobile" ? phone : "",
       }
       console.log("[v0] Sending payment intent request:", payload)
 
@@ -191,7 +196,10 @@ export function PassPurchaseForm({
           )}
 
           <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <PaymentForm returnUrl={`${window.location.origin}/success`} customerEmail={email} />
+            <PaymentForm
+              returnUrl={`${window.location.origin}/success`}
+              customerEmail={contactMethod === "email" ? email : ""}
+            />
           </Elements>
         </CardContent>
       </Card>
@@ -227,49 +235,62 @@ export function PassPurchaseForm({
           </div>
 
           <div className="space-y-0.5">
-            <Label htmlFor="email" className="text-sm">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-7 text-sm"
-              required
-            />
-            <p className="text-xs text-muted-foreground leading-tight">Receive your pass details via email</p>
+            <Label className="text-sm">Receive pass via</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={contactMethod === "email" ? "default" : "outline"}
+                size="sm"
+                className={`flex-1 h-7 text-sm ${contactMethod === "email" ? "bg-[#002147] text-white" : ""}`}
+                onClick={() => setContactMethod("email")}
+              >
+                Email
+              </Button>
+              <Button
+                type="button"
+                variant={contactMethod === "mobile" ? "default" : "outline"}
+                size="sm"
+                className={`flex-1 h-7 text-sm ${contactMethod === "mobile" ? "bg-[#002147] text-white" : ""}`}
+                onClick={() => setContactMethod("mobile")}
+              >
+                Mobile (SMS)
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-0.5">
-            <Label htmlFor="vehiclePlate" className="text-sm">
-              Vehicle Rego (Optional)
-            </Label>
-            <Input
-              id="vehiclePlate"
-              type="text"
-              placeholder="ABC-123"
-              value={vehiclePlate}
-              onChange={(e) => setVehiclePlate(e.target.value)}
-              className="uppercase h-7 text-sm"
-            />
-          </div>
-
-          <div className="space-y-0.5">
-            <Label htmlFor="phone" className="text-sm">
-              Mobile (Optional)
-            </Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="0412 345 678"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="h-7 text-sm"
-            />
-            <p className="text-xs text-muted-foreground leading-tight">Share pass via SMS from success page</p>
-          </div>
+          {contactMethod === "email" ? (
+            <div className="space-y-0.5">
+              <Label htmlFor="email" className="text-sm">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-7 text-sm"
+                required
+              />
+              <p className="text-xs text-muted-foreground leading-tight">Your pass will be sent to this email</p>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              <Label htmlFor="phone" className="text-sm">
+                Mobile Number
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="0412 345 678"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-7 text-sm"
+                required
+              />
+              <p className="text-xs text-muted-foreground leading-tight">Your pass will be sent via SMS</p>
+            </div>
+          )}
 
           {selectedPassType && (
             <Card className="bg-muted/50 mt-1">
