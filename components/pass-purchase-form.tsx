@@ -38,6 +38,7 @@ interface PassPurchaseFormProps {
   deviceId: string
   deviceName?: string // renamed from accesspointName
   deviceDescription?: string | null // added for branding
+  preSelectedPassTypeId?: string // Added preSelectedPassTypeId prop to allow pre-selecting a pass type from the landing page
 }
 
 export function PassPurchaseForm({
@@ -49,6 +50,7 @@ export function PassPurchaseForm({
   deviceId,
   deviceName, // renamed from accesspointName
   deviceDescription, // added
+  preSelectedPassTypeId, // Destructure new prop
 }: PassPurchaseFormProps) {
   const [passTypes, setPassTypes] = useState<PassType[]>([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState("")
@@ -73,7 +75,9 @@ export function PassPurchaseForm({
         if (res.ok) {
           const data = await res.json()
           setPassTypes(data)
-          if (data.length > 0) {
+          if (preSelectedPassTypeId && data.some((pt: PassType) => pt.id === preSelectedPassTypeId)) {
+            setSelectedPassTypeId(preSelectedPassTypeId)
+          } else if (data.length > 0) {
             setSelectedPassTypeId(data[0].id)
           }
         }
@@ -87,7 +91,7 @@ export function PassPurchaseForm({
     return () => {
       abortController.abort()
     }
-  }, [organizationId]) // dependency updated
+  }, [organizationId, preSelectedPassTypeId]) // Added preSelectedPassTypeId to dependencies
 
   useEffect(() => {
     clearPaymentAttempt()

@@ -35,6 +35,7 @@ export default function DevicePassPage() {
   const [loading, setLoading] = useState(true)
   const [accessPointData, setAccessPointData] = useState<AccessPointData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPassTypeId, setSelectedPassTypeId] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -92,6 +93,11 @@ export default function DevicePassPage() {
   if (!showPurchaseForm) {
     const passTypes = accessPointData.passTypes || []
 
+    const handlePassClick = (passTypeId: string) => {
+      setSelectedPassTypeId(passTypeId)
+      setShowPurchaseForm(true)
+    }
+
     return (
       <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
@@ -111,8 +117,8 @@ export default function DevicePassPage() {
                   {passTypes.map((passType) => (
                     <button
                       key={passType.id}
-                      onClick={() => console.log("Pass selected:", passType)}
-                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${"border-gray-200 hover:border-[#002147]/50"}`}
+                      onClick={() => handlePassClick(passType.id)}
+                      className="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left border-gray-200 hover:border-[#002147] hover:shadow-md cursor-pointer"
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -139,8 +145,7 @@ export default function DevicePassPage() {
               <div className="pt-2">
                 <Button
                   onClick={() => setShowPurchaseForm(true)}
-                  disabled={passTypes.length > 0 && !passTypes.some((passType) => passType.id)}
-                  className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
                   size="lg"
                 >
                   Buy Pass
@@ -168,6 +173,7 @@ export default function DevicePassPage() {
         deviceId={accessPointData.deviceId}
         deviceName={accessPointData.deviceName}
         deviceDescription={accessPointData.deviceDescription}
+        preSelectedPassTypeId={selectedPassTypeId || undefined}
       />
     </main>
   )
