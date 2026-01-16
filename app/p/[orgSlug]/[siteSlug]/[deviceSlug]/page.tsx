@@ -63,7 +63,7 @@ export default function DevicePassPage() {
     fetchAccessPoint()
   }, [])
 
-  const formatPrice = (priceCents, currency = "AUD") => {
+  const formatPrice = (priceCents: number, currency = "AUD"): string => {
     const price = priceCents / 100
     return new Intl.NumberFormat("en-AU", {
       style: "currency",
