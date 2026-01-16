@@ -12,6 +12,39 @@ export interface BackupPincode {
 }
 
 /**
+ * Get the current backup pincode for a specific org/site/device based on the current date
+ * Returns the pincode and fortnight number for use in fallback scenarios
+ */
+export async function getBackupPincode(
+  orgId: string,
+  siteId: string,
+  deviceId: string,
+): Promise<{ pincode: string; fortnight_number: number } | null> {
+  const supabase = await createClient()
+  const now = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from("backup_pincodes")
+    .select("pincode, fortnight_number")
+    .eq("org_id", orgId)
+    .eq("site_id", siteId)
+    .eq("device_id", deviceId)
+    .lte("period_start", now)
+    .gte("period_end", now)
+    .single()
+
+  if (error || !data) {
+    console.error("[BackupPincodes] Failed to get backup pincode:", error)
+    return null
+  }
+
+  return {
+    pincode: data.pincode,
+    fortnight_number: data.fortnight_number,
+  }
+}
+
+/**
  * Get the current backup pincode for a device based on the current date
  * Falls within the fortnight period (Jan 17, 2026 start, 14 days each)
  */
