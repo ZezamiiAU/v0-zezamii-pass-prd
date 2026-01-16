@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { createSchemaServiceClient } from "@/lib/supabase/server"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import logger from "@/lib/logger"
@@ -11,7 +11,7 @@ type RouteParams = {
   }>
 }
 
-export async function GET(request: Request, context: RouteParams) {
+export async function GET(request: NextRequest, context: RouteParams) {
   if (!rateLimit(request, 60, 60000)) {
     const headers = getRateLimitHeaders(request, 60)
     return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
