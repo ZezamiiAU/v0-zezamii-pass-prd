@@ -73,23 +73,7 @@ export default function DevicePassPage() {
   if (!showPurchaseForm) {
     return (
       <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
-        <style jsx>{`
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateY(10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          .fade-in {
-            animation: fadeIn 0.6s ease-out;
-          }
-        `}</style>
-
-        <div className="w-full max-w-md fade-in">
+        <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             <div className="w-full h-40 relative">
               <Image src="/images/image.png" alt="Lake Wyangan" fill className="object-cover" priority />
@@ -105,16 +89,11 @@ export default function DevicePassPage() {
                 <p className="text-xl font-semibold text-[#002147]">Day Pass — $25</p>
               </div>
 
-              <div className="flex flex-col items-center gap-4" style={{ minHeight: "120px" }}>
-                <Image
-                  src="https://griffithboatclub.com.au/wp-content/uploads/2023/02/logo.png"
-                  alt="Griffith Boat Club"
-                  width={144}
-                  height={144}
-                  priority
-                  className="object-contain h-36"
-                />
+              <div className="flex justify-center py-2">
+                <img src="/images/griffith-boat-club-logo.jpg" alt="Griffith Boat Club" className="h-28 w-auto" />
+              </div>
 
+              <div className="pt-2">
                 <Button
                   onClick={() => setShowPurchaseForm(true)}
                   className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
