@@ -134,7 +134,7 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
     departureDate: new Date(endsAt).toISOString().split("T")[0],
     lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
     guestName: customerName,
-    guestPhone: meta.data.customer_phone,
+    guestPhone: meta.data.customer_phone ?? "", // Normalize guestPhone to empty string if undefined
     guestEmail: customerEmail,
   })
 
@@ -270,7 +270,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     departureDate: new Date(endsAt).toISOString().split("T")[0],
     lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
     guestName: customerName,
-    guestPhone: meta.data.customer_phone,
+    guestPhone: meta.data.customer_phone ?? "", // Normalize guestPhone to empty string if undefined
     guestEmail: customerEmail,
   })
 
