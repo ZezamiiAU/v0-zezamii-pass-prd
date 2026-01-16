@@ -258,36 +258,36 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
   }
 
   return (
-    <div className="h-full flex items-center justify-center p-3 bg-brand-gradient">
-      <Card className="w-full max-w-md max-h-[80vh] overflow-auto">
-        <CardHeader className="text-center pb-2 pt-3">
+    <div className="min-h-screen flex items-center justify-center p-2 bg-brand-gradient">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center pb-1 pt-2">
           {paramsValidation.success ? (
             <>
-              <CardTitle className="text-2xl">Payment Successful!</CardTitle>
-              <CardDescription className="text-base">Your pass is being created</CardDescription>
+              <CardTitle className="text-xl">Payment Successful!</CardTitle>
+              <CardDescription className="text-sm">Your pass is being created</CardDescription>
             </>
           ) : (
-            <CardTitle className="text-2xl">Invalid Payment Details</CardTitle>
+            <CardTitle className="text-xl">Invalid Payment Details</CardTitle>
           )}
         </CardHeader>
-        <CardContent className="space-y-3 pb-3">
+        <CardContent className="space-y-2 pb-2">
           {isLoading && (
-            <div className="text-center py-6">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-              <p className="mt-3 text-sm text-muted-foreground">Loading your pass...</p>
+            <div className="text-center py-4">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+              <p className="mt-2 text-sm text-muted-foreground">Loading your pass...</p>
             </div>
           )}
 
           {error && (
             <Alert variant="destructive" className={isOffline ? "border-orange-500 bg-orange-50" : ""}>
               {isOffline ? <WifiOff className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-              <AlertDescription className={isOffline ? "text-orange-800 text-sm" : "text-sm"}>
+              <AlertDescription className={isOffline ? "text-orange-800 text-xs" : "text-xs"}>
                 {error}
                 {isOffline && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-2 w-full bg-transparent text-sm h-8"
+                    className="mt-1 w-full bg-transparent text-xs h-7"
                     onClick={() => window.location.reload()}
                   >
                     Retry when online
@@ -298,54 +298,49 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
           )}
 
           {passDetails && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {codeWarning && (
-                <Alert className="border-orange-500 bg-orange-50">
-                  <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  <AlertDescription className="text-orange-800 text-sm">
-                    Your pass is active but we couldn&apos;t retrieve your PIN. Please contact {supportEmail} with your
-                    pass details.
+                <Alert className="border-orange-500 bg-orange-50 py-1">
+                  <AlertTriangle className="h-3 w-3 text-orange-600" />
+                  <AlertDescription className="text-orange-800 text-xs">
+                    Your pass is active but we couldn&apos;t retrieve your PIN. Please contact {supportEmail}.
                   </AlertDescription>
                 </Alert>
               )}
 
-              <div className="bg-primary/10 p-4 rounded-lg text-center border-2 border-primary/20">
-                <p className="text-sm text-muted-foreground mb-2 font-medium">Your Access PIN</p>
-                <p className="text-5xl font-bold tracking-widest text-primary">{passDetails.code || "----"}</p>
-                {!passDetails.code && <p className="text-xs text-muted-foreground mt-2">Contact support for PIN</p>}
+              <div className="bg-primary/10 p-3 rounded-lg text-center border-2 border-primary/20">
+                <p className="text-xs text-muted-foreground mb-1 font-medium">Your Access PIN</p>
+                <p className="text-4xl font-bold tracking-widest text-primary">{passDetails.code || "----"}</p>
+                {!passDetails.code && <p className="text-xs text-muted-foreground mt-1">Contact support for PIN</p>}
               </div>
 
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between py-1 border-b">
+              <div className="space-y-0.5 text-xs">
+                <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Access Point:</span>
                   <span className="font-semibold">{passDetails.accessPointName}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b">
+                <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Pass Type:</span>
                   <span className="font-medium">{passDetails.passType}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b">
+                <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Valid From:</span>
-                  <span className="font-medium text-xs">
-                    {formatDateTime(passDetails.valid_from, passDetails.timezone)}
-                  </span>
+                  <span className="font-medium">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b">
+                <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Valid Until:</span>
-                  <span className="font-medium text-xs">
-                    {formatDateTime(passDetails.valid_to, passDetails.timezone)}
-                  </span>
+                  <span className="font-medium">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</span>
                 </div>
                 {passDetails.vehiclePlate && (
-                  <div className="flex justify-between py-1 border-b">
+                  <div className="flex justify-between py-0.5 border-b">
                     <span className="text-muted-foreground">Vehicle:</span>
                     <span className="font-medium">{passDetails.vehiclePlate}</span>
                   </div>
                 )}
               </div>
 
-              <Alert className="py-2">
-                <AlertDescription className="text-xs">
+              <Alert className="py-1.5">
+                <AlertDescription className="text-xs leading-tight">
                   <strong>Instructions:</strong>{" "}
                   {passDetails.code
                     ? `Enter this PIN at the keypad at ${passDetails.accessPointName} to gain access. Your pass is valid until ${formatDateTime(passDetails.valid_to, passDetails.timezone)}.`
@@ -353,20 +348,16 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                 </AlertDescription>
               </Alert>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {passDetails.code && (
-                  <>
-                    <Button variant="outline" onClick={handleShareSMS} className="w-full bg-transparent text-sm h-9">
-                      <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
-                      Share via SMS
-                    </Button>
-                  </>
+                  <Button variant="outline" onClick={handleShareSMS} className="w-full bg-transparent text-xs h-8">
+                    <MessageSquare className="mr-1 h-3 w-3" />
+                    Share via SMS
+                  </Button>
                 )}
-              </div>
 
-              <div className="pt-1">
                 <Button
-                  className="w-full h-9 text-base bg-brand text-white hover:opacity-90"
+                  className="w-full h-8 text-sm bg-brand text-white hover:opacity-90"
                   onClick={() => (window.location.href = "/")}
                 >
                   Done
@@ -379,13 +370,13 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
             <Collapsible open={isTechnicalDetailsOpen} onOpenChange={setIsTechnicalDetailsOpen}>
               <div className="bg-muted rounded-md border">
                 <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
-                    <p className="font-semibold text-muted-foreground text-sm">Technical Details</p>
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between p-2 hover:bg-muted/50 transition-colors">
+                    <p className="font-semibold text-muted-foreground text-xs">Technical Details</p>
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="h-6 text-xs px-2"
                         onClick={(e) => {
                           e.stopPropagation()
                           copyErrorDetails()
@@ -395,18 +386,18 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                         {copiedToClipboard ? "Copied!" : "Copy"}
                       </Button>
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
+                        className={`h-3 w-3 transition-transform ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
                       />
                     </div>
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-3 pb-3 space-y-2">
-                    <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-2 rounded border">
+                  <div className="px-2 pb-2 space-y-1">
+                    <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-1.5 rounded border max-h-24 overflow-y-auto">
                       {errorDetails}
                     </pre>
                     <p className="text-muted-foreground text-xs">
-                      Please copy these details and send them to <strong>{supportEmail}</strong>
+                      Copy these details and send to <strong>{supportEmail}</strong>
                     </p>
                   </div>
                 </CollapsibleContent>
