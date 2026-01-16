@@ -35,7 +35,6 @@ export default function DevicePassPage() {
   const [loading, setLoading] = useState(true)
   const [accessPointData, setAccessPointData] = useState<AccessPointData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPassType, setSelectedPassType] = useState<PassType | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -50,9 +49,6 @@ export default function DevicePassPage() {
 
         const data = await response.json()
         setAccessPointData(data)
-        if (data.passTypes && data.passTypes.length > 0) {
-          setSelectedPassType(data.passTypes[0])
-        }
         setLoading(false)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
@@ -115,12 +111,8 @@ export default function DevicePassPage() {
                   {passTypes.map((passType) => (
                     <button
                       key={passType.id}
-                      onClick={() => setSelectedPassType(passType)}
-                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
-                        selectedPassType?.id === passType.id
-                          ? "border-[#002147] bg-[#002147]/5"
-                          : "border-gray-200 hover:border-[#002147]/50"
-                      }`}
+                      onClick={() => console.log("Pass selected:", passType)}
+                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${"border-gray-200 hover:border-[#002147]/50"}`}
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -147,7 +139,7 @@ export default function DevicePassPage() {
               <div className="pt-2">
                 <Button
                   onClick={() => setShowPurchaseForm(true)}
-                  disabled={passTypes.length > 0 && !selectedPassType}
+                  disabled={passTypes.length > 0 && !passTypes.some((passType) => passType.id)}
                   className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   size="lg"
                 >
@@ -176,7 +168,6 @@ export default function DevicePassPage() {
         deviceId={accessPointData.deviceId}
         deviceName={accessPointData.deviceName}
         deviceDescription={accessPointData.deviceDescription}
-        selectedPassType={selectedPassType}
       />
     </main>
   )
