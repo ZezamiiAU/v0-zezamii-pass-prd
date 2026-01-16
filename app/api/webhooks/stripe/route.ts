@@ -132,10 +132,14 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
     reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
     arrivalDate: new Date(startsAt).toISOString().split("T")[0],
     departureDate: new Date(endsAt).toISOString().split("T")[0],
-    lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
-    guestName: customerName,
-    guestPhone: meta.data.customer_phone ?? "", // Normalize guestPhone to empty string if undefined
+    guestId: customerEmail, // Will be converted to UUID by generateGuestId if needed
+    guestFirstName: customerName,
+    guestLastName: customerEmail,
     guestEmail: customerEmail,
+    guestPhone: meta.data.customer_phone ?? "",
+    roomId: meta.data.access_point_id || meta.data.gate_id || "default-device",
+    roomName: `${meta.data.org_slug}/site/device`,
+    status: "Unconfirmed",
   })
 
   let pinCode = null
@@ -268,10 +272,14 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
     arrivalDate: new Date(startsAt).toISOString().split("T")[0],
     departureDate: new Date(endsAt).toISOString().split("T")[0],
-    lockId: meta.data.access_point_id || meta.data.gate_id || "default-lock",
-    guestName: customerName,
-    guestPhone: meta.data.customer_phone ?? "", // Normalize guestPhone to empty string if undefined
+    guestId: customerEmail, // Will be converted to UUID by generateGuestId if needed
+    guestFirstName: customerName,
+    guestLastName: customerEmail,
     guestEmail: customerEmail,
+    guestPhone: meta.data.customer_phone ?? "",
+    roomId: meta.data.access_point_id || meta.data.gate_id || "default-device",
+    roomName: `${meta.data.org_slug}/site/device`,
+    status: "Unconfirmed",
   })
 
   let pinCode = null
