@@ -54,6 +54,7 @@ export function PassPurchaseForm({
 }: PassPurchaseFormProps) {
   const [passTypes, setPassTypes] = useState<PassType[]>([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
+  const [numberOfDays, setNumberOfDays] = useState(1)
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [contactMethod, setContactMethod] = useState("email")
@@ -110,10 +111,20 @@ export function PassPurchaseForm({
 
   const selectedPassType = passTypes.find((pt) => pt.id === selectedPassTypeId)
 
+  const isMultiDayPass = selectedPassType?.name?.toLowerCase().includes("camping")
+
+  const totalPriceCents = selectedPassType ? selectedPassType.price_cents * (isMultiDayPass ? numberOfDays : 1) : 0
+
   const currency = selectedPassType?.currency?.toUpperCase() || "AUD"
   const formatPrice = (cents: number) => {
     return `$${(cents / 100).toFixed(2)} ${currency}`
   }
+
+  useEffect(() => {
+    if (!isMultiDayPass) {
+      setNumberOfDays(1)
+    }
+  }, [selectedPassTypeId, isMultiDayPass])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -145,6 +156,7 @@ export function PassPurchaseForm({
         plate: "",
         email: contactMethod === "email" ? email : "",
         phone: contactMethod === "mobile" ? phone : "",
+        numberOfDays: isMultiDayPass ? numberOfDays : 1,
       }
       console.log("[v0] Sending payment intent request:", payload)
 
@@ -185,12 +197,22 @@ export function PassPurchaseForm({
                   <span className="text-muted-foreground">Pass Type:</span>
                   <span className="font-medium">{selectedPassType.name}</span>
                 </div>
+                {isMultiDayPass && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Number of Days:</span>
+                    <span className="font-medium">
+                      {numberOfDays} {numberOfDays === 1 ? "day" : "days"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Duration:</span>
                   <span className="font-medium">
-                    {selectedPassType.duration_minutes >= 60
-                      ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
-                      : `${selectedPassType.duration_minutes} minutes`}
+                    {isMultiDayPass
+                      ? `${numberOfDays} ${numberOfDays === 1 ? "day" : "days"}`
+                      : selectedPassType.duration_minutes >= 60
+                        ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
+                        : `${selectedPassType.duration_minutes} minutes`}
                   </span>
                 </div>
                 {selectedPassType.description && (
@@ -199,10 +221,18 @@ export function PassPurchaseForm({
                     <span className="font-medium text-xs">{selectedPassType.description}</span>
                   </div>
                 )}
+                {isMultiDayPass && numberOfDays > 1 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Price:</span>
+                    <span className="font-medium">
+                      {formatPrice(selectedPassType.price_cents)} × {numberOfDays} days
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-0.5 border-t text-sm">
                   <span className="font-semibold">Total:</span>
                   <span className="font-semibold">
-                    {formatPrice(selectedPassType.price_cents)}
+                    {formatPrice(totalPriceCents)}
                     <span className="text-xs text-muted-foreground ml-1">(incl GST and fees)</span>
                   </span>
                 </div>
@@ -243,11 +273,38 @@ export function PassPurchaseForm({
                 {passTypes.map((pt) => (
                   <SelectItem key={pt.id} value={pt.id}>
                     {pt.name} - {formatPrice(pt.price_cents)}
+                    {pt.name?.toLowerCase().includes("camping") && " /day"}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {isMultiDayPass && (
+            <div className="space-y-0.5">
+              <Label htmlFor="numberOfDays" className="text-sm">
+                Number of Days
+              </Label>
+              <Select
+                value={numberOfDays.toString()}
+                onValueChange={(val) => setNumberOfDays(Number.parseInt(val, 10))}
+              >
+                <SelectTrigger id="numberOfDays" className="h-7 text-sm">
+                  <SelectValue placeholder="Select days" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map((days) => (
+                    <SelectItem key={days} value={days.toString()}>
+                      {days} {days === 1 ? "day" : "days"} - {formatPrice(selectedPassType!.price_cents * days)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground leading-tight">
+                {formatPrice(selectedPassType?.price_cents || 0)} per day
+              </p>
+            </div>
+          )}
 
           <div className="space-y-0.5">
             <Label className="text-sm">Receive pass via</Label>
@@ -317,12 +374,22 @@ export function PassPurchaseForm({
                   <span className="text-muted-foreground">Pass Type:</span>
                   <span className="font-medium">{selectedPassType.name}</span>
                 </div>
+                {isMultiDayPass && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Number of Days:</span>
+                    <span className="font-medium">
+                      {numberOfDays} {numberOfDays === 1 ? "day" : "days"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Duration:</span>
                   <span className="font-medium">
-                    {selectedPassType.duration_minutes >= 60
-                      ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
-                      : `${selectedPassType.duration_minutes} minutes`}
+                    {isMultiDayPass
+                      ? `${numberOfDays} ${numberOfDays === 1 ? "day" : "days"}`
+                      : selectedPassType.duration_minutes >= 60
+                        ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
+                        : `${selectedPassType.duration_minutes} minutes`}
                   </span>
                 </div>
                 {selectedPassType.description && (
@@ -331,10 +398,18 @@ export function PassPurchaseForm({
                     <span className="font-medium text-xs">{selectedPassType.description}</span>
                   </div>
                 )}
+                {isMultiDayPass && numberOfDays > 1 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Price:</span>
+                    <span className="font-medium">
+                      {formatPrice(selectedPassType.price_cents)} × {numberOfDays} days
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-0.5 border-t text-sm">
                   <span className="font-semibold">Total:</span>
                   <span className="font-semibold">
-                    {formatPrice(selectedPassType.price_cents)}
+                    {formatPrice(totalPriceCents)}
                     <span className="text-xs text-muted-foreground block">incl GST and fees</span>
                   </span>
                 </div>

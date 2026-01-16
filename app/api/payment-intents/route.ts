@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { accessPointId, passTypeId, email, plate, phone } = validation.data
+    const { accessPointId, passTypeId, email, plate, phone, numberOfDays = 1 } = validation.data
 
     const idempotencyKey = request.headers.get("x-idempotency-key") || undefined
 
@@ -142,12 +142,16 @@ export async function POST(request: NextRequest) {
     const now = new Date()
     const validFrom = now
 
-    let durationHours = 24
     const passCode = passType.code?.toLowerCase()
+    const isMultiDayPass = passCode === "camping" || passType.name?.toLowerCase().includes("camping")
 
-    if (passCode === "day" || passCode === "day-pass") {
+    let durationHours: number
+    if (isMultiDayPass) {
+      // Camping pass: 24 hours per day selected
+      durationHours = 24 * numberOfDays
+    } else if (passCode === "day" || passCode === "day-pass") {
       durationHours = 12
-    } else if (passCode === "camping") {
+    } else {
       durationHours = 24
     }
 
@@ -189,6 +193,8 @@ export async function POST(request: NextRequest) {
 
     const currency = passType.currency?.toLowerCase() || "aud"
 
+    const totalAmountCents = isMultiDayPass ? passType.price_cents * numberOfDays : passType.price_cents
+
     await events.from("outbox").insert({
       topic: "pass.pass_paid.v1",
       payload: {
@@ -208,8 +214,9 @@ export async function POST(request: NextRequest) {
         provider: "stripe",
         provider_session_id: null,
         provider_intent_id: null,
-        amount_cents: passType.price_cents,
+        amount_cents: totalAmountCents,
         currency,
+        number_of_days: isMultiDayPass ? numberOfDays : 1,
         occurred_at: new Date().toISOString(),
       },
     })
@@ -218,7 +225,7 @@ export async function POST(request: NextRequest) {
 
     const paymentIntent = await stripe.paymentIntents.create(
       {
-        amount: passType.price_cents,
+        amount: totalAmountCents,
         currency,
         automatic_payment_methods: {
           enabled: true,
@@ -233,6 +240,7 @@ export async function POST(request: NextRequest) {
           customer_email: email || "",
           customer_phone: phone || "",
           customer_plate: plate || "",
+          number_of_days: String(isMultiDayPass ? numberOfDays : 1),
         },
       },
       idempotencyKey ? { idempotencyKey } : undefined,
@@ -241,12 +249,15 @@ export async function POST(request: NextRequest) {
     await createPayment({
       passId: pass.id,
       stripePaymentIntent: paymentIntent.id,
-      amountCents: passType.price_cents,
+      amountCents: totalAmountCents,
       currency,
       status: "pending",
     })
 
-    logger.info({ passId: pass.id, paymentIntentId: paymentIntent.id }, "Payment intent created")
+    logger.info(
+      { passId: pass.id, paymentIntentId: paymentIntent.id, numberOfDays, totalAmountCents },
+      "Payment intent created",
+    )
     return NextResponse.json({ clientSecret: paymentIntent.client_secret }, { headers: corsHeaders })
   } catch (error) {
     logger.error(

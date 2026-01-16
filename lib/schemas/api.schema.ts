@@ -115,6 +115,7 @@ export const checkoutSchema = z.object({
     .or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
   baseUrl: z.string().url("Invalid base URL").optional(),
+  numberOfDays: z.number().int().min(1).max(28).optional().default(1),
 })
 export type CheckoutInput = z.infer<typeof checkoutSchema>
 
