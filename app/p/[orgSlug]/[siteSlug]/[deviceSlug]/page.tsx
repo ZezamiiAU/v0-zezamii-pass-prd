@@ -33,9 +33,9 @@ interface AccessPointData {
 export default function DevicePassPage() {
   const [showPurchaseForm, setShowPurchaseForm] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [accessPointData, setAccessPointData] = useState(null)
+  const [accessPointData, setAccessPointData] = useState<AccessPointData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPassType, setSelectedPassType] = useState(null)
+  const [selectedPassType, setSelectedPassType] = useState<PassType | null>(null)
   const router = useRouter()
 
   useEffect(() => {
