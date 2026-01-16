@@ -51,23 +51,23 @@ export async function GET(request: NextRequest) {
     const supabase = createServiceClient()
 
     const { data: pass, error } = await supabase
-      .from("passes")
+      .from("pass.passes")
       .select(
         `
         id,
-        lock_code,
+        lock_codes!inner ( code ),
         valid_from,
         valid_to,
         created_at,
-        device:devices ( id, name ),
-        pass_type:pass_types ( id, name )
+        devices!inner ( id, name ),
+        pass_types!inner ( id, name )
       `,
       )
       .eq("id", passId)
       .single()
 
     if (error || !pass) {
-      logger.error({ error, passId }, "Pass not found")
+      logger.error({ err: error, passId }, "Pass not found")
       return NextResponse.json({ error: "Pass not found" }, { status: 404 })
     }
 
@@ -103,9 +103,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const pinCode = pass.lock_code?.[0]?.code || "N/A"
-    const accessPointName = pass.device?.[0]?.name || "Entry Access Point"
-    const passTypeName = pass.pass_type?.[0]?.name || "Day Pass"
+    const pinCode = pass.lock_codes?.[0]?.code || "N/A"
+    const accessPointName = pass.devices?.[0]?.name || "Entry Access Point"
+    const passTypeName = pass.pass_types?.[0]?.name || "Day Pass"
 
     const instructions = `Enter this PIN at the keypad at ${accessPointName} to gain access. Your pass is valid until ${fmt(
       pass.valid_to ?? undefined,
@@ -257,7 +257,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ url: saveUrl, token })
   } catch (error) {
-    logger.error({ error, passId }, "Google Wallet pass generation error")
+    logger.error(
+      { err: error instanceof Error ? error : new Error(String(error)), passId },
+      "Google Wallet pass generation error",
+    )
     return NextResponse.json({ error: "Failed to generate Google Wallet pass" }, { status: 500 })
   }
 }

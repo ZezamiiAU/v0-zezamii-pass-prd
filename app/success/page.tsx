@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
 import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown } from "lucide-react"
-import Image from "next/image"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface PassDetails {
@@ -250,46 +249,6 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
     window.location.href = smsUrl
   }
 
-  const handleAddToGoogleWallet = async () => {
-    if (!passDetails) return
-
-    try {
-      const userId = (passDetails.device_id || "").toLowerCase().replace(/[^a-z0-9_-]/g, "_")
-
-      const params = new URLSearchParams({
-        userId,
-        passType: passDetails.passType,
-        validFrom: passDetails.valid_from,
-        validTo: passDetails.valid_to,
-        code: passDetails.code || "",
-        vehiclePlate: passDetails.vehiclePlate || "",
-        deviceId: passDetails.device_id || "",
-      })
-
-      const response = await fetch(`/api/wallet/google?pass_id=${passDetails.pass_id}`)
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        console.error("[v0] Google Wallet error:", data)
-        alert(
-          data.error ||
-            "Unable to add to Google Wallet. Please ensure you're accessing from the correct domain and try again.",
-        )
-        return
-      }
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert("Unable to generate Google Wallet pass")
-      }
-    } catch (error) {
-      console.error("[v0] Google Wallet exception:", error instanceof Error ? error.message : String(error))
-      alert("Unable to add to Google Wallet at this time")
-    }
-  }
-
   const copyErrorDetails = () => {
     if (errorDetails) {
       navigator.clipboard.writeText(errorDetails)
@@ -401,20 +360,6 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                       <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
                       Share via SMS
                     </Button>
-                    <button
-                      onClick={handleAddToGoogleWallet}
-                      className="w-full flex items-center justify-center hover:opacity-90 transition-opacity"
-                      aria-label="Add to Google Wallet"
-                    >
-                      <Image
-                        src="/google-wallet-button.png"
-                        alt="Add to Google Wallet"
-                        width={260}
-                        height={60}
-                        className="h-12 w-auto"
-                        priority
-                      />
-                    </button>
                   </>
                 )}
               </div>
