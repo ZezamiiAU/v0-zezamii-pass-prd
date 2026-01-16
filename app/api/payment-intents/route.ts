@@ -10,6 +10,8 @@ import logger from "@/lib/logger"
 import { createCoreClient } from "@/lib/supabase/core-client"
 import { generateSecurePin } from "@/lib/pin-generator"
 import { createSchemaServiceClient } from "@/lib/supabase/server"
+import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
+import { getBackupPincode } from "@/lib/db/backup-pincodes"
 
 function getStripeClient() {
   const { STRIPE_SECRET_KEY } = ENV.server()
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     const { data: device, error: deviceError } = await coreClient
       .from("devices")
-      .select("id, site_id, floor_id")
+      .select("id, site_id, floor_id, slug")
       .eq("id", accessPointId)
       .single()
 
@@ -90,6 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     let siteId: string | null = device.site_id || null
+    let siteSlug: string | null = null
 
     if (!siteId && device.floor_id) {
       const { data: floor, error: floorError } = await coreClient
@@ -122,6 +125,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Access point configuration error" }, { status: 500, headers: corsHeaders })
     }
 
+    const { data: site } = await coreClient.from("sites").select("slug").eq("id", siteId).single()
+    siteSlug = site?.slug || null
+
     const passType = await getPassTypeById(passTypeId)
     if (!passType) {
       logger.warn({ passTypeId }, "Invalid pass type")
@@ -130,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     const { data: org, error: orgError } = await coreClient
       .from("organisations")
-      .select("slug")
+      .select("id, slug")
       .eq("id", passType.org_id)
       .single()
 
@@ -145,17 +151,15 @@ export async function POST(request: NextRequest) {
     const passCode = passType.code?.toLowerCase()
     const isMultiDayPass = passCode === "camping" || passType.name?.toLowerCase().includes("camping")
 
-    let durationHours: number
+    let validTo: Date
     if (isMultiDayPass) {
-      // Camping pass: 24 hours per day selected
-      durationHours = 24 * numberOfDays
-    } else if (passCode === "day" || passCode === "day-pass") {
-      durationHours = 12
+      validTo = new Date(now)
+      validTo.setDate(validTo.getDate() + numberOfDays - 1)
+      validTo.setHours(23, 59, 59, 999)
     } else {
-      durationHours = 24
+      validTo = new Date(now)
+      validTo.setHours(23, 59, 59, 999)
     }
-
-    const validTo = new Date(now.getTime() + durationHours * 60 * 60 * 1000)
 
     const pass = await createPass({
       passTypeId,
@@ -173,13 +177,53 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create pass record" }, { status: 500, headers: corsHeaders })
     }
 
-    const pin = generateSecurePin(6)
+    let pin: string
+    let pinProvider: "rooms" | "backup" | "zezamii" = "zezamii"
+
+    const slugPath = `${org.slug}/${siteSlug || "site"}/${device.slug || "device"}`
+
+    const roomsPayload = buildRoomsPayload({
+      siteId,
+      passId: pass.id,
+      validFrom: validFrom.toISOString(),
+      validTo: validTo.toISOString(),
+      email: email || undefined,
+      phone: phone || undefined,
+      deviceId: accessPointId,
+      slugPath,
+    })
+
+    const roomsResponse = await createRoomsReservation(passType.org_id, roomsPayload)
+
+    if (roomsResponse.success && roomsResponse.pincode) {
+      pin = roomsResponse.pincode
+      pinProvider = "rooms"
+      logger.info({ passId: pass.id, pin }, "Pincode received from Rooms webhook")
+    } else {
+      logger.warn(
+        { passId: pass.id, error: roomsResponse.error },
+        "Rooms webhook failed, attempting backup pincode lookup",
+      )
+
+      const backupPin = await getBackupPincode(passType.org_id, siteId, accessPointId)
+
+      if (backupPin) {
+        pin = backupPin.pincode
+        pinProvider = "backup"
+        logger.info({ passId: pass.id, pin, fortnight: backupPin.fortnight_number }, "Using backup pincode")
+      } else {
+        pin = generateSecurePin(6)
+        pinProvider = "zezamii"
+        logger.warn({ passId: pass.id }, "No backup pincode available, using generated pin")
+      }
+    }
+
     const passDb = createSchemaServiceClient("pass")
 
     const { error: lockCodeError } = await passDb.from("lock_codes").insert({
       pass_id: pass.id,
       code: pin,
-      provider: "zezamii",
+      provider: pinProvider,
       starts_at: validFrom.toISOString(),
       ends_at: validTo.toISOString(),
     })
@@ -205,6 +249,7 @@ export async function POST(request: NextRequest) {
         access_point_id: accessPointId,
         gate_id: accessPointId,
         pin_code: pin,
+        pin_provider: pinProvider,
         starts_at: validFrom.toISOString(),
         ends_at: validTo.toISOString(),
         customer_identifier: customerIdentifier,
@@ -241,6 +286,7 @@ export async function POST(request: NextRequest) {
           customer_phone: phone || "",
           customer_plate: plate || "",
           number_of_days: String(isMultiDayPass ? numberOfDays : 1),
+          pin_provider: pinProvider,
         },
       },
       idempotencyKey ? { idempotencyKey } : undefined,
@@ -255,7 +301,7 @@ export async function POST(request: NextRequest) {
     })
 
     logger.info(
-      { passId: pass.id, paymentIntentId: paymentIntent.id, numberOfDays, totalAmountCents },
+      { passId: pass.id, paymentIntentId: paymentIntent.id, numberOfDays, totalAmountCents, pinProvider },
       "Payment intent created",
     )
     return NextResponse.json({ clientSecret: paymentIntent.client_secret }, { headers: corsHeaders })

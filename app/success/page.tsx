@@ -358,7 +358,7 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
 
                 <Button
                   className="w-full h-8 text-sm bg-brand text-white hover:opacity-90"
-                  onClick={() => (window.location.href = "/")}
+                  onClick={() => window.location.replace(`/?t=${Date.now()}`)}
                 >
                   Done
                 </Button>

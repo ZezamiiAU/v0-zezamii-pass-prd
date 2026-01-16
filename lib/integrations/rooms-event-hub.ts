@@ -1,16 +1,20 @@
 import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
+import { v5 as uuidv5 } from "uuid"
 
 export interface RoomsReservationPayload {
-  propertyId: string
-  reservationId: string
-  arrivalDate: string
-  departureDate: string
-  lockId: string
-  guestId?: string
-  guestName?: string
-  guestPhone?: string
-  guestEmail?: string
+  propertyId: string // site_id
+  reservationId: string // pass_id (booking id)
+  arrivalDate: string // valid_from ISO format
+  departureDate: string // valid_to ISO format
+  guestId: string // UUID generated from email/phone
+  guestFirstName: string // "Guest" or empty
+  guestLastName: string // email address
+  guestEmail: string // email or empty
+  guestPhone: string // phone or empty
+  roomId: string // device_id
+  roomName: string // org-slug/site-slug/device-slug
+  status: string // "Unconfirmed"
 }
 
 export interface RoomsReservationResponse {
@@ -19,6 +23,46 @@ export interface RoomsReservationResponse {
   reservationId?: string
   error?: string
   statusCode?: number
+}
+
+const GUEST_ID_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8" // UUID v1 namespace
+
+/**
+ * Generate a deterministic UUID v5 from email or phone
+ */
+export function generateGuestId(emailOrPhone: string): string {
+  return uuidv5(emailOrPhone.toLowerCase().trim(), GUEST_ID_NAMESPACE)
+}
+
+/**
+ * Build the Rooms reservation payload from pass data
+ */
+export function buildRoomsPayload(params: {
+  siteId: string
+  passId: string
+  validFrom: string
+  validTo: string
+  email?: string
+  phone?: string
+  deviceId: string
+  slugPath: string // "org-slug/site-slug/device-slug"
+}): RoomsReservationPayload {
+  const contactInfo = params.email || params.phone || "unknown"
+
+  return {
+    propertyId: params.siteId,
+    reservationId: params.passId,
+    arrivalDate: params.validFrom,
+    departureDate: params.validTo,
+    guestId: generateGuestId(contactInfo),
+    guestFirstName: "Guest",
+    guestLastName: params.email || "",
+    guestEmail: params.email || "",
+    guestPhone: params.phone || "",
+    roomId: params.deviceId,
+    roomName: params.slugPath,
+    status: "Unconfirmed",
+  }
 }
 
 /**
@@ -51,7 +95,6 @@ export async function createRoomsReservation(
     }
 
     const config = integration.config as { base_url: string; webhook_path: string }
-    const credentials = integration.credentials as { reservation_id_prefix?: string }
 
     const url = `${config.base_url}${config.webhook_path}`
 
@@ -100,8 +143,8 @@ export async function createRoomsReservation(
       }
     }
 
-    // Extract pincode from response
-    const pincode = responseBody.pincode || responseBody.pin_code || responseBody.pin || responseBody.code
+    const pincode =
+      responseBody.pincode || responseBody.pin_code || responseBody.pin || responseBody.code || responseBody.accessCode
 
     if (!pincode) {
       logger.error({ organisationId, responseBody }, "Rooms API did not return pincode")
