@@ -53,7 +53,7 @@ export function PassPurchaseForm({
   preSelectedPassTypeId, // Destructure new prop
 }: PassPurchaseFormProps) {
   const [passTypes, setPassTypes] = useState<PassType[]>([])
-  const [selectedPassTypeId, setSelectedPassTypeId] = useState("")
+  const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [contactMethod, setContactMethod] = useState("email")
@@ -80,12 +80,14 @@ export function PassPurchaseForm({
             dataIds: data.map((pt: PassType) => pt.id),
             match: data.some((pt: PassType) => pt.id === preSelectedPassTypeId),
           })
-          if (preSelectedPassTypeId && data.some((pt: PassType) => pt.id === preSelectedPassTypeId)) {
-            console.log("[v0] Setting selectedPassTypeId to preSelectedPassTypeId:", preSelectedPassTypeId)
-            setSelectedPassTypeId(preSelectedPassTypeId)
-          } else if (data.length > 0) {
-            console.log("[v0] Fallback: setting selectedPassTypeId to first item:", data[0].id)
-            setSelectedPassTypeId(data[0].id)
+          if (!selectedPassTypeId && data.length > 0) {
+            if (preSelectedPassTypeId && data.some((pt: PassType) => pt.id === preSelectedPassTypeId)) {
+              console.log("[v0] Setting selectedPassTypeId to preSelectedPassTypeId:", preSelectedPassTypeId)
+              setSelectedPassTypeId(preSelectedPassTypeId)
+            } else {
+              console.log("[v0] Fallback: setting selectedPassTypeId to first item:", data[0].id)
+              setSelectedPassTypeId(data[0].id)
+            }
           }
         }
       } catch (error) {
@@ -98,11 +100,13 @@ export function PassPurchaseForm({
     return () => {
       abortController.abort()
     }
-  }, [organizationId, preSelectedPassTypeId]) // Added preSelectedPassTypeId to dependencies
+  }, [organizationId, preSelectedPassTypeId, selectedPassTypeId]) // Added preSelectedPassTypeId to dependencies
 
   useEffect(() => {
     clearPaymentAttempt()
   }, [])
+
+  console.log("[v0] Render - selectedPassTypeId:", selectedPassTypeId, "passTypes count:", passTypes.length)
 
   const selectedPassType = passTypes.find((pt) => pt.id === selectedPassTypeId)
 
