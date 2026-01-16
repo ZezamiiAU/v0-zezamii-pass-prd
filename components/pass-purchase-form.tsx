@@ -75,9 +75,16 @@ export function PassPurchaseForm({
         if (res.ok) {
           const data = await res.json()
           setPassTypes(data)
+          console.log("[v0] PassPurchaseForm loadPassTypes:", {
+            preSelectedPassTypeId,
+            dataIds: data.map((pt: PassType) => pt.id),
+            match: data.some((pt: PassType) => pt.id === preSelectedPassTypeId),
+          })
           if (preSelectedPassTypeId && data.some((pt: PassType) => pt.id === preSelectedPassTypeId)) {
+            console.log("[v0] Setting selectedPassTypeId to preSelectedPassTypeId:", preSelectedPassTypeId)
             setSelectedPassTypeId(preSelectedPassTypeId)
           } else if (data.length > 0) {
+            console.log("[v0] Fallback: setting selectedPassTypeId to first item:", data[0].id)
             setSelectedPassTypeId(data[0].id)
           }
         }
