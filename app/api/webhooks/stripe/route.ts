@@ -4,7 +4,7 @@ import { z } from "zod"
 import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { ENV } from "@/lib/env"
-import { createRoomsReservation } from "@/lib/integrations/rooms-event-hub"
+import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
 
 export const runtime = "nodejs"
 
@@ -13,14 +13,24 @@ const stripe = new Stripe(STRIPE_SECRET_KEY)
 
 const Meta = z.object({
   org_slug: z.string().min(1),
+  org_id: z.string().uuid().optional(),
   product: z.enum(["pass", "room"]),
   variant: z.string().optional(),
   access_point_id: z.string().uuid().optional(),
+  site_id: z.string().uuid().optional(),
+  site_slug: z.string().optional(),
+  device_slug: z.string().optional(),
   gate_id: z.string().uuid().optional(),
   pass_id: z.string().uuid().optional(),
   customer_email: z.string().optional(),
   customer_phone: z.string().optional(),
   customer_plate: z.string().optional(),
+  number_of_days: z.string().optional(),
+  return_url: z.string().optional(),
+  valid_from: z.string().optional(),
+  valid_to: z.string().optional(),
+  backup_pincode: z.string().optional(),
+  backup_pincode_fortnight: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -240,14 +250,10 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     .single()
 
   if (pass) {
-    const { error: activateError } = await passDb
-      .from("passes")
-      .update({ status: "active" })
-      .eq("id", pass.id)
-      .eq("schema", "pass")
+    const { error: activateError } = await passDb.from("passes").update({ status: "active" }).eq("id", pass.id)
 
     if (activateError) {
-      return NextResponse.json({ error: "Failed to activate pass", details: activateError.message }, { status: 500 })
+      logger.error({ passId: pass.id, activateError }, "Failed to activate pass")
     }
   }
 
@@ -262,58 +268,69 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     { onConflict: "stripe_payment_intent" },
   )
 
-  const startsAt = pass?.valid_from || new Date().toISOString()
-  const endsAt = pass?.valid_to || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-  const customerEmail = meta.data.customer_email || "guest@example.com"
-  const customerName = customerEmail.split("@")[0]
+  const startsAt = meta.data.valid_from || pass?.valid_from || new Date().toISOString()
+  const endsAt = meta.data.valid_to || pass?.valid_to || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
-  const roomsResult = await createRoomsReservation(org.id, {
-    propertyId: "z71owzgoNUxJtxOC",
-    reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
-    arrivalDate: new Date(startsAt).toISOString().split("T")[0],
-    departureDate: new Date(endsAt).toISOString().split("T")[0],
-    guestId: customerEmail, // Will be converted to UUID by generateGuestId if needed
-    guestFirstName: customerName,
-    guestLastName: customerEmail,
-    guestEmail: customerEmail,
-    guestPhone: meta.data.customer_phone ?? "",
-    roomId: meta.data.access_point_id || meta.data.gate_id || "default-device",
-    roomName: `${meta.data.org_slug}/site/device`,
-    status: "Unconfirmed",
+  const accessPointId = meta.data.access_point_id || meta.data.gate_id
+  const siteId = meta.data.site_id
+  const slugPath = `${meta.data.org_slug}/${meta.data.site_slug || "site"}/${meta.data.device_slug || "device"}`
+
+  let pinCode: string | null = null
+  let pinProvider: "rooms" | "backup" = "rooms"
+
+  const roomsPayload = buildRoomsPayload({
+    siteId: siteId || "",
+    passId: meta.data.pass_id!,
+    validFrom: startsAt,
+    validTo: endsAt,
+    email: meta.data.customer_email || undefined,
+    phone: meta.data.customer_phone || undefined,
+    deviceId: accessPointId || "",
+    slugPath,
   })
 
-  let pinCode = null
+  const roomsResult = await createRoomsReservation(org.id, roomsPayload)
 
   if (roomsResult.success && roomsResult.pincode) {
     pinCode = roomsResult.pincode
+    pinProvider = "rooms"
+    logger.info({ passId: meta.data.pass_id, pinCode }, "Pincode received from Rooms webhook")
+  } else {
+    logger.warn(
+      { passId: meta.data.pass_id, error: roomsResult.error },
+      "Rooms webhook failed, using cached backup pincode from metadata",
+    )
 
+    if (meta.data.backup_pincode) {
+      pinCode = meta.data.backup_pincode
+      pinProvider = "backup"
+      logger.info(
+        { passId: meta.data.pass_id, pinCode, fortnight: meta.data.backup_pincode_fortnight },
+        "Using cached backup pincode from payment metadata",
+      )
+    }
+  }
+
+  if (!pinCode) {
+    logger.error(
+      { passId: meta.data.pass_id },
+      "No pincode available - Rooms webhook failed and no backup pincode in metadata",
+    )
+  }
+
+  if (pinCode) {
     const { error: lockCodeError } = await passDb.from("lock_codes").insert({
       pass_id: meta.data.pass_id!,
       code: pinCode,
-      provider: "rooms",
-      provider_ref: roomsResult.reservationId,
+      provider: pinProvider,
       starts_at: startsAt,
       ends_at: endsAt,
     })
 
     if (lockCodeError) {
-      logger.error({ passId: meta.data.pass_id, lockCodeError }, "Failed to store Rooms pincode")
+      logger.error({ passId: meta.data.pass_id, lockCodeError }, "Failed to store pincode")
     }
-  } else {
-    logger.error({ passId: meta.data.pass_id, error: roomsResult.error }, "Rooms API failed, using fallback pincode")
 
-    const { data: existingCode } = await passDb
-      .from("lock_codes")
-      .select("code")
-      .eq("pass_id", meta.data.pass_id!)
-      .single()
-
-    if (existingCode) {
-      pinCode = existingCode.code
-    }
-  }
-
-  if (pinCode) {
     const customerIdentifier =
       meta.data.customer_email || meta.data.customer_phone || meta.data.customer_plate || "unknown"
 
@@ -325,9 +342,10 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
         product: meta.data.product,
         variant: meta.data.variant,
         pass_id: meta.data.pass_id,
-        access_point_id: meta.data.access_point_id || meta.data.gate_id,
+        access_point_id: accessPointId,
         gate_id: meta.data.gate_id,
         pin_code: pinCode,
+        pin_provider: pinProvider,
         starts_at: startsAt,
         ends_at: endsAt,
         customer_identifier: customerIdentifier,
@@ -338,12 +356,13 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
         provider_intent_id: intentId,
         amount_cents: amount,
         currency,
+        number_of_days: Number.parseInt(meta.data.number_of_days || "1", 10),
         occurred_at: new Date().toISOString(),
       },
     })
   }
 
-  logger.info({ passId: meta.data.pass_id, eventId: event.id }, "Payment intent succeeded")
+  logger.info({ passId: meta.data.pass_id, eventId: event.id, pinProvider }, "Payment intent succeeded")
   return NextResponse.json({ received: true })
 }
 

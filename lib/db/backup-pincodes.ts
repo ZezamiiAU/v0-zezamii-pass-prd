@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createSchemaServiceClient } from "@/lib/supabase/server"
 
 export interface BackupPincode {
   id: string
@@ -20,7 +20,7 @@ export async function getBackupPincode(
   siteId: string,
   deviceId: string,
 ): Promise<{ pincode: string; fortnight_number: number } | null> {
-  const supabase = await createClient()
+  const supabase = createSchemaServiceClient("pass")
   const now = new Date().toISOString()
 
   const { data, error } = await supabase
@@ -49,7 +49,7 @@ export async function getBackupPincode(
  * Falls within the fortnight period (Jan 17, 2026 start, 14 days each)
  */
 export async function getCurrentBackupPincode(deviceId: string): Promise<string | null> {
-  const supabase = await createClient()
+  const supabase = createSchemaServiceClient("pass")
   const now = new Date().toISOString()
 
   const { data, error } = await supabase
@@ -98,7 +98,7 @@ export async function getBackupPincodeByFortnight(deviceId: string, fortnightNum
     return null
   }
 
-  const supabase = await createClient()
+  const supabase = createSchemaServiceClient("pass")
 
   const { data, error } = await supabase
     .from("backup_pincodes")

@@ -8,8 +8,6 @@ import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { checkoutSchema } from "@/lib/validation"
 import logger from "@/lib/logger"
 import { createCoreClient } from "@/lib/supabase/core-client"
-import { createSchemaServiceClient } from "@/lib/supabase/server"
-import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
 import { getBackupPincode } from "@/lib/db/backup-pincodes"
 
 function getStripeClient() {
@@ -149,18 +147,13 @@ export async function POST(request: NextRequest) {
 
     let validTo: Date
     if (isMultiDayPass) {
-      // For multi-day passes: end of last day (today + numberOfDays - 1)
       validTo = new Date(now)
       validTo.setDate(validTo.getDate() + numberOfDays - 1)
     } else {
-      // For single-day passes: end of today
       validTo = new Date(now)
     }
 
     // Set to 11:59:59 PM Australian Eastern Time
-    // AEDT (UTC+11) in summer, AEST (UTC+10) in winter
-    // 23:59:59 AEDT = 12:59:59 UTC, 23:59:59 AEST = 13:59:59 UTC
-    // Using 12:59:59 UTC as a safe default (covers AEDT)
     validTo.setUTCHours(12, 59, 59, 999)
 
     const pass = await createPass({
@@ -179,96 +172,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create pass record" }, { status: 500, headers: corsHeaders })
     }
 
-    let pin: string
-    let pinProvider: "rooms" | "backup" | "zezamii" = "zezamii"
-
     const slugPath = `${org.slug}/${siteSlug || "site"}/${device.slug || "device"}`
 
-    const roomsPayload = buildRoomsPayload({
-      siteId,
-      passId: pass.id,
-      validFrom: validFrom.toISOString(),
-      validTo: validTo.toISOString(),
-      email: email || undefined,
-      phone: phone || undefined,
-      deviceId: accessPointId,
-      slugPath,
-    })
-
-    const roomsResponse = await createRoomsReservation(passType.org_id, roomsPayload)
-
-    if (roomsResponse.success && roomsResponse.pincode) {
-      pin = roomsResponse.pincode
-      pinProvider = "rooms"
-      logger.info({ passId: pass.id, pin }, "Pincode received from Rooms webhook")
-    } else {
-      logger.warn(
-        { passId: pass.id, error: roomsResponse.error },
-        "Rooms webhook failed, attempting backup pincode lookup",
-      )
-
+    let backupPincode = ""
+    let backupFortnightNumber = ""
+    try {
       const backupPin = await getBackupPincode(passType.org_id, siteId, accessPointId)
-
       if (backupPin) {
-        pin = backupPin.pincode
-        pinProvider = "backup"
-        logger.info({ passId: pass.id, pin, fortnight: backupPin.fortnight_number }, "Using backup pincode")
+        backupPincode = backupPin.pincode
+        backupFortnightNumber = String(backupPin.fortnight_number)
+        logger.info(
+          { backupPincode: backupPin.pincode, fortnight: backupPin.fortnight_number },
+          "Backup pincode cached for payment",
+        )
       } else {
-        logger.error({ passId: pass.id }, "No pincode available - both Rooms webhook and backup pincode failed")
-        return NextResponse.json(
-          { error: "Unable to generate access code. Please try again later or contact support." },
-          { status: 503, headers: corsHeaders },
+        logger.warn(
+          { orgId: passType.org_id, siteId, accessPointId },
+          "No backup pincode available - will rely on Rooms",
         )
       }
+    } catch (backupError) {
+      logger.warn({ error: backupError }, "Failed to fetch backup pincode - will rely on Rooms")
     }
-
-    const passDb = createSchemaServiceClient("pass")
-
-    const { error: lockCodeError } = await passDb.from("lock_codes").insert({
-      pass_id: pass.id,
-      code: pin,
-      provider: pinProvider,
-      starts_at: validFrom.toISOString(),
-      ends_at: validTo.toISOString(),
-    })
-
-    if (lockCodeError) {
-      logger.error({ passId: pass.id, error: lockCodeError }, "Failed to create lock code")
-    }
-
-    const customerIdentifier = email || phone || plate || "unknown"
-    const events = createSchemaServiceClient("events")
 
     const currency = passType.currency?.toLowerCase() || "aud"
-
     const totalAmountCents = isMultiDayPass ? passType.price_cents * numberOfDays : passType.price_cents
-
-    await events.from("outbox").insert({
-      topic: "pass.pass_paid.v1",
-      payload: {
-        org_id: passType.org_id,
-        product: "pass",
-        variant: passType.code || "standard",
-        pass_id: pass.id,
-        access_point_id: accessPointId,
-        gate_id: accessPointId,
-        pin_code: pin,
-        pin_provider: pinProvider,
-        starts_at: validFrom.toISOString(),
-        ends_at: validTo.toISOString(),
-        customer_identifier: customerIdentifier,
-        customer_email: email || null,
-        customer_phone: phone || null,
-        customer_plate: plate || null,
-        provider: "stripe",
-        provider_session_id: null,
-        provider_intent_id: null,
-        amount_cents: totalAmountCents,
-        currency,
-        number_of_days: isMultiDayPass ? numberOfDays : 1,
-        occurred_at: new Date().toISOString(),
-      },
-    })
 
     const stripe = getStripeClient()
 
@@ -281,17 +209,24 @@ export async function POST(request: NextRequest) {
         },
         metadata: {
           org_slug: org.slug,
+          org_id: passType.org_id,
           product: "pass",
           variant: passType.code || "standard",
           pass_id: pass.id,
           access_point_id: accessPointId,
+          site_id: siteId,
+          site_slug: siteSlug || "",
+          device_slug: device.slug || "",
           gate_id: accessPointId,
           customer_email: email || "",
           customer_phone: phone || "",
           customer_plate: plate || "",
           number_of_days: String(isMultiDayPass ? numberOfDays : 1),
-          pin_provider: pinProvider,
           return_url: `/p/${slugPath}`,
+          valid_from: validFrom.toISOString(),
+          valid_to: validTo.toISOString(),
+          backup_pincode: backupPincode,
+          backup_pincode_fortnight: backupFortnightNumber,
         },
       },
       idempotencyKey ? { idempotencyKey } : undefined,
@@ -306,8 +241,8 @@ export async function POST(request: NextRequest) {
     })
 
     logger.info(
-      { passId: pass.id, paymentIntentId: paymentIntent.id, numberOfDays, totalAmountCents, pinProvider },
-      "Payment intent created",
+      { passId: pass.id, paymentIntentId: paymentIntent.id, numberOfDays, totalAmountCents },
+      "Payment intent created - pincode will be generated after payment succeeds",
     )
     return NextResponse.json({ clientSecret: paymentIntent.client_secret }, { headers: corsHeaders })
   } catch (error) {
