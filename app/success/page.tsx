@@ -21,6 +21,7 @@ interface PassDetails {
   passType: string
   vehiclePlate: string
   device_id: string
+  returnUrl?: string | null
 }
 
 function extractErrorMessage(errorData: any): string {
@@ -374,7 +375,10 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
 
                 <Button
                   className="w-full h-8 text-sm bg-[#1a2744] text-white hover:opacity-90"
-                  onClick={() => window.location.replace(`/?t=${Date.now()}`)}
+                  onClick={() => {
+                    const url = passDetails?.returnUrl || "/"
+                    window.location.replace(`${url}?t=${Date.now()}`)
+                  }}
                 >
                   Done
                 </Button>

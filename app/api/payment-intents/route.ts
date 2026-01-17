@@ -294,6 +294,7 @@ export async function POST(request: NextRequest) {
           customer_plate: plate || "",
           number_of_days: String(isMultiDayPass ? numberOfDays : 1),
           pin_provider: pinProvider,
+          return_url: `/p/${slugPath}`,
         },
       },
       idempotencyKey ? { idempotencyKey } : undefined,

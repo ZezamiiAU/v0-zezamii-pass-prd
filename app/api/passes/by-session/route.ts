@@ -89,15 +89,36 @@ export async function GET(request: NextRequest) {
 
     let accessPointName = "Access Point"
     const timezone = "UTC"
+    let returnUrl: string | null = null
 
     try {
       const coreDb = createSchemaServiceClient("core")
 
       if (pass.device_id) {
-        const { data: device } = await coreDb.from("devices").select("name").eq("id", pass.device_id).maybeSingle()
+        const { data: device } = await coreDb
+          .from("devices")
+          .select("name, slug, site_id")
+          .eq("id", pass.device_id)
+          .maybeSingle()
 
         if (device?.name) {
           accessPointName = device.name
+        }
+
+        if (device?.site_id) {
+          const { data: site } = await coreDb
+            .from("sites")
+            .select("slug, org_id")
+            .eq("id", device.site_id)
+            .maybeSingle()
+
+          if (site?.org_id) {
+            const { data: org } = await coreDb.from("organisations").select("slug").eq("id", site.org_id).maybeSingle()
+
+            if (org?.slug && site?.slug && device?.slug) {
+              returnUrl = `/p/${org.slug}/${site.slug}/${device.slug}`
+            }
+          }
         }
       }
     } catch (lookupError) {
@@ -141,7 +162,7 @@ export async function GET(request: NextRequest) {
       passType: pass.pass_type.name,
       vehiclePlate: pass.vehicle_plate,
       device_id: pass.device_id,
-      // Debug fields (safe in dev)
+      returnUrl,
       ...(devMode && {
         devMode: true,
         status: pass.status,
