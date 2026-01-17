@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createSchemaServiceClient } from "@/lib/supabase/server"
-import { generateSecurePin } from "@/lib/pin-generator"
 import logger from "@/lib/logger"
 import { validateBody, handleValidationError } from "@/lib/utils/validate-request"
 import { syncPaymentBodySchema } from "@/lib/schemas/api.schema"
 import { ZodError } from "zod"
 import { ENV } from "@/lib/env"
+import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
 
 const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
@@ -28,8 +28,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get the pass ID from metadata
-    const passId = paymentIntent.metadata.pass_id
+    // Get metadata
+    const meta = paymentIntent.metadata
+    const passId = meta.pass_id
 
     if (!passId) {
       return NextResponse.json({ error: "No pass ID in payment metadata" }, { status: 400 })
@@ -44,26 +45,67 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, alreadyActive: true })
     }
 
+    // Check if lock code already exists
     const { data: existingLockCode } = await passDb.from("lock_codes").select("id, code").eq("pass_id", passId).single()
 
     if (!existingLockCode) {
-      // Only create lock code if it doesn't exist
-      const pin = generateSecurePin(6)
-      const now = new Date()
-
-      const { data: pass } = await passDb.from("passes").select("id, valid_from, valid_to").eq("id", passId).single()
+      // Need to generate pincode - try Rooms first, then backup
+      const { data: pass } = await passDb
+        .from("passes")
+        .select("id, valid_from, valid_to, org_id")
+        .eq("id", passId)
+        .single()
 
       if (!pass) {
         return NextResponse.json({ error: "Pass not found" }, { status: 404 })
       }
 
+      const now = new Date()
       const startsAt = pass.valid_from || now.toISOString()
       const endsAt = pass.valid_to || new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
 
+      let pinCode: string | null = null
+      let pinProvider: "rooms" | "backup" = "rooms"
+
+      // Try Rooms endpoint first
+      const accessPointId = meta.access_point_id || meta.gate_id
+      const slugPath = `${meta.org_slug || "org"}/${meta.site_slug || "site"}/${meta.device_slug || "device"}`
+
+      const roomsPayload = buildRoomsPayload({
+        siteId: meta.site_id || "",
+        passId: passId,
+        validFrom: startsAt,
+        validTo: endsAt,
+        email: meta.customer_email || undefined,
+        phone: meta.customer_phone || undefined,
+        deviceId: accessPointId || "",
+        slugPath,
+      })
+
+      const roomsResult = await createRoomsReservation(pass.org_id, roomsPayload)
+
+      if (roomsResult.success && roomsResult.pincode) {
+        pinCode = roomsResult.pincode
+        pinProvider = "rooms"
+        logger.info({ passId, pinCode }, "Pincode received from Rooms webhook (sync-payment)")
+      } else {
+        // Use backup pincode from metadata
+        if (meta.backup_pincode) {
+          pinCode = meta.backup_pincode
+          pinProvider = "backup"
+          logger.info({ passId, pinCode }, "Using backup pincode from metadata (sync-payment)")
+        } else {
+          // No pincode available - fail
+          logger.error({ passId }, "No pincode available - both Rooms and backup failed")
+          return NextResponse.json({ error: "Unable to generate access code" }, { status: 503 })
+        }
+      }
+
+      // Store the pincode
       await passDb.from("lock_codes").insert({
         pass_id: pass.id,
-        code: pin,
-        provider: "zezamii",
+        code: pinCode,
+        provider: pinProvider,
         starts_at: startsAt,
         ends_at: endsAt,
       })
