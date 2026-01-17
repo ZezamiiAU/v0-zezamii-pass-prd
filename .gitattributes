@@ -1,0 +1,12 @@
+# Enforce LF line endings for all text files
+* text=auto eol=lf
+
+# Explicitly enforce LF for config and source
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+.gitignore text eol=lf
