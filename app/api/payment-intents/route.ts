@@ -8,7 +8,6 @@ import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { checkoutSchema } from "@/lib/validation"
 import logger from "@/lib/logger"
 import { createCoreClient } from "@/lib/supabase/core-client"
-import { generateSecurePin } from "@/lib/pin-generator"
 import { createSchemaServiceClient } from "@/lib/supabase/server"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
 import { getBackupPincode } from "@/lib/db/backup-pincodes"
@@ -153,13 +152,19 @@ export async function POST(request: NextRequest) {
 
     let validTo: Date
     if (isMultiDayPass) {
+      // For multi-day passes: end of last day (today + numberOfDays - 1)
       validTo = new Date(now)
       validTo.setDate(validTo.getDate() + numberOfDays - 1)
-      validTo.setHours(23, 59, 59, 999)
     } else {
+      // For single-day passes: end of today
       validTo = new Date(now)
-      validTo.setHours(23, 59, 59, 999)
     }
+
+    // Set to 11:59:59 PM Australian Eastern Time
+    // AEDT (UTC+11) in summer, AEST (UTC+10) in winter
+    // 23:59:59 AEDT = 12:59:59 UTC, 23:59:59 AEST = 13:59:59 UTC
+    // Using 12:59:59 UTC as a safe default (covers AEDT)
+    validTo.setUTCHours(12, 59, 59, 999)
 
     const pass = await createPass({
       passTypeId,
@@ -212,9 +217,11 @@ export async function POST(request: NextRequest) {
         pinProvider = "backup"
         logger.info({ passId: pass.id, pin, fortnight: backupPin.fortnight_number }, "Using backup pincode")
       } else {
-        pin = generateSecurePin(6)
-        pinProvider = "zezamii"
-        logger.warn({ passId: pass.id }, "No backup pincode available, using generated pin")
+        logger.error({ passId: pass.id }, "No pincode available - both Rooms webhook and backup pincode failed")
+        return NextResponse.json(
+          { error: "Unable to generate access code. Please try again later or contact support." },
+          { status: 503, headers: corsHeaders },
+        )
       }
     }
 
