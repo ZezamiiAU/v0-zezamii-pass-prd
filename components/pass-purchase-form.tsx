@@ -54,7 +54,7 @@ export function PassPurchaseForm({
 }: PassPurchaseFormProps) {
   const [passTypes, setPassTypes] = useState<PassType[]>([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
-  const [numberOfDays, setNumberOfDays] = useState(1)
+  const [numberOfDays, setNumberOfDays] = useState(0) // Initialize numberOfDays to 0 (unselected) instead of 1
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [contactMethod, setContactMethod] = useState("email")
@@ -123,6 +123,8 @@ export function PassPurchaseForm({
   useEffect(() => {
     if (!isMultiDayPass) {
       setNumberOfDays(1)
+    } else {
+      setNumberOfDays(0) // Reset to unselected for multi-day passes
     }
   }, [selectedPassTypeId, isMultiDayPass])
 
@@ -286,11 +288,11 @@ export function PassPurchaseForm({
                 Number of Days
               </Label>
               <Select
-                value={numberOfDays.toString()}
+                value={numberOfDays === 0 ? "" : numberOfDays.toString()} // Use empty string when numberOfDays is 0 to show placeholder
                 onValueChange={(val) => setNumberOfDays(Number.parseInt(val, 10))}
               >
                 <SelectTrigger id="numberOfDays" className="h-7 text-sm">
-                  <SelectValue placeholder="Select days" />
+                  <SelectValue placeholder="Select number of days" /> // Show placeholder when no days selected
                 </SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map((days) => (
@@ -307,7 +309,7 @@ export function PassPurchaseForm({
           )}
 
           <div className="space-y-0.5">
-            <Label className="text-sm">Receive pass via</Label>
+            <Label className="text-sm">Contact method</Label>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -344,7 +346,6 @@ export function PassPurchaseForm({
                 className="h-7 text-sm"
                 required
               />
-              <p className="text-xs text-muted-foreground leading-tight">Your pass will be sent to this email</p>
             </div>
           ) : (
             <div className="space-y-0.5">
@@ -354,13 +355,15 @@ export function PassPurchaseForm({
               <Input
                 id="phone"
                 type="tel"
-                placeholder="0412 345 678"
+                placeholder="+61 412 345 678"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setPhone(value)
+                }}
                 className="h-7 text-sm"
                 required
               />
-              <p className="text-xs text-muted-foreground leading-tight">Your pass will be sent via SMS</p>
             </div>
           )}
 
@@ -449,7 +452,7 @@ export function PassPurchaseForm({
             type="submit"
             size="sm"
             className="w-full mt-1.5 h-8 text-sm bg-brand text-white hover:opacity-90"
-            disabled={isLoading || !selectedPassType}
+            disabled={isLoading || !selectedPassType || (isMultiDayPass && numberOfDays === 0)} // Disable button if multi-day pass but no days selected
           >
             {isLoading ? "Processing..." : "Continue to Payment"}
           </Button>

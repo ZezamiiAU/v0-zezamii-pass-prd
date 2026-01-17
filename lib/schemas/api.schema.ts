@@ -99,24 +99,37 @@ export type UnlockJwtQuery = z.infer<typeof unlockJwtQuerySchema>
 // CHECKOUT & STRIPE SCHEMAS
 // ============================================================================
 
-export const checkoutSchema = z.object({
-  accessPointId: z.string().min(1, "Access Point ID is required"),
-  passTypeId: z
-    .string()
-    .regex(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      "Invalid pass type ID - must be UUID format",
-    ),
-  email: z.string().email("Invalid email address").min(1, "Email is required"),
-  plate: z
-    .string()
-    .regex(/^[A-Z0-9\s-]{1,15}$/i, "Invalid plate format - use letters, numbers, hyphens, or spaces only")
-    .optional()
-    .or(z.literal("")),
-  phone: z.string().optional().or(z.literal("")),
-  baseUrl: z.string().url("Invalid base URL").optional(),
-  numberOfDays: z.number().int().min(1).max(28).optional().default(1),
-})
+export const checkoutSchema = z
+  .object({
+    accessPointId: z.string().min(1, "Access Point ID is required"),
+    passTypeId: z
+      .string()
+      .regex(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+        "Invalid pass type ID - must be UUID format",
+      ),
+    email: z.string().email("Invalid email address").optional().or(z.literal("")),
+    plate: z
+      .string()
+      .regex(/^[A-Z0-9\s-]{1,15}$/i, "Invalid plate format - use letters, numbers, hyphens, or spaces only")
+      .optional()
+      .or(z.literal("")),
+    phone: z
+      .string()
+      .transform((val) => val.replace(/[\s\-$$$$]/g, "")) // Strip spaces, hyphens, parentheses
+      .refine(
+        (val) => val === "" || /^(\+?\d{7,15})$/.test(val),
+        "Invalid mobile number - enter 7-15 digits, optionally starting with +",
+      )
+      .optional()
+      .or(z.literal("")),
+    baseUrl: z.string().url("Invalid base URL").optional(),
+    numberOfDays: z.number().int().min(1).max(28).optional().default(1),
+  })
+  .refine((data) => (data.email && data.email.length > 0) || (data.phone && data.phone.length > 0), {
+    message: "Either email or mobile number is required",
+    path: ["email"],
+  })
 export type CheckoutInput = z.infer<typeof checkoutSchema>
 
 export const stripeMetaSchema = z.object({

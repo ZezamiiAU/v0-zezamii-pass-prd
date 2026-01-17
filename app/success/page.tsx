@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { sessionQuerySchema } from "@/lib/schemas/api.schema"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -47,12 +47,20 @@ export default function SuccessPage() {
   const [copiedToClipboard, setCopiedToClipboard] = useState(false)
   const [isTechnicalDetailsOpen, setIsTechnicalDetailsOpen] = useState(false)
 
-  const rawParams = Object.fromEntries(searchParams.entries())
+  const rawParams = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams])
 
-  const paramsValidation = sessionQuerySchema.safeParse({
-    session_id: searchParams.get("session_id") || undefined,
-    payment_intent: searchParams.get("payment_intent") || undefined,
-  })
+  const paramsValidation = useMemo(
+    () =>
+      sessionQuerySchema.safeParse({
+        session_id: searchParams.get("session_id") || undefined,
+        payment_intent: searchParams.get("payment_intent") || undefined,
+      }),
+    [searchParams],
+  )
+
+  const sessionId = paramsValidation.success ? paramsValidation.data.session_id : undefined
+  const paymentIntent = paramsValidation.success ? paramsValidation.data.payment_intent : undefined
+  const isValid = paramsValidation.success
 
   useEffect(() => {
     const email = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@zezamii.com"
@@ -75,12 +83,12 @@ export default function SuccessPage() {
   }, [])
 
   useEffect(() => {
-    if (!paramsValidation.success) {
+    if (!isValid) {
       const errorInfo = {
         timestamp: new Date().toISOString(),
-        url: window.location.href,
+        url: typeof window !== "undefined" ? window.location.href : "",
         params: rawParams,
-        validationError: paramsValidation.error.issues.map((issue) => ({
+        validationError: paramsValidation.error?.issues.map((issue) => ({
           path: issue.path.join("."),
           message: issue.message,
         })),
@@ -92,12 +100,10 @@ export default function SuccessPage() {
       return
     }
 
-    const { session_id: sessionId, payment_intent: paymentIntent } = paramsValidation.data
-
     if (!sessionId && !paymentIntent) {
       const errorInfo = {
         timestamp: new Date().toISOString(),
-        url: window.location.href,
+        url: typeof window !== "undefined" ? window.location.href : "",
         params: rawParams,
         issue: "No session_id or payment_intent parameter found",
       }
@@ -118,8 +124,11 @@ export default function SuccessPage() {
     let retryCount = 0
     const MAX_RETRIES = 3
     let pollInterval: NodeJS.Timeout | null = null
+    let isMounted = true
 
     const fetchPassDetails = async () => {
+      if (!isMounted) return
+
       try {
         const queryParam = sessionId ? `session_id=${sessionId}` : `payment_intent=${paymentIntent}`
 
@@ -129,12 +138,14 @@ export default function SuccessPage() {
           signal: abortController.signal,
         })
 
+        if (!isMounted) return
+
         if (!response.ok) {
           const errorData = await response.json()
 
           const errorInfo = {
             timestamp: new Date().toISOString(),
-            url: window.location.href,
+            url: typeof window !== "undefined" ? window.location.href : "",
             params: rawParams,
             apiResponse: {
               status: response.status,
@@ -166,7 +177,7 @@ export default function SuccessPage() {
                 signal: abortController.signal,
               })
 
-              if (syncResponse.ok) {
+              if (syncResponse.ok && isMounted) {
                 retryCount++
                 const delay = 2000 * Math.pow(1.5, retryCount)
                 console.log(`[v0] Retrying in ${delay}ms`)
@@ -190,6 +201,8 @@ export default function SuccessPage() {
 
         const data = await response.json()
 
+        if (!isMounted) return
+
         if (data.code === null || data.codeUnavailable) {
           setCodeWarning(true)
         }
@@ -200,19 +213,21 @@ export default function SuccessPage() {
         if (err instanceof Error && err.name === "AbortError") {
           return
         }
+        if (!isMounted) return
+
         console.error("[v0] Error fetching pass details:", err instanceof Error ? err.message : JSON.stringify(err))
 
         const errorInfo = {
           timestamp: new Date().toISOString(),
-          url: window.location.href,
+          url: typeof window !== "undefined" ? window.location.href : "",
           params: rawParams,
           error: err instanceof Error ? err.message : String(err),
-          offline: !navigator.onLine,
+          offline: typeof navigator !== "undefined" ? !navigator.onLine : false,
         }
         const detailsText = `Error Details:\n${JSON.stringify(errorInfo, null, 2)}`
         setErrorDetails(detailsText)
 
-        if (!navigator.onLine) {
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
           setError("You're offline. PIN display requires an internet connection.")
         } else {
           setError(err instanceof Error ? err.message : "Unable to load pass details. Please try again.")
@@ -224,12 +239,13 @@ export default function SuccessPage() {
     fetchPassDetails()
 
     return () => {
+      isMounted = false
       abortController.abort()
       if (pollInterval) {
         clearTimeout(pollInterval)
       }
     }
-  }, [paramsValidation, isOffline, supportEmail, rawParams])
+  }, [isValid, sessionId, paymentIntent, isOffline, supportEmail, rawParams, paramsValidation.error])
 
   const formatDateTime = (dateString: string, timezone: string) => {
     return formatLocalizedDateTime(dateString, timezone)
@@ -258,10 +274,10 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 bg-brand-gradient">
+    <div className="min-h-screen flex items-center justify-center p-2 bg-[#1a2744]">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center pb-1 pt-2">
-          {paramsValidation.success ? (
+          {isValid ? (
             <>
               <CardTitle className="text-xl">Payment Successful!</CardTitle>
               <CardDescription className="text-sm">Your pass is being created</CardDescription>
@@ -357,7 +373,7 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                 )}
 
                 <Button
-                  className="w-full h-8 text-sm bg-brand text-white hover:opacity-90"
+                  className="w-full h-8 text-sm bg-[#1a2744] text-white hover:opacity-90"
                   onClick={() => window.location.replace(`/?t=${Date.now()}`)}
                 >
                   Done
