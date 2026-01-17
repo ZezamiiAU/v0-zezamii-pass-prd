@@ -23,7 +23,7 @@ A Progressive Web App (PWA) for purchasing and managing digital access passes. U
 
 ## Architecture
 
-```
+\`\`\`
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   QR Code   │────▶│   Next.js   │────▶│   Stripe    │
 │   Scanner   │     │     PWA     │     │  Payments   │
@@ -38,7 +38,7 @@ A Progressive Web App (PWA) for purchasing and managing digital access passes. U
                     │ Rooms API   │
                     │ (PIN codes) │
                     └─────────────┘
-```
+\`\`\`
 
 ### Database Schemas
 
@@ -69,7 +69,7 @@ A Progressive Web App (PWA) for purchasing and managing digital access passes. U
 
 ### Installation
 
-```bash
+\`\`\`bash
 # Clone the repository
 git clone <repo-url>
 cd v0-zezamii-pass-prd
@@ -83,13 +83,13 @@ cp .env.example .env.local
 
 # Run development server
 pnpm dev
-```
+\`\`\`
 
 ### Database Migrations
 
 Run database migrations in order from `scripts/` directory:
 
-```bash
+\`\`\`bash
 # Connect to your Supabase project
 psql $DATABASE_URL
 
@@ -100,7 +100,7 @@ psql $DATABASE_URL
 
 # CRITICAL: Grant schema access for public pass purchases
 \i scripts/022_fix_pass_schema_access_complete.sql
-```
+\`\`\`
 
 **Important**: Script `022_fix_pass_schema_access_complete.sql` is required for `/ap/[accessPointId]` legacy routes and public pass type queries. Without it, you'll get error `42501: permission denied for schema pass`.
 
@@ -142,7 +142,7 @@ See `.env.example` for all required variables. Key ones:
 
 ## Development
 
-```bash
+\`\`\`bash
 # Start dev server
 pnpm dev
 
@@ -157,7 +157,7 @@ pnpm format
 
 # Build for production
 pnpm build
-```
+\`\`\`
 
 ## Stripe Webhook Setup
 
@@ -181,7 +181,7 @@ The app validates environment variables at runtime using Zod schemas. Missing re
 
 ## Project Structure
 
-```
+\`\`\`
 app/
 ├── api/                    # API routes
 │   ├── wallet/            # Google Wallet endpoints
@@ -211,7 +211,7 @@ scripts/
 ├── 001-021_*.sql         # Database migrations
 ├── 022_fix_pass_schema_access_complete.sql  # Schema permissions
 └── node/                  # Node.js scripts
-```
+\`\`\`
 
 ## Deployment
 

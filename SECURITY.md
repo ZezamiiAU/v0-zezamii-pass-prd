@@ -52,9 +52,9 @@ Most pass-purchase endpoints are intentionally public (unauthenticated) to allow
 
 Protected endpoints use token-based authentication via lib/auth/admin.ts:
 
-```bash
+\`\`\`bash
 curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" /api/protected-endpoint
-```
+\`\`\`
 
 ### Supabase Session Auth
 
