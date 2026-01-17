@@ -76,17 +76,10 @@ export function PassPurchaseForm({
         if (res.ok) {
           const data = await res.json()
           setPassTypes(data)
-          console.log("[v0] PassPurchaseForm loadPassTypes:", {
-            preSelectedPassTypeId,
-            dataIds: data.map((pt: PassType) => pt.id),
-            match: data.some((pt: PassType) => pt.id === preSelectedPassTypeId),
-          })
           if (!selectedPassTypeId && data.length > 0) {
             if (preSelectedPassTypeId && data.some((pt: PassType) => pt.id === preSelectedPassTypeId)) {
-              console.log("[v0] Setting selectedPassTypeId to preSelectedPassTypeId:", preSelectedPassTypeId)
               setSelectedPassTypeId(preSelectedPassTypeId)
             } else {
-              console.log("[v0] Fallback: setting selectedPassTypeId to first item:", data[0].id)
               setSelectedPassTypeId(data[0].id)
             }
           }
@@ -106,8 +99,6 @@ export function PassPurchaseForm({
   useEffect(() => {
     clearPaymentAttempt()
   }, [])
-
-  console.log("[v0] Render - selectedPassTypeId:", selectedPassTypeId, "passTypes count:", passTypes.length)
 
   const selectedPassType = passTypes.find((pt) => pt.id === selectedPassTypeId)
 
@@ -160,7 +151,6 @@ export function PassPurchaseForm({
         phone: contactMethod === "mobile" ? phone : "",
         numberOfDays: isMultiDayPass ? numberOfDays : 1,
       }
-      console.log("[v0] Sending payment intent request:", payload)
 
       const data = await createPaymentIntent(payload, key)
 

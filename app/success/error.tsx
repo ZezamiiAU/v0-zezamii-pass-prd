@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function SuccessError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    console.error("[v0] Success page error:", error)
+    console.error("Success page error:", error)
   }, [error])
 
   return (

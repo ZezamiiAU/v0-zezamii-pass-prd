@@ -133,7 +133,7 @@ export default function SuccessPage() {
       try {
         const queryParam = sessionId ? `session_id=${sessionId}` : `payment_intent=${paymentIntent}`
 
-        console.log(`[v0] Polling pass details (attempt ${retryCount + 1}/${MAX_RETRIES})`)
+        // Polling attempt ${retryCount + 1}/${MAX_RETRIES}
 
         const response = await fetch(`/api/passes/by-session?${queryParam}`, {
           signal: abortController.signal,
@@ -181,15 +181,12 @@ export default function SuccessPage() {
               if (syncResponse.ok && isMounted) {
                 retryCount++
                 const delay = 2000 * Math.pow(1.5, retryCount)
-                console.log(`[v0] Retrying in ${delay}ms`)
+                // Retrying payment sync
                 pollInterval = setTimeout(() => fetchPassDetails(), delay)
                 return
               }
             } catch (syncError) {
-              console.error(
-                "[v0] Error syncing payment:",
-                syncError instanceof Error ? syncError.message : JSON.stringify(syncError),
-              )
+              console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
             }
 
             setError(`Lock not connected. Contact ${supportEmail}`)
@@ -216,7 +213,7 @@ export default function SuccessPage() {
         }
         if (!isMounted) return
 
-        console.error("[v0] Error fetching pass details:", err instanceof Error ? err.message : JSON.stringify(err))
+        console.error("Error fetching pass details:", err instanceof Error ? err.message : String(err))
 
         const errorInfo = {
           timestamp: new Date().toISOString(),

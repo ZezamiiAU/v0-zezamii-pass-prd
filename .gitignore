@@ -72,3 +72,8 @@ coverage/
 *.tgz
 *.swp
 *.swo
+
+# =========================
+# Local AI / tooling
+# =========================
+.claude/

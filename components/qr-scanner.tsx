@@ -33,7 +33,7 @@ export function QrScanner({ onScan }: QrScannerProps) {
         },
       )
       .catch((err) => {
-        console.error("[v0] Failed to start QR scanner:", err)
+        console.error("Failed to start QR scanner:", err)
       })
 
     return () => {

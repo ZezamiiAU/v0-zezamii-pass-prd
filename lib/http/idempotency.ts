@@ -66,7 +66,7 @@ export function getOrCreatePaymentAttemptKey(): string {
   } catch (err) {
     // sessionStorage might be disabled (private browsing, etc.)
     // Fall back to generating fresh key each time
-    console.warn("[v0] sessionStorage unavailable, idempotency keys won't persist across retries")
+    console.warn("sessionStorage unavailable, idempotency keys won't persist across retries")
     return newIdemKey()
   }
 }
