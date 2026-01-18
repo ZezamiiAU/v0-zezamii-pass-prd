@@ -242,18 +242,21 @@ export default function SuccessPage() {
         if (!isMounted) return
 
         // Handle pincode display logic
-        if (data.code) {
-          // We have a pincode from the API - show it immediately (Rooms worked!)
+        if (data.code && data.pinSource === "rooms") {
+          // Rooms returned a PIN - show it immediately!
           setDisplayedCode(data.code)
-          setPinSource(data.pinSource || "rooms")
+          setPinSource("rooms")
           setRoomsPinReceived(true)
           setIsWaitingForRooms(false)
-        } else if (data.backupCode) {
-          // Cache the backup code
-          setBackupCodeCached(data.backupCode)
-          // If countdown already ended, show backup immediately
-          if (countdown === 0 && !displayedCode) {
-            setDisplayedCode(data.backupCode)
+        } else {
+          // Cache the backup code (from data.backupCode or data.code if it's backup)
+          const backupToCache = data.backupCode || (data.pinSource === "backup" ? data.code : null)
+          if (backupToCache) {
+            setBackupCodeCached(backupToCache)
+          }
+          // Only show backup if countdown already ended
+          if (countdown === 0 && !displayedCode && backupToCache) {
+            setDisplayedCode(backupToCache)
             setPinSource("backup")
             setIsWaitingForRooms(false)
           }
@@ -316,11 +319,14 @@ export default function SuccessPage() {
       month: "short",
       year: "numeric",
     })
+    
+    const isCampingPass = passDetails.passType?.toLowerCase().includes("camping")
+    const validUntilTime = isCampingPass ? "10:00 AM" : "11:59 PM"
 
     const message = `Your Access Pass:
 Access Point: ${passDetails.accessPointName}
 PIN: ${displayedCode || "Contact support"}
-Valid until: 11:59 PM on ${validUntilDate}
+Valid until: ${validUntilTime} on ${validUntilDate}
 
 ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please contact ${supportEmail} for your PIN.`}`
 
@@ -528,7 +534,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <AlertDescription className="text-xs leading-tight">
                   <strong>Instructions:</strong>{" "}
                   {displayedCode
-                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until 11:59 PM on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone, day: "numeric", month: "short", year: "numeric" })}.`
+                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${passDetails.passType?.toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"} on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone, day: "numeric", month: "short", year: "numeric" })}.`
                     : isWaitingForRooms
                       ? "Retrieving your PIN..."
                       : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}
