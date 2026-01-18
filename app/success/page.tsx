@@ -10,11 +10,17 @@ import { formatLocalizedDateTime } from "@/lib/timezone"
 import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, Clock } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-// Configuration from environment variables with defaults
+// Use environment variable or default to 20 seconds (matches ROOMS_API_TIMEOUT_MS=20000)
 const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS) || 20
-const MAX_RETRIES = Number(process.env.NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES) || 3
-const BASE_DELAY_MS = Number(process.env.NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS) || 2000
-const BACKOFF_MULTIPLIER = Number(process.env.NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER) || 1.5
+
+// Helper to safely extract pass type string (handles both string and object formats)
+function getPassTypeString(passType: unknown): string {
+  if (typeof passType === "string") return passType
+  if (passType && typeof passType === "object" && "name" in passType) {
+    return String((passType as { name: unknown }).name)
+  }
+  return ""
+}
 
 interface PassDetails {
   pass_id: string
@@ -63,6 +69,7 @@ export default function SuccessPage() {
   const [displayedCode, setDisplayedCode] = useState<string | null>(null)
   const [pinSource, setPinSource] = useState<"rooms" | "backup" | null>(null)
   const [backupCodeCached, setBackupCodeCached] = useState<string | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
 
   const rawParams = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams])
 
@@ -84,6 +91,38 @@ export default function SuccessPage() {
     setSupportEmail(email)
   }, [])
 
+  // Send email notification when PIN is displayed
+  useEffect(() => {
+    if (emailSent || !displayedCode || !passDetails) return
+    
+    // Get customer email from URL params (stored by Stripe)
+    const customerEmail = searchParams.get("customer_email")
+    if (!customerEmail) {
+      console.log("[v0] No customer email in URL params, skipping email send")
+      return
+    }
+
+    console.log("[v0] Sending pass email to:", customerEmail)
+    setEmailSent(true)
+
+    fetch("/api/passes/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: customerEmail,
+        pin: displayedCode,
+        accessPointName: passDetails.accessPointName,
+        validFrom: passDetails.valid_from,
+        validTo: passDetails.valid_to,
+        vehiclePlate: passDetails.vehiclePlate,
+        timezone: passDetails.timezone,
+        passId: passDetails.id,
+      }),
+    }).catch((e) => {
+      console.log("[v0] Email send failed:", e)
+    })
+  }, [displayedCode, passDetails, emailSent, searchParams])
+
   // Countdown timer effect
   useEffect(() => {
     if (!isWaitingForRooms || roomsPinReceived || countdown <= 0) return
@@ -101,19 +140,19 @@ export default function SuccessPage() {
     return () => clearInterval(timer)
   }, [isWaitingForRooms, roomsPinReceived, countdown])
 
-  // When countdown ends, show backup code if Rooms hasn't responded yet
+  // When countdown ends, show whatever code we have (Rooms or backup)
+  // This effect runs whenever backupCodeCached or countdown changes
   useEffect(() => {
-    // If Rooms already responded, this effect is skipped (isWaitingForRooms will be false)
-    if (countdown === 0 && isWaitingForRooms && !displayedCode) {
-      const codeToShow = backupCodeCached || passDetails?.backupCode || passDetails?.code
-      if (codeToShow) {
-        setDisplayedCode(codeToShow)
-        setPinSource("backup") // If we're here, Rooms didn't respond in time
-        setIsWaitingForRooms(false)
-        setIsLoading(false)
-      }
+    const codeToShow = backupCodeCached || passDetails?.backupCode || passDetails?.code
+    // Show code when: countdown is done AND we have a code AND not already displayed
+    if (countdown === 0 && codeToShow && !displayedCode) {
+      setDisplayedCode(codeToShow)
+      setPinSource(roomsPinReceived ? "rooms" : "backup")
+      setIsWaitingForRooms(false)
+      setIsLoading(false)
+      setError(null) // Clear any errors since we have a working code
     }
-  }, [countdown, isWaitingForRooms, displayedCode, passDetails?.backupCode, passDetails?.code, backupCodeCached])
+  }, [countdown, displayedCode, passDetails?.backupCode, passDetails?.code, backupCodeCached, roomsPinReceived])
 
   useEffect(() => {
     const checkOnlineStatus = () => {
@@ -169,7 +208,7 @@ export default function SuccessPage() {
     }
 
     const abortController = new AbortController()
-    let retryCount = 0
+    let syncAttempted = false
     let pollInterval: NodeJS.Timeout | null = null
     let isMounted = true
 
@@ -178,8 +217,6 @@ export default function SuccessPage() {
 
       try {
         const queryParam = sessionId ? `session_id=${sessionId}` : `payment_intent=${paymentIntent}`
-
-        // Polling attempt ${retryCount + 1}/${MAX_RETRIES}
 
         const response = await fetch(`/api/passes/by-session?${queryParam}`, {
           signal: abortController.signal,
@@ -190,6 +227,33 @@ export default function SuccessPage() {
         if (!response.ok) {
           const errorData = await response.json()
 
+          // Extract backup code from error response - this is the key fallback
+          const backupFromResponse = errorData.backupCode
+          
+          if (backupFromResponse) {
+            // We have a backup code - cache it
+            setBackupCodeCached(backupFromResponse)
+            
+            // Also extract pass details if available in error response
+            if (errorData.id && errorData.accessPointName) {
+              setPassDetails({
+                id: errorData.id,
+                accessPointName: errorData.accessPointName,
+                passType: errorData.passType,
+                valid_from: errorData.valid_from,
+                valid_to: errorData.valid_to,
+                timezone: errorData.timezone || "Australia/Sydney",
+                vehiclePlate: errorData.vehiclePlate,
+                code: null,
+                backupCode: backupFromResponse,
+              })
+            }
+            
+            // Let countdown effect handle display
+            return
+          }
+
+          // Only show errors if we truly have NO backup code
           const errorInfo = {
             timestamp: new Date().toISOString(),
             url: typeof window !== "undefined" ? window.location.href : "",
@@ -210,36 +274,33 @@ export default function SuccessPage() {
           }
 
           if ((errorData.status === "pending" || errorData.paymentStatus === "pending") && paymentIntent) {
-            if (retryCount >= MAX_RETRIES) {
-              setError(`Payment is taking longer than expected. Please contact ${supportEmail}`)
-              setIsLoading(false)
-              return
-            }
-
-            try {
-              const syncResponse = await fetch("/api/passes/sync-payment", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentIntentId: paymentIntent }),
-                signal: abortController.signal,
-              })
-
-              if (syncResponse.ok && isMounted) {
-                retryCount++
-                const delay = BASE_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, retryCount)
-                // Retrying payment sync
-                pollInterval = setTimeout(() => fetchPassDetails(), delay)
+            // Only call sync-payment ONCE
+            if (!syncAttempted) {
+              syncAttempted = true
+              try {
+                await fetch("/api/passes/sync-payment", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ paymentIntentId: paymentIntent }),
+                  signal: abortController.signal,
+                })
+              } catch (syncError) {
+                console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
+              }
+              
+              // One retry after sync
+              if (isMounted) {
+                pollInterval = setTimeout(() => fetchPassDetails(), 3000)
                 return
               }
-            } catch (syncError) {
-              console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
             }
 
             setError(`Lock not connected. Contact ${supportEmail}`)
+            setIsLoading(false)
           } else {
             setError(extractErrorMessage(errorData) || "Unable to load pass details")
+            setIsLoading(false)
           }
-          setIsLoading(false)
           return
         }
 
@@ -247,26 +308,20 @@ export default function SuccessPage() {
 
         if (!isMounted) return
 
-        // Handle pincode display logic
-        const codeFromApi = data.code || data.backupCode
-
-        // If we got a Rooms pincode, show it immediately (no need to wait)
-        if (data.pinSource === "rooms" && data.code) {
-          setRoomsPinReceived(true)
-          setDisplayedCode(data.code)
-          setPinSource("rooms")
-          setIsWaitingForRooms(false)
-          setIsLoading(false)
-        } else if (codeFromApi) {
-          // Cache backup code for when countdown ends
-          setBackupCodeCached(codeFromApi)
-
-          // If countdown already finished, show backup immediately
-          if (countdown === 0 && !displayedCode) {
-            setDisplayedCode(codeFromApi)
-            setPinSource(data.pinSource || "backup")
-            setIsWaitingForRooms(false)
+        // Handle pincode display logic - cache any available code
+        const codeToCache = data.code || data.backupCode
+        if (codeToCache) {
+          setBackupCodeCached(codeToCache)
+          if (data.pinSource === "rooms") {
+            setRoomsPinReceived(true)
           }
+        }
+        
+        // Only show PIN after countdown reaches 0
+        if (countdown === 0 && !displayedCode && codeToCache) {
+          setDisplayedCode(codeToCache)
+          setPinSource(data.pinSource || "backup")
+          setIsWaitingForRooms(false)
         }
 
         if ((data.code === null && !data.backupCode) || data.codeUnavailable) {
@@ -327,7 +382,7 @@ export default function SuccessPage() {
       year: "numeric",
     })
     
-    const isCampingPass = passDetails.passType?.toLowerCase().includes("camping")
+    const isCampingPass = getPassTypeString(passDetails.passType).toLowerCase().includes("camping")
     const validUntilTime = isCampingPass ? "10:00 AM" : "11:59 PM"
 
     const message = `Your Access Pass:
@@ -356,7 +411,9 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           {isValid ? (
             <>
               <CardTitle className="text-xl">Payment Successful!</CardTitle>
-              <CardDescription className="text-sm">Your pass is being created</CardDescription>
+              <CardDescription className="text-sm">
+                {displayedCode ? "Your pass is ready" : "Your pass is being created"}
+              </CardDescription>
             </>
           ) : (
             <CardTitle className="text-xl">Invalid Payment Details</CardTitle>
@@ -412,22 +469,10 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
             </div>
           )}
 
-          {error && (
-            <Alert variant="destructive" className={isOffline ? "border-orange-500 bg-orange-50" : ""}>
-              {isOffline ? <WifiOff className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-              <AlertDescription className={isOffline ? "text-orange-800 text-xs" : "text-xs"}>
-                {error}
-                {isOffline && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 w-full bg-transparent text-xs h-7"
-                    onClick={() => window.location.reload()}
-                  >
-                    Retry when online
-                  </Button>
-                )}
-              </AlertDescription>
+          {error && !displayedCode && (
+            <Alert variant="destructive" className="py-1.5">
+              <AlertTriangle className="h-3 w-3" />
+              <AlertDescription className="text-sm">{error}</AlertDescription>
             </Alert>
           )}
 
@@ -438,7 +483,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <p className="text-xs text-muted-foreground mb-1 font-medium">Your Access PIN</p>
                 <p className="text-4xl font-bold tracking-widest text-primary">{displayedCode}</p>
                 {pinSource === "backup" && (
-                  <p className="text-xs text-orange-600 mt-1 font-medium">Backup Code</p>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">Backup Code</p>
                 )}
                 <p className="text-sm font-semibold text-primary mt-2 bg-yellow-100 border border-yellow-400 rounded px-2 py-1">
                   Enter PIN followed by <span className="text-lg">#</span>
@@ -449,7 +494,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           
           {passDetails && (
             <div className="space-y-2">
-              {codeWarning && (
+              {codeWarning && !displayedCode && (
                 <Alert className="border-orange-500 bg-orange-50 py-1">
                   <AlertTriangle className="h-3 w-3 text-orange-600" />
                   <AlertDescription className="text-orange-800 text-xs">
@@ -519,7 +564,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 </div>
                 <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Pass Type:</span>
-                  <span className="font-medium">{passDetails.passType}</span>
+                  <span className="font-medium">{getPassTypeString(passDetails.passType) || "Day Pass"}</span>
                 </div>
                 <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Valid From:</span>
@@ -527,7 +572,14 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 </div>
                 <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Valid Until:</span>
-                  <span className="font-medium">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</span>
+                  <span className="font-medium">
+                    {new Date(passDetails.valid_to).toLocaleDateString("en-AU", { 
+                      timeZone: passDetails.timezone, 
+                      day: "numeric", 
+                      month: "short", 
+                      year: "numeric" 
+                    })}, {getPassTypeString(passDetails.passType).toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"}
+                  </span>
                 </div>
                 {passDetails.vehiclePlate && (
                   <div className="flex justify-between py-0.5 border-b">
@@ -541,7 +593,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <AlertDescription className="text-xs leading-tight">
                   <strong>Instructions:</strong>{" "}
                   {displayedCode
-                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${passDetails.passType?.toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"} on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone, day: "numeric", month: "short", year: "numeric" })}.`
+                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${getPassTypeString(passDetails.passType).toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"} on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone, day: "numeric", month: "short", year: "numeric" })}.`
                     : isWaitingForRooms
                       ? "Retrieving your PIN..."
                       : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}

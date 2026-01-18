@@ -56,12 +56,28 @@ export function PassPurchaseForm({
   const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
   const [numberOfDays, setNumberOfDays] = useState(0) // Initialize numberOfDays to 0 (unselected) instead of 1
   const [email, setEmail] = useState("")
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [phone, setPhone] = useState("")
-  const [contactMethod, setContactMethod] = useState("email")
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Email validation function
+  const validateEmail = (emailValue: string): boolean => {
+    if (!emailValue || !emailValue.trim()) {
+      setEmailError("Email is required")
+      return false
+    }
+    // RFC 5322 compliant email regex
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+    if (!emailRegex.test(emailValue.trim())) {
+      setEmailError("Please enter a valid email address")
+      return false
+    }
+    setEmailError(null)
+    return true
+  }
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -122,13 +138,8 @@ export function PassPurchaseForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (contactMethod === "email" && (!email || !email.trim())) {
-      alert("Please enter your email address")
-      return
-    }
-
-    if (contactMethod === "mobile" && (!phone || !phone.trim())) {
-      alert("Please enter your mobile number")
+    // Email is always required
+    if (!validateEmail(email)) {
       return
     }
 
@@ -147,8 +158,8 @@ export function PassPurchaseForm({
         accessPointId: deviceId,
         passTypeId: selectedPassTypeId,
         plate: "",
-        email: contactMethod === "email" ? email : "",
-        phone: contactMethod === "mobile" ? phone : "",
+        email: email.trim(),
+        phone: phone.trim() || "",
         numberOfDays: isMultiDayPass ? numberOfDays : 1,
       }
 
@@ -235,7 +246,7 @@ export function PassPurchaseForm({
           <Elements stripe={stripePromise} options={{ clientSecret }}>
             <PaymentForm
               returnUrl={`${window.location.origin}/success`}
-              customerEmail={contactMethod === "email" ? email : ""}
+              customerEmail={email}
             />
           </Elements>
         </CardContent>
@@ -299,63 +310,41 @@ export function PassPurchaseForm({
           )}
 
           <div className="space-y-0.5">
-            <Label className="text-sm">Contact method</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={contactMethod === "email" ? "default" : "outline"}
-                size="sm"
-                className={`flex-1 h-7 text-sm ${contactMethod === "email" ? "bg-[#002147] text-white" : ""}`}
-                onClick={() => setContactMethod("email")}
-              >
-                Email
-              </Button>
-              <Button
-                type="button"
-                variant={contactMethod === "mobile" ? "default" : "outline"}
-                size="sm"
-                className={`flex-1 h-7 text-sm ${contactMethod === "mobile" ? "bg-[#002147] text-white" : ""}`}
-                onClick={() => setContactMethod("mobile")}
-              >
-                Mobile (SMS)
-              </Button>
-            </div>
+            <Label htmlFor="email" className="text-sm">
+              Email <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (emailError) validateEmail(e.target.value)
+              }}
+              onBlur={() => validateEmail(email)}
+              className={`h-7 text-sm ${emailError ? "border-destructive" : ""}`}
+              required
+            />
+            {emailError && (
+              <p className="text-xs text-destructive">{emailError}</p>
+            )}
           </div>
 
-          {contactMethod === "email" ? (
-            <div className="space-y-0.5">
-              <Label htmlFor="email" className="text-sm">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-7 text-sm"
-                required
-              />
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              <Label htmlFor="phone" className="text-sm">
-                Mobile Number
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+61 412 345 678"
-                value={phone}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setPhone(value)
-                }}
-                className="h-7 text-sm"
-                required
-              />
-            </div>
-          )}
+          <div className="space-y-0.5">
+            <Label htmlFor="phone" className="text-sm">
+              Mobile Number <span className="text-muted-foreground text-xs">(optional)</span>
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="+61 412 345 678"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="h-7 text-sm"
+            />
+            <p className="text-xs text-muted-foreground">Alternative contact method</p>
+          </div>
 
           {selectedPassType && (
             <Card className="bg-muted/50 mt-1">

@@ -5,6 +5,7 @@ import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { ENV } from "@/lib/env"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
+import { sendPassNotifications } from "@/lib/notifications"
 
 export const runtime = "nodejs"
 
@@ -52,67 +53,28 @@ export async function POST(req: NextRequest) {
   }
 
   const passDb = createSchemaServiceClient("pass")
+  const { data: existing } = await passDb.from("processed_webhooks").select("id").eq("event_id", event.id).single()
 
-  // Check if already processed (completed successfully)
-  const { data: existing } = await passDb
-    .from("processed_webhooks")
-    .select("id, status")
-    .eq("event_id", event.id)
-    .single()
-
-  if (existing?.status === "completed") {
+  if (existing) {
     logger.info({ eventId: event.id }, "Webhook already processed, skipping")
     return NextResponse.json({ received: true, duplicate: true })
   }
 
-  // Mark as processing (or update if previously failed)
-  if (existing) {
-    await passDb
-      .from("processed_webhooks")
-      .update({ status: "processing", processed_at: new Date().toISOString() })
-      .eq("event_id", event.id)
-  } else {
-    await passDb.from("processed_webhooks").insert({
-      event_id: event.id,
-      event_type: event.type,
-      status: "processing",
-      processed_at: new Date().toISOString(),
-    })
+  await passDb.from("processed_webhooks").insert({
+    event_id: event.id,
+    event_type: event.type,
+    processed_at: new Date().toISOString(),
+  })
+
+  if (event.type === "checkout.session.completed") {
+    return handleCheckoutSessionCompleted(event)
+  } else if (event.type === "payment_intent.succeeded") {
+    return handlePaymentIntentSucceeded(event)
+  } else if (event.type === "payment_intent.payment_failed") {
+    return handlePaymentIntentFailed(event)
   }
 
-  let result: NextResponse
-  try {
-    if (event.type === "checkout.session.completed") {
-      result = await handleCheckoutSessionCompleted(event)
-    } else if (event.type === "payment_intent.succeeded") {
-      result = await handlePaymentIntentSucceeded(event)
-    } else if (event.type === "payment_intent.payment_failed") {
-      result = await handlePaymentIntentFailed(event)
-    } else {
-      result = NextResponse.json({ ok: true })
-    }
-
-    // Mark as completed on success
-    await passDb
-      .from("processed_webhooks")
-      .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("event_id", event.id)
-
-    return result
-  } catch (error) {
-    // Mark as failed so it can be retried
-    await passDb
-      .from("processed_webhooks")
-      .update({
-        status: "failed",
-        error_message: error instanceof Error ? error.message : String(error),
-        completed_at: new Date().toISOString()
-      })
-      .eq("event_id", event.id)
-
-    logger.error({ eventId: event.id, error }, "Webhook processing failed")
-    throw error // Re-throw so Stripe knows to retry
-  }
+  return NextResponse.json({ ok: true })
 }
 
 async function handleCheckoutSessionCompleted(event: Stripe.Event) {
@@ -414,6 +376,49 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
         occurred_at: new Date().toISOString(),
       },
     })
+  }
+
+  // Send email notification if we have a pinCode and customer email
+  console.log("[v0] Email check - pinCode:", pinCode, "customer_email:", meta.data.customer_email)
+  if (pinCode && meta.data.customer_email) {
+    // Get access point name for the email
+    let accessPointName = "Access Point"
+    let timezone = "Australia/Sydney"
+    try {
+      const core = createSchemaServiceClient("core")
+      const deviceId = meta.data.access_point_id || meta.data.gate_id
+      if (deviceId) {
+        const { data: device } = await core
+          .from("devices")
+          .select("name, sites(timezone)")
+          .eq("id", deviceId)
+          .single()
+        if (device?.name) accessPointName = device.name
+        if (device?.sites && typeof device.sites === "object" && "timezone" in device.sites) {
+          timezone = (device.sites as { timezone?: string }).timezone || timezone
+        }
+      }
+    } catch (e) {
+      logger.warn({ error: e }, "Failed to fetch device name for email")
+    }
+
+    // Send the email notification (fire and forget - don't block webhook response)
+    sendPassNotifications(
+      meta.data.customer_email,
+      meta.data.customer_phone || null,
+      {
+        accessPointName,
+        pin: pinCode,
+        validFrom: startsAt,
+        validTo: endsAt,
+        vehiclePlate: meta.data.customer_plate,
+      },
+      timezone
+    ).catch((e) => {
+      logger.error({ error: e, passId: meta.data.pass_id }, "Failed to send pass notification email")
+    })
+
+    logger.info({ passId: meta.data.pass_id, email: meta.data.customer_email }, "Pass notification email queued")
   }
 
   console.log("[v0] Webhook completed. pinCode:", pinCode, "pinProvider:", pinProvider)
