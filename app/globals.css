@@ -1,80 +1,93 @@
 @import "tailwindcss";
-/* tw-animate-css removed due to Tailwind v4 compatibility issues */
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --background: #ffffff; /* Existing preserved */
-  --foreground: #171717; /* Existing preserved */
-  --card: #ffffff; /* Existing preserved */
-  --card-foreground: #171717; /* Existing preserved */
-  --popover: #ffffff; /* Existing preserved */
-  --popover-foreground: #171717; /* Existing preserved */
-  --primary: #171717; /* Existing preserved */
-  --primary-foreground: #fafafa; /* Existing preserved */
-  --secondary: #f5f5f5; /* Existing preserved */
-  --secondary-foreground: #171717; /* Existing preserved */
-  --muted: #f5f5f5; /* Existing preserved */
-  --muted-foreground: #737373; /* Existing preserved */
-  --accent: #f5f5f5; /* Existing preserved */
-  --accent-foreground: #171717; /* Existing preserved */
-  --destructive: #ef4444; /* Existing preserved */
-  --destructive-foreground: #fafafa; /* Existing preserved */
-  --border: #e5e5e5; /* Existing preserved */
-  --input: #e5e5e5; /* Existing preserved */
-  --ring: #a3a3a3; /* Existing preserved */
-  --radius: 0.625rem; /* Existing preserved */
-  --brand-bg: #0b1e3d; /* Existing custom */
-  --brand-bg-2: #1a3a5c; /* Existing custom */
-  --brand-accent: #0ca3c1; /* Existing custom */
-  --chart-1: oklch(0.646 0.222 41.116); /* Existing preserved */
-  --chart-2: oklch(0.6 0.118 184.704); /* Existing preserved */
-  --chart-3: oklch(0.398 0.07 227.392); /* Existing preserved */
-  --chart-4: oklch(0.828 0.189 84.429); /* Existing preserved */
-  --chart-5: oklch(0.769 0.188 70.08); /* Existing preserved */
-  --sidebar: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-foreground: oklch(0.145 0 0); /* Existing preserved */
-  --sidebar-primary: oklch(0.205 0 0); /* Existing preserved */
-  --sidebar-primary-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-accent: oklch(0.97 0 0); /* Existing preserved */
-  --sidebar-accent-foreground: oklch(0.205 0 0); /* Existing preserved */
-  --sidebar-border: oklch(0.922 0 0); /* Existing preserved */
-  --sidebar-ring: oklch(0.708 0 0); /* Existing preserved */
-}
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 64%;
+    --radius: 0.625rem;
+    
+    /* Brand colors */
+    --brand-bg: 213 73% 14%;
+    --brand-bg-2: 207 54% 23%;
+    --brand-accent: 189 88% 40%;
+    
+    /* Chart colors */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    
+    /* Sidebar */
+    --sidebar: 0 0% 98%; /* Added from diff, preserving existing as value for --sidebar-background */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 0 0% 9%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 64%;
+  }
 
-.dark {
-  --background: #171717; /* Existing preserved */
-  --foreground: #fafafa; /* Existing preserved */
-  --card: #171717; /* Existing preserved */
-  --card-foreground: #fafafa; /* Existing preserved */
-  --popover: #171717; /* Existing preserved */
-  --popover-foreground: #fafafa; /* Existing preserved */
-  --primary: #fafafa; /* Existing preserved */
-  --primary-foreground: #171717; /* Existing preserved */
-  --secondary: #404040; /* Existing preserved */
-  --secondary-foreground: #fafafa; /* Existing preserved */
-  --muted: #404040; /* Existing preserved */
-  --muted-foreground: #a3a3a3; /* Existing preserved */
-  --accent: #404040; /* Existing preserved */
-  --accent-foreground: #fafafa; /* Existing preserved */
-  --destructive: #7f1d1d; /* Existing preserved */
-  --destructive-foreground: #fca5a5; /* Existing preserved */
-  --border: #404040; /* Existing preserved */
-  --input: #404040; /* Existing preserved */
-  --ring: #525252; /* Existing preserved */
-  --chart-1: oklch(0.488 0.243 264.376); /* Existing preserved */
-  --chart-2: oklch(0.696 0.17 162.48); /* Existing preserved */
-  --chart-3: oklch(0.769 0.188 70.08); /* Existing preserved */
-  --chart-4: oklch(0.627 0.265 303.9); /* Existing preserved */
-  --chart-5: oklch(0.645 0.246 16.439); /* Existing preserved */
-  --sidebar: oklch(0.205 0 0); /* Existing preserved */
-  --sidebar-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-primary: oklch(0.488 0.243 264.376); /* Existing preserved */
-  --sidebar-primary-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-accent: oklch(0.269 0 0); /* Existing preserved */
-  --sidebar-accent-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-border: oklch(0.269 0 0); /* Existing preserved */
-  --sidebar-ring: oklch(0.439 0 0); /* Existing preserved */
+  .dark {
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 86% 70%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 30%;
+    
+    /* Chart colors dark */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    
+    /* Sidebar dark */
+    --sidebar: 0 0% 9%; /* Added from diff, preserving existing as value for --sidebar-background */
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 220 70% 50%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 30%;
+  }
 }
 
 @theme inline {
@@ -119,35 +132,26 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/50; /* Added outline-ring/50 from diff */
   }
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Custom styles preserved from original globals.css */
-* {
-  border-color: var(--border);
-}
-
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-}
-
+/* Custom brand utilities */
 .bg-brand-gradient {
-  background: linear-gradient(135deg, var(--brand-bg) 0%, var(--brand-bg-2) 100%);
+  background: linear-gradient(135deg, hsl(var(--brand-bg)) 0%, hsl(var(--brand-bg-2)) 100%);
 }
 
 .bg-brand {
-  background-color: var(--brand-bg);
+  background-color: hsl(var(--brand-bg));
 }
 
 .text-brand {
-  color: var(--brand-bg);
+  color: hsl(var(--brand-bg));
 }
 
 .border-brand {
-  border-color: var(--brand-bg);
+  border-color: hsl(var(--brand-bg));
 }

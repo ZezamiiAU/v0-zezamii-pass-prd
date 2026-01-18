@@ -23,6 +23,7 @@ function getPassTypeString(passType: unknown): string {
 }
 
 interface PassDetails {
+  id?: string
   pass_id: string
   accessPointName: string
   timezone: string
@@ -116,7 +117,7 @@ export default function SuccessPage() {
         validTo: passDetails.valid_to,
         vehiclePlate: passDetails.vehiclePlate,
         timezone: passDetails.timezone,
-        passId: passDetails.pass_id,
+        passId: passDetails.id || passDetails.pass_id,
       }),
     }).catch((e) => {
       console.log("[v0] Email send failed:", e)
