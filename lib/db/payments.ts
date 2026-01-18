@@ -11,6 +11,7 @@ export interface Payment {
   currency: string
   status: string
   created_at: string
+  metadata?: Record<string, unknown> | null
 }
 
 export type PaymentWithPass = Payment & {
