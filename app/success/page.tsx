@@ -376,12 +376,14 @@ export default function SuccessPage() {
   const handleShareSMS = () => {
     if (!passDetails) return
 
-    const validUntilDate = new Date(passDetails.valid_to).toLocaleDateString("en-AU", {
-      timeZone: passDetails.timezone,
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    })
+    const validUntilDate = passDetails.valid_to 
+      ? new Date(passDetails.valid_to).toLocaleDateString("en-AU", {
+          timeZone: passDetails.timezone || "Australia/Sydney",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "N/A"
     
     const isCampingPass = getPassTypeString(passDetails.passType).toLowerCase().includes("camping")
     const validUntilTime = isCampingPass ? "10:00 AM" : "11:59 PM"
@@ -567,21 +569,25 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                   <span className="text-muted-foreground">Pass Type:</span>
                   <span className="font-medium">{getPassTypeString(passDetails.passType) || "Day Pass"}</span>
                 </div>
-                <div className="flex justify-between py-0.5 border-b">
-                  <span className="text-muted-foreground">Valid From:</span>
-                  <span className="font-medium">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b">
-                  <span className="text-muted-foreground">Valid Until:</span>
-                  <span className="font-medium">
-                    {new Date(passDetails.valid_to).toLocaleDateString("en-AU", { 
-                      timeZone: passDetails.timezone, 
-                      day: "numeric", 
-                      month: "short", 
-                      year: "numeric" 
-                    })}, {getPassTypeString(passDetails.passType).toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"}
-                  </span>
-                </div>
+                {passDetails.valid_from && (
+                  <div className="flex justify-between py-0.5 border-b">
+                    <span className="text-muted-foreground">Valid From:</span>
+                    <span className="font-medium">{formatDateTime(passDetails.valid_from, passDetails.timezone || "Australia/Sydney")}</span>
+                  </div>
+                )}
+                {passDetails.valid_to && (
+                  <div className="flex justify-between py-0.5 border-b">
+                    <span className="text-muted-foreground">Valid Until:</span>
+                    <span className="font-medium">
+                      {new Date(passDetails.valid_to).toLocaleDateString("en-AU", { 
+                        timeZone: passDetails.timezone || "Australia/Sydney", 
+                        day: "numeric", 
+                        month: "short", 
+                        year: "numeric" 
+                      })}, {getPassTypeString(passDetails.passType).toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"}
+                    </span>
+                  </div>
+                )}
                 {passDetails.vehiclePlate && (
                   <div className="flex justify-between py-0.5 border-b">
                     <span className="text-muted-foreground">Vehicle:</span>
@@ -594,7 +600,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <AlertDescription className="text-xs leading-tight">
                   <strong>Instructions:</strong>{" "}
                   {displayedCode
-                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${getPassTypeString(passDetails.passType).toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"} on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone, day: "numeric", month: "short", year: "numeric" })}.`
+                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}.${passDetails.valid_to ? ` Your pass is valid until ${getPassTypeString(passDetails.passType).toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"} on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone || "Australia/Sydney", day: "numeric", month: "short", year: "numeric" })}.` : ""}`
                     : isWaitingForRooms
                       ? "Retrieving your PIN..."
                       : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}
