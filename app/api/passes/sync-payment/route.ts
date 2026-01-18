@@ -125,7 +125,9 @@ export async function POST(req: NextRequest) {
     await passDb.from("payments").update({ status: "succeeded" }).eq("stripe_payment_intent", paymentIntentId)
 
     // Send email notification if we have customer email and a pinCode was generated
+    console.log("[v0] Sync-payment email check - pinCode:", pinCode, "customer_email:", meta.customer_email)
     if (meta.customer_email && pinCode) {
+      console.log("[v0] Sending email notification...")
       let accessPointName = "Access Point"
       let timezone = "Australia/Sydney"
       try {

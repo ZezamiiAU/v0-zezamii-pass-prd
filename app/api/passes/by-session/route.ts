@@ -97,8 +97,9 @@ export async function GET(request: NextRequest) {
     let returnUrl: string | null = null
 
     try {
-      const supabase = createSchemaServiceClient("core")
+      const supabase = await createSchemaServiceClient()
       const { data: device } = await supabase
+        .schema("core")
         .from("devices")
         .select("name, sites(timezone)")
         .eq("id", pass.device_id)
@@ -186,19 +187,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let lockCode: string | null = null
+    let lockCode = null
     let lockCodeError = false
-    let pinSource: "rooms" | "backup" | null = null
-
     if (pass.status === "active") {
       try {
         const code = await getLockCodeByPassId(pass.id)
         lockCode = code?.code || null
-
-        // Get pinSource from lock_codes provider field
-        if (code?.provider === "rooms" || code?.provider === "backup") {
-          pinSource = code.provider
-        }
 
         if (lockCode === null) {
           lockCodeError = true
@@ -218,12 +212,16 @@ export async function GET(request: NextRequest) {
 
     // Get backup code from payment metadata if available
     let backupCode: string | null = null
-
+    let pinSource: "rooms" | "backup" | null = null
+    
     try {
       if (payment.metadata && typeof payment.metadata === "object") {
         const meta = payment.metadata as Record<string, unknown>
         if (meta.backup_pincode && typeof meta.backup_pincode === "string") {
           backupCode = meta.backup_pincode
+        }
+        if (meta.pin_source && typeof meta.pin_source === "string") {
+          pinSource = meta.pin_source as "rooms" | "backup"
         }
       }
     } catch {

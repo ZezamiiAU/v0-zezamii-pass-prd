@@ -21,9 +21,6 @@ const ServerEnvSchema = z.object({
   LOCK_PROPERTY_ID: z.string().optional(),
   LOCK_WEBHOOK_TOKEN: z.string().optional(),
   LOCK_CALLBACK_SECRET: z.string().optional(),
-  RESEND_API_KEY: z.string().min(1).optional(),
-  EMAIL_FROM: z.string().min(1).optional(),
-  EMAIL_REPLY_TO: z.string().email().optional(),
 })
 
 const ClientEnvSchema = z.object({
@@ -65,9 +62,6 @@ function getServerEnv() {
     LOCK_PROPERTY_ID: process.env.LOCK_PROPERTY_ID,
     LOCK_WEBHOOK_TOKEN: process.env.LOCK_WEBHOOK_TOKEN,
     LOCK_CALLBACK_SECRET: process.env.LOCK_CALLBACK_SECRET,
-    RESEND_API_KEY: process.env.RESEND_API_KEY,
-    EMAIL_FROM: process.env.EMAIL_FROM,
-    EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
   })
 
   if (!result.success) {
