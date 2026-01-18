@@ -116,7 +116,7 @@ export default function SuccessPage() {
         validTo: passDetails.valid_to,
         vehiclePlate: passDetails.vehiclePlate,
         timezone: passDetails.timezone,
-        passId: passDetails.id,
+        passId: passDetails.pass_id,
       }),
     }).catch((e) => {
       console.log("[v0] Email send failed:", e)
