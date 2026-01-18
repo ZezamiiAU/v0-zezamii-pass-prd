@@ -1,6 +1,7 @@
 import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { v5 as uuidv5 } from "uuid"
+import { ENV } from "@/lib/env"
 
 export interface RoomsReservationPayload {
   propertyId: string // site_id
@@ -99,13 +100,14 @@ export async function createRoomsReservation(
     const url = `${config.base_url}${config.webhook_path}`
 
     // Make synchronous HTTP call to Rooms API
+    const timeoutMs = ENV.ROOMS_API_TIMEOUT_MS
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
 
     const duration = Date.now() - startTime

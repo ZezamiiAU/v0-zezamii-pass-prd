@@ -23,6 +23,8 @@ A Progressive Web App (PWA) for purchasing and managing digital access passes. U
 
 ## Architecture
 
+For detailed architecture documentation including complete logic flows, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 \`\`\`
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   QR Code   │────▶│   Next.js   │────▶│   Stripe    │
@@ -35,15 +37,26 @@ A Progressive Web App (PWA) for purchasing and managing digital access passes. U
                     └──────┬──────┘     └─────────────┘
                            │
                     ┌──────▼──────┐
-                    │ Rooms API   │
-                    │ (PIN codes) │
-                    └─────────────┘
+                    │ Rooms API   │──┐
+                    │ (Primary)   │  │ Fallback
+                    └─────────────┘  │
+                           ▲         ▼
+                    ┌──────┴─────────────┐
+                    │ Backup Pincodes    │
+                    │ (Fortnightly)      │
+                    └────────────────────┘
 \`\`\`
+
+### PIN Generation Flow
+
+1. **Primary**: Rooms Event Hub API creates PIN on physical lock (20s timeout)
+2. **Fallback**: Pre-generated backup pincodes (rotated fortnightly)
+3. Success page shows Rooms PIN immediately if available, otherwise waits for countdown then shows backup
 
 ### Database Schemas
 
 - **core**: Organizations, sites, devices, floors, buildings
-- **pass**: Passes, payments, lock_codes, pass_types, processed_webhooks
+- **pass**: Passes, payments, lock_codes, pass_types, processed_webhooks, backup_pincodes
 - **events**: Outbox for async event processing
 
 ## User Flow
@@ -100,9 +113,15 @@ psql $DATABASE_URL
 
 # CRITICAL: Grant schema access for public pass purchases
 \i scripts/022_fix_pass_schema_access_complete.sql
+
+# Add webhook status columns (required for idempotency)
+\i scripts/039-add-webhook-status-columns.sql
 \`\`\`
 
-**Important**: Script `022_fix_pass_schema_access_complete.sql` is required for `/ap/[accessPointId]` legacy routes and public pass type queries. Without it, you'll get error `42501: permission denied for schema pass`.
+**Important migrations**:
+- `022_fix_pass_schema_access_complete.sql` - Required for `/ap/[accessPointId]` legacy routes
+- `032-create-backup-pincodes-table.sql` - Creates backup pincode system
+- `039-add-webhook-status-columns.sql` - Adds status-based webhook idempotency
 
 ### Supabase Configuration
 
@@ -114,20 +133,46 @@ In your Supabase project settings, ensure the API is configured to expose the `p
 
 ## Environment Variables
 
-See `.env.example` for all required variables. Key ones:
+See `lib/env.ts` for the full schema with validation. Key variables:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `STRIPE_SECRET_KEY` | Yes | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | Production | Webhook signing secret |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes | Stripe publishable key |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
-| `WALLET_ISSUER_ID` | Optional | Google Wallet Issuer ID |
-| `WALLET_CLASS_ID` | Optional | Google Wallet Class ID |
-| `GOOGLE_WALLET_SA_JSON` | Optional | Google Wallet service account JSON |
-| `APP_ORIGIN` | Optional | Production URL |
+### Required
+
+| Variable | Description |
+|----------|-------------|
+| `STRIPE_SECRET_KEY` | Stripe secret key |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signing secret (production) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+
+### Optional - Wallet
+
+| Variable | Description |
+|----------|-------------|
+| `WALLET_ISSUER_ID` | Google Wallet Issuer ID |
+| `WALLET_CLASS_ID` | Google Wallet Class ID |
+| `GOOGLE_WALLET_SA_JSON` | Google Wallet service account JSON |
+
+### Optional - Timing Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ROOMS_API_TIMEOUT_MS` | `20000` | Rooms Event Hub API timeout (ms) |
+| `LOCK_CODE_MAX_RETRIES` | `3` | Max retries for lock code fetch |
+| `LOCK_CODE_RETRY_DELAY_MS` | `500` | Base delay between retries (ms) |
+| `NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS` | `20` | Success page countdown before backup |
+| `NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES` | `3` | Max retries for pass fetch |
+| `NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS` | `2000` | Base delay for retry backoff |
+| `NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER` | `1.5` | Exponential backoff multiplier |
+
+### Optional - General
+
+| Variable | Description |
+|----------|-------------|
+| `APP_ORIGIN` | Production URL |
+| `SUPPORT_EMAIL` | Support email address |
+| `PASS_DEV_MODE` | Enable dev mode (`true`/`false`) |
 
 ## API Routes
 

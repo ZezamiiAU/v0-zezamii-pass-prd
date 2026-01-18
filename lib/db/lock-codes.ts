@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
+import { ENV } from "@/lib/env"
 
 export interface LockCode {
   id: string
@@ -53,12 +54,12 @@ export async function createLockCode(data: {
  * Only accessible via service_role - anon users cannot read lock codes.
  */
 export async function getLockCodeByPassId(passId: string): Promise<LockCode | null> {
-  const MAX_RETRIES = 3
-  const RETRY_DELAY = 500 // ms
+  const maxRetries = ENV.LOCK_CODE_MAX_RETRIES
+  const retryDelayMs = ENV.LOCK_CODE_RETRY_DELAY_MS
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      logger.debug({ passId, attempt, maxRetries: MAX_RETRIES }, "[LockCodes] Attempting to fetch lock code")
+      logger.debug({ passId, attempt, maxRetries }, "[LockCodes] Attempting to fetch lock code")
       const supabase = createServiceClient()
 
       const { data, error } = await supabase
@@ -78,7 +79,7 @@ export async function getLockCodeByPassId(passId: string): Promise<LockCode | nu
           {
             passId,
             attempt,
-            maxRetries: MAX_RETRIES,
+            maxRetries,
             code: error.code,
             message: error.message,
             details: error.details,
@@ -86,8 +87,8 @@ export async function getLockCodeByPassId(passId: string): Promise<LockCode | nu
           "[LockCodes] Supabase error fetching lock code",
         )
 
-        if (attempt < MAX_RETRIES) {
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY * attempt))
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt))
           continue
         }
 
@@ -101,14 +102,14 @@ export async function getLockCodeByPassId(passId: string): Promise<LockCode | nu
         {
           passId,
           attempt,
-          maxRetries: MAX_RETRIES,
+          maxRetries,
           error: networkError instanceof Error ? networkError.message : String(networkError),
         },
         "[LockCodes] Exception fetching lock code",
       )
 
-      if (attempt < MAX_RETRIES) {
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY * attempt))
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt))
         continue
       }
 

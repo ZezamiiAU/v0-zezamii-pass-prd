@@ -52,28 +52,67 @@ export async function POST(req: NextRequest) {
   }
 
   const passDb = createSchemaServiceClient("pass")
-  const { data: existing } = await passDb.from("processed_webhooks").select("id").eq("event_id", event.id).single()
 
-  if (existing) {
+  // Check if already processed (completed successfully)
+  const { data: existing } = await passDb
+    .from("processed_webhooks")
+    .select("id, status")
+    .eq("event_id", event.id)
+    .single()
+
+  if (existing?.status === "completed") {
     logger.info({ eventId: event.id }, "Webhook already processed, skipping")
     return NextResponse.json({ received: true, duplicate: true })
   }
 
-  await passDb.from("processed_webhooks").insert({
-    event_id: event.id,
-    event_type: event.type,
-    processed_at: new Date().toISOString(),
-  })
-
-  if (event.type === "checkout.session.completed") {
-    return handleCheckoutSessionCompleted(event)
-  } else if (event.type === "payment_intent.succeeded") {
-    return handlePaymentIntentSucceeded(event)
-  } else if (event.type === "payment_intent.payment_failed") {
-    return handlePaymentIntentFailed(event)
+  // Mark as processing (or update if previously failed)
+  if (existing) {
+    await passDb
+      .from("processed_webhooks")
+      .update({ status: "processing", processed_at: new Date().toISOString() })
+      .eq("event_id", event.id)
+  } else {
+    await passDb.from("processed_webhooks").insert({
+      event_id: event.id,
+      event_type: event.type,
+      status: "processing",
+      processed_at: new Date().toISOString(),
+    })
   }
 
-  return NextResponse.json({ ok: true })
+  let result: NextResponse
+  try {
+    if (event.type === "checkout.session.completed") {
+      result = await handleCheckoutSessionCompleted(event)
+    } else if (event.type === "payment_intent.succeeded") {
+      result = await handlePaymentIntentSucceeded(event)
+    } else if (event.type === "payment_intent.payment_failed") {
+      result = await handlePaymentIntentFailed(event)
+    } else {
+      result = NextResponse.json({ ok: true })
+    }
+
+    // Mark as completed on success
+    await passDb
+      .from("processed_webhooks")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .eq("event_id", event.id)
+
+    return result
+  } catch (error) {
+    // Mark as failed so it can be retried
+    await passDb
+      .from("processed_webhooks")
+      .update({
+        status: "failed",
+        error_message: error instanceof Error ? error.message : String(error),
+        completed_at: new Date().toISOString()
+      })
+      .eq("event_id", event.id)
+
+    logger.error({ eventId: event.id, error }, "Webhook processing failed")
+    throw error // Re-throw so Stripe knows to retry
+  }
 }
 
 async function handleCheckoutSessionCompleted(event: Stripe.Event) {

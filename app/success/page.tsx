@@ -10,7 +10,11 @@ import { formatLocalizedDateTime } from "@/lib/timezone"
 import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, Clock } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-const COUNTDOWN_SECONDS = 12
+// Configuration from environment variables with defaults
+const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS) || 20
+const MAX_RETRIES = Number(process.env.NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES) || 3
+const BASE_DELAY_MS = Number(process.env.NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS) || 2000
+const BACKOFF_MULTIPLIER = Number(process.env.NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER) || 1.5
 
 interface PassDetails {
   pass_id: string
@@ -97,16 +101,19 @@ export default function SuccessPage() {
     return () => clearInterval(timer)
   }, [isWaitingForRooms, roomsPinReceived, countdown])
 
-  // When countdown ends, show whatever code we have (Rooms or backup)
+  // When countdown ends, show backup code if Rooms hasn't responded yet
   useEffect(() => {
-    const codeToShow = backupCodeCached || passDetails?.backupCode || passDetails?.code
-    if (countdown === 0 && isWaitingForRooms && !displayedCode && codeToShow) {
-      setDisplayedCode(codeToShow)
-      setPinSource(roomsPinReceived ? "rooms" : "backup")
-      setIsWaitingForRooms(false)
-      setIsLoading(false)
+    // If Rooms already responded, this effect is skipped (isWaitingForRooms will be false)
+    if (countdown === 0 && isWaitingForRooms && !displayedCode) {
+      const codeToShow = backupCodeCached || passDetails?.backupCode || passDetails?.code
+      if (codeToShow) {
+        setDisplayedCode(codeToShow)
+        setPinSource("backup") // If we're here, Rooms didn't respond in time
+        setIsWaitingForRooms(false)
+        setIsLoading(false)
+      }
     }
-  }, [countdown, isWaitingForRooms, displayedCode, passDetails?.backupCode, passDetails?.code, backupCodeCached, roomsPinReceived])
+  }, [countdown, isWaitingForRooms, displayedCode, passDetails?.backupCode, passDetails?.code, backupCodeCached])
 
   useEffect(() => {
     const checkOnlineStatus = () => {
@@ -163,7 +170,6 @@ export default function SuccessPage() {
 
     const abortController = new AbortController()
     let retryCount = 0
-    const MAX_RETRIES = 3
     let pollInterval: NodeJS.Timeout | null = null
     let isMounted = true
 
@@ -220,7 +226,7 @@ export default function SuccessPage() {
 
               if (syncResponse.ok && isMounted) {
                 retryCount++
-                const delay = 2000 * Math.pow(1.5, retryCount)
+                const delay = BASE_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, retryCount)
                 // Retrying payment sync
                 pollInterval = setTimeout(() => fetchPassDetails(), delay)
                 return
@@ -242,21 +248,25 @@ export default function SuccessPage() {
         if (!isMounted) return
 
         // Handle pincode display logic
-        // Cache any available code for when countdown ends
-        const codeToCache = data.code || data.backupCode
-        if (codeToCache) {
-          setBackupCodeCached(codeToCache)
-          // Track if this is from Rooms (for display purposes later)
-          if (data.pinSource === "rooms") {
-            setRoomsPinReceived(true)
-          }
-        }
-        
-        // Only show PIN after countdown reaches 0
-        if (countdown === 0 && !displayedCode && codeToCache) {
-          setDisplayedCode(codeToCache)
-          setPinSource(data.pinSource || "backup")
+        const codeFromApi = data.code || data.backupCode
+
+        // If we got a Rooms pincode, show it immediately (no need to wait)
+        if (data.pinSource === "rooms" && data.code) {
+          setRoomsPinReceived(true)
+          setDisplayedCode(data.code)
+          setPinSource("rooms")
           setIsWaitingForRooms(false)
+          setIsLoading(false)
+        } else if (codeFromApi) {
+          // Cache backup code for when countdown ends
+          setBackupCodeCached(codeFromApi)
+
+          // If countdown already finished, show backup immediately
+          if (countdown === 0 && !displayedCode) {
+            setDisplayedCode(codeFromApi)
+            setPinSource(data.pinSource || "backup")
+            setIsWaitingForRooms(false)
+          }
         }
 
         if ((data.code === null && !data.backupCode) || data.codeUnavailable) {

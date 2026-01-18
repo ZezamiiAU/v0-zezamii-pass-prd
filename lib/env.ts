@@ -21,6 +21,11 @@ const ServerEnvSchema = z.object({
   LOCK_PROPERTY_ID: z.string().optional(),
   LOCK_WEBHOOK_TOKEN: z.string().optional(),
   LOCK_CALLBACK_SECRET: z.string().optional(),
+  // Rooms Event Hub configuration
+  ROOMS_API_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).optional(),
+  // Lock code retry configuration
+  LOCK_CODE_MAX_RETRIES: z.coerce.number().int().min(1).max(10).optional(),
+  LOCK_CODE_RETRY_DELAY_MS: z.coerce.number().int().min(100).max(5000).optional(),
 })
 
 const ClientEnvSchema = z.object({
@@ -35,6 +40,11 @@ const ClientEnvSchema = z.object({
   NEXT_PUBLIC_APP_TITLE: z.string().optional(),
   NEXT_PUBLIC_APP_DESCRIPTION: z.string().optional(),
   NEXT_PUBLIC_SUPPORT_EMAIL: z.string().email().optional(),
+  // Success page PIN display configuration
+  NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS: z.coerce.number().int().min(1).max(60).optional(),
+  NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES: z.coerce.number().int().min(1).max(10).optional(),
+  NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS: z.coerce.number().int().min(500).max(10000).optional(),
+  NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER: z.coerce.number().min(1).max(3).optional(),
 })
 
 let serverEnvCache: z.infer<typeof ServerEnvSchema> | null = null
@@ -62,6 +72,9 @@ function getServerEnv() {
     LOCK_PROPERTY_ID: process.env.LOCK_PROPERTY_ID,
     LOCK_WEBHOOK_TOKEN: process.env.LOCK_WEBHOOK_TOKEN,
     LOCK_CALLBACK_SECRET: process.env.LOCK_CALLBACK_SECRET,
+    ROOMS_API_TIMEOUT_MS: process.env.ROOMS_API_TIMEOUT_MS,
+    LOCK_CODE_MAX_RETRIES: process.env.LOCK_CODE_MAX_RETRIES,
+    LOCK_CODE_RETRY_DELAY_MS: process.env.LOCK_CODE_RETRY_DELAY_MS,
   })
 
   if (!result.success) {
@@ -94,6 +107,10 @@ function getClientEnv() {
     NEXT_PUBLIC_APP_TITLE: process.env.NEXT_PUBLIC_APP_TITLE,
     NEXT_PUBLIC_APP_DESCRIPTION: process.env.NEXT_PUBLIC_APP_DESCRIPTION,
     NEXT_PUBLIC_SUPPORT_EMAIL: process.env.NEXT_PUBLIC_SUPPORT_EMAIL,
+    NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS: process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS,
+    NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES: process.env.NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES,
+    NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS: process.env.NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS,
+    NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER: process.env.NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER,
   })
 
   if (!result.success) {
@@ -110,6 +127,10 @@ function getClientEnv() {
       NEXT_PUBLIC_APP_TITLE: undefined,
       NEXT_PUBLIC_APP_DESCRIPTION: undefined,
       NEXT_PUBLIC_SUPPORT_EMAIL: undefined,
+      NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS: undefined,
+      NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES: undefined,
+      NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS: undefined,
+      NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER: undefined,
     }
     return clientEnvCache
   }
@@ -150,6 +171,29 @@ export const ENV = {
   },
   get LOCK_CALLBACK_SECRET() {
     return getServerEnv().LOCK_CALLBACK_SECRET
+  },
+  // Rooms & Lock code configuration with defaults
+  get ROOMS_API_TIMEOUT_MS() {
+    return getServerEnv().ROOMS_API_TIMEOUT_MS ?? 20000
+  },
+  get LOCK_CODE_MAX_RETRIES() {
+    return getServerEnv().LOCK_CODE_MAX_RETRIES ?? 3
+  },
+  get LOCK_CODE_RETRY_DELAY_MS() {
+    return getServerEnv().LOCK_CODE_RETRY_DELAY_MS ?? 500
+  },
+  // Success page configuration with defaults
+  get NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS() {
+    return getClientEnv().NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS ?? 20
+  },
+  get NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES() {
+    return getClientEnv().NEXT_PUBLIC_PASS_FETCH_MAX_RETRIES ?? 3
+  },
+  get NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS() {
+    return getClientEnv().NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS ?? 2000
+  },
+  get NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER() {
+    return getClientEnv().NEXT_PUBLIC_PASS_FETCH_BACKOFF_MULTIPLIER ?? 1.5
   },
 }
 

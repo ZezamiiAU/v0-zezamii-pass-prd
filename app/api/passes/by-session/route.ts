@@ -130,10 +130,17 @@ export async function GET(request: NextRequest) {
 
     let lockCode = null
     let lockCodeError = false
+    let pinSource: "rooms" | "backup" | null = null
+
     if (pass.status === "active") {
       try {
-        const code = await getLockCodeByPassId(pass.id)
-        lockCode = code?.code || null
+        const lockCodeRecord = await getLockCodeByPassId(pass.id)
+        lockCode = lockCodeRecord?.code || null
+
+        // Get the provider from the lock_codes table (set by webhook)
+        if (lockCodeRecord?.provider === "rooms" || lockCodeRecord?.provider === "backup") {
+          pinSource = lockCodeRecord.provider
+        }
 
         if (lockCode === null) {
           lockCodeError = true
@@ -151,18 +158,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get backup code from payment metadata if available
+    // Get backup code from payment metadata as fallback
     let backupCode: string | null = null
-    let pinSource: "rooms" | "backup" | null = null
-    
+
     try {
       if (payment.metadata && typeof payment.metadata === "object") {
         const meta = payment.metadata as Record<string, unknown>
         if (meta.backup_pincode && typeof meta.backup_pincode === "string") {
           backupCode = meta.backup_pincode
-        }
-        if (meta.pin_source && typeof meta.pin_source === "string") {
-          pinSource = meta.pin_source as "rooms" | "backup"
         }
       }
     } catch {
