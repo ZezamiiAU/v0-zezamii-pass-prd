@@ -57,22 +57,23 @@ export function PassPurchaseForm({
   const [numberOfDays, setNumberOfDays] = useState(0) // Initialize numberOfDays to 0 (unselected) instead of 1
   const [email, setEmail] = useState("")
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailTouched, setEmailTouched] = useState(false)
   const [phone, setPhone] = useState("")
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Email validation function
-  const validateEmail = (emailValue: string): boolean => {
+  // Email validation function - only show errors if touched or on submit
+  const validateEmail = (emailValue: string, showError = true): boolean => {
     if (!emailValue || !emailValue.trim()) {
-      setEmailError("Email is required")
+      if (showError) setEmailError("Email is required")
       return false
     }
     // RFC 5322 compliant email regex
     const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
     if (!emailRegex.test(emailValue.trim())) {
-      setEmailError("Please enter a valid email address")
+      if (showError) setEmailError("Please enter a valid email address")
       return false
     }
     setEmailError(null)
@@ -138,8 +139,9 @@ export function PassPurchaseForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Email is always required
-    if (!validateEmail(email)) {
+    // Mark email as touched and validate
+    setEmailTouched(true)
+    if (!validateEmail(email, true)) {
       return
     }
 
@@ -320,13 +322,15 @@ export function PassPurchaseForm({
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value)
-                if (emailError) validateEmail(e.target.value)
+                if (emailTouched && emailError) validateEmail(e.target.value)
               }}
-              onBlur={() => validateEmail(email)}
-              className={`h-7 text-sm ${emailError ? "border-destructive" : ""}`}
-              required
+              onBlur={() => {
+                setEmailTouched(true)
+                if (email) validateEmail(email)
+              }}
+              className={`h-7 text-sm ${emailError && emailTouched ? "border-destructive" : ""}`}
             />
-            {emailError && (
+            {emailError && emailTouched && (
               <p className="text-xs text-destructive">{emailError}</p>
             )}
           </div>
