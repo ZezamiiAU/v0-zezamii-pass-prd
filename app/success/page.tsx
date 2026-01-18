@@ -53,7 +53,7 @@ function extractErrorMessage(errorData: any): string {
 export default function SuccessPage() {
   const searchParams = useSearchParams()
 
-  const [passDetails, setPassDetails] = useState<PassDetails | null>(null)
+  const [passDetails, setPassDetails] = useState<Partial<PassDetails> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [errorDetails, setErrorDetails] = useState<string | null>(null)
