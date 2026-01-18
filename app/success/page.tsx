@@ -97,16 +97,16 @@ export default function SuccessPage() {
     return () => clearInterval(timer)
   }, [isWaitingForRooms, roomsPinReceived, countdown])
 
-  // When countdown ends and no Rooms pin, use backup immediately
+  // When countdown ends, show whatever code we have (Rooms or backup)
   useEffect(() => {
-    const backup = backupCodeCached || passDetails?.backupCode
-    if (countdown === 0 && isWaitingForRooms && !roomsPinReceived && backup) {
-      setDisplayedCode(backup)
-      setPinSource("backup")
+    const codeToShow = backupCodeCached || passDetails?.backupCode || passDetails?.code
+    if (countdown === 0 && isWaitingForRooms && !displayedCode && codeToShow) {
+      setDisplayedCode(codeToShow)
+      setPinSource(roomsPinReceived ? "rooms" : "backup")
       setIsWaitingForRooms(false)
-      setIsLoading(false) // Stop loading immediately when using backup
+      setIsLoading(false)
     }
-  }, [countdown, isWaitingForRooms, roomsPinReceived, passDetails?.backupCode, backupCodeCached])
+  }, [countdown, isWaitingForRooms, displayedCode, passDetails?.backupCode, passDetails?.code, backupCodeCached, roomsPinReceived])
 
   useEffect(() => {
     const checkOnlineStatus = () => {
@@ -242,24 +242,21 @@ export default function SuccessPage() {
         if (!isMounted) return
 
         // Handle pincode display logic
-        if (data.code && data.pinSource === "rooms") {
-          // Rooms returned a PIN - show it immediately!
-          setDisplayedCode(data.code)
-          setPinSource("rooms")
-          setRoomsPinReceived(true)
+        // Cache any available code for when countdown ends
+        const codeToCache = data.code || data.backupCode
+        if (codeToCache) {
+          setBackupCodeCached(codeToCache)
+          // Track if this is from Rooms (for display purposes later)
+          if (data.pinSource === "rooms") {
+            setRoomsPinReceived(true)
+          }
+        }
+        
+        // Only show PIN after countdown reaches 0
+        if (countdown === 0 && !displayedCode && codeToCache) {
+          setDisplayedCode(codeToCache)
+          setPinSource(data.pinSource || "backup")
           setIsWaitingForRooms(false)
-        } else {
-          // Cache the backup code (from data.backupCode or data.code if it's backup)
-          const backupToCache = data.backupCode || (data.pinSource === "backup" ? data.code : null)
-          if (backupToCache) {
-            setBackupCodeCached(backupToCache)
-          }
-          // Only show backup if countdown already ended
-          if (countdown === 0 && !displayedCode && backupToCache) {
-            setDisplayedCode(backupToCache)
-            setPinSource("backup")
-            setIsWaitingForRooms(false)
-          }
         }
 
         if ((data.code === null && !data.backupCode) || data.codeUnavailable) {
