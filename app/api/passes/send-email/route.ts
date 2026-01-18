@@ -20,8 +20,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const data = sendEmailSchema.parse(body)
 
-    console.log("[v0] Send email endpoint called:", data.email, data.pin)
-
     await sendPassNotifications(
       data.email,
       data.phone || null,
@@ -30,18 +28,16 @@ export async function POST(req: NextRequest) {
         pin: data.pin,
         validFrom: data.validFrom,
         validTo: data.validTo,
-        vehiclePlate: data.vehiclePlate,
+        vehiclePlate: data.vehiclePlate || undefined,
       },
       data.timezone
     )
 
     logger.info({ email: data.email, passId: data.passId }, "Pass email sent via send-email endpoint")
-    console.log("[v0] Email sent successfully to:", data.email)
 
     return NextResponse.json({ success: true })
   } catch (error) {
     logger.error({ error: error instanceof Error ? error.message : String(error) }, "Failed to send pass email")
-    console.log("[v0] Email send error:", error instanceof Error ? error.message : String(error))
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 })
   }
 }

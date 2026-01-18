@@ -53,10 +53,12 @@ A Progressive Web App (PWA) for purchasing and managing digital access passes. U
 3. User selects pass, enters contact info, accepts terms
 4. Payment form appears (Stripe Elements)
 5. On successful payment:
-   - Pass record created in database
-   - PIN code generated via Rooms API (or backup system)
-   - PIN displayed on success page
-   - Confirmation sent via email/SMS
+   - Pass record created and activated in database
+   - PIN code generated via Rooms API (primary) or backup system (fallback)
+   - PIN stored in `lock_codes` table with provider source
+   - Email notification sent via Resend with PIN details
+   - PIN displayed on success page with 20-second countdown
+   - Event published to outbox for downstream consumers
 
 ## Setup
 
@@ -124,6 +126,9 @@ See `.env.example` for all required variables. Key ones:
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes | Stripe publishable key |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
+| `RESEND_API_KEY` | Optional | Resend API key for email notifications |
+| `EMAIL_FROM` | Optional | Sender email address (e.g., `passes@yourdomain.com`) |
+| `EMAIL_REPLY_TO` | Optional | Reply-to email address |
 | `WALLET_ISSUER_ID` | Optional | Google Wallet Issuer ID |
 | `WALLET_CLASS_ID` | Optional | Google Wallet Class ID |
 | `GOOGLE_WALLET_SA_JSON` | Optional | Google Wallet service account JSON |
@@ -136,6 +141,8 @@ See `.env.example` for all required variables. Key ones:
 | `/api/payment-intents` | POST | Create Stripe PaymentIntent + pass |
 | `/api/webhooks/stripe` | POST | Handle Stripe webhook events |
 | `/api/passes/by-session` | GET | Fetch pass details by session/intent |
+| `/api/passes/send-email` | POST | Send pass notification email |
+| `/api/passes/sync-payment` | POST | Manually sync payment status |
 | `/api/pass-types` | GET | List available pass types |
 | `/api/accesspoints/resolve/[orgSlug]/[deviceSlug]` | GET | Resolve device by slugs |
 | `/api/wallet/google` | POST | Generate Google Wallet pass |
@@ -168,6 +175,41 @@ pnpm build
    - `payment_intent.succeeded`
    - `payment_intent.payment_failed`
 4. Copy signing secret to `STRIPE_WEBHOOK_SECRET`
+
+## Email Notifications (Resend)
+
+Email notifications are sent automatically when a pass is purchased. The system uses [Resend](https://resend.com) for reliable email delivery.
+
+### Setup
+
+1. Create a Resend account at [resend.com](https://resend.com)
+2. Add and verify your sending domain
+3. Create an API key
+4. Set environment variables:
+   ```
+   RESEND_API_KEY=re_xxxxx
+   EMAIL_FROM=passes@yourdomain.com
+   EMAIL_REPLY_TO=support@yourdomain.com  # optional
+   ```
+
+### Features
+
+- **Automatic retry**: Failed sends retry up to 3 times with exponential backoff (250ms, 750ms, 1500ms)
+- **Transient error handling**: Automatically retries on 429, 500, 502, 503, 504 errors
+- **Dead-letter queue**: Failed emails after all retries are logged to `pass.email_failures` for manual review
+- **HTML + Plain text**: Emails include both HTML and plain text versions
+
+### Email Flow
+
+1. Stripe webhook receives `payment_intent.succeeded` event
+2. Webhook handler generates PIN (Rooms API or backup)
+3. If customer email is provided, `sendPassNotifications()` is called
+4. Email is sent asynchronously (fire-and-forget, doesn't block webhook response)
+5. Success/failure logged; failures go to dead-letter table
+
+### Graceful Degradation
+
+If `RESEND_API_KEY` is not configured, email sending is disabled with a warning log. The pass purchase flow continues normally - users will still see their PIN on the success page.
 
 ## Production Considerations
 

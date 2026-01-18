@@ -1,4 +1,5 @@
 import { createSchemaServiceClient } from "@/lib/supabase/server"
+import logger from "@/lib/logger"
 
 export interface BackupPincode {
   id: string
@@ -23,8 +24,6 @@ export async function getBackupPincode(
   const supabase = createSchemaServiceClient("pass")
   const now = new Date().toISOString()
 
-  console.log("[v0] getBackupPincode called with:", { orgId, siteId, deviceId, now })
-
   const { data, error } = await supabase
     .from("backup_pincodes")
     .select("pincode, fortnight_number, period_start, period_end")
@@ -35,18 +34,8 @@ export async function getBackupPincode(
     .gte("period_end", now)
     .maybeSingle()
 
-  console.log("[v0] getBackupPincode result:", { data, error })
-
   if (error || !data) {
-    console.error("[BackupPincodes] Failed to get backup pincode:", error ? JSON.stringify(error) : "No data found")
-
-    const { data: allPincodes, error: listError } = await supabase
-      .from("backup_pincodes")
-      .select("pincode, fortnight_number, period_start, period_end, org_id, site_id, device_id")
-      .limit(5)
-
-    console.log("[v0] Available backup pincodes sample:", { allPincodes, listError })
-
+    logger.warn({ orgId, siteId, deviceId, error: error?.message }, "[BackupPincodes] No backup pincode found for current period")
     return null
   }
 
@@ -73,7 +62,7 @@ export async function getCurrentBackupPincode(deviceId: string): Promise<string 
     .maybeSingle()
 
   if (error || !data) {
-    console.error("[BackupPincodes] Failed to get backup pincode:", error ? JSON.stringify(error) : "No data found")
+    logger.warn({ deviceId, error: error?.message }, "[BackupPincodes] No backup pincode found for device")
     return null
   }
 
@@ -120,7 +109,7 @@ export async function getBackupPincodeByFortnight(deviceId: string, fortnightNum
     .maybeSingle()
 
   if (error || !data) {
-    console.error("[BackupPincodes] Failed to get backup pincode for fortnight:", fortnightNumber, error ? JSON.stringify(error) : "No data found")
+    logger.warn({ deviceId, fortnightNumber, error: error?.message }, "[BackupPincodes] No backup pincode found for fortnight")
     return null
   }
 
