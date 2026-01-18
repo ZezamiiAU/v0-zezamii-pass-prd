@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       }
     } catch (lookupError) {
       logger.warn(
-        { error: lookupError instanceof Error ? lookupError.message : lookupError },
+        { error: lookupError instanceof Error ? lookupError.message : String(lookupError) },
         "[BySession] Error fetching access point details",
       )
     }
@@ -144,11 +144,29 @@ export async function GET(request: NextRequest) {
         logger.error(
           {
             passId: pass.id,
-            error: lockCodeFetchError instanceof Error ? lockCodeFetchError.message : lockCodeFetchError,
+            error: lockCodeFetchError instanceof Error ? lockCodeFetchError.message : String(lockCodeFetchError),
           },
           "[BySession] Exception while fetching lock code",
         )
       }
+    }
+
+    // Get backup code from payment metadata if available
+    let backupCode: string | null = null
+    let pinSource: "rooms" | "backup" | null = null
+    
+    try {
+      if (payment.metadata && typeof payment.metadata === "object") {
+        const meta = payment.metadata as Record<string, unknown>
+        if (meta.backup_pincode && typeof meta.backup_pincode === "string") {
+          backupCode = meta.backup_pincode
+        }
+        if (meta.pin_source && typeof meta.pin_source === "string") {
+          pinSource = meta.pin_source as "rooms" | "backup"
+        }
+      }
+    } catch {
+      // Ignore metadata parsing errors
     }
 
     return NextResponse.json({
@@ -156,6 +174,8 @@ export async function GET(request: NextRequest) {
       accessPointName,
       timezone,
       code: lockCode,
+      backupCode,
+      pinSource,
       codeUnavailable: lockCodeError,
       valid_from: pass.valid_from,
       valid_to: pass.valid_to,
@@ -171,7 +191,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     logger.error(
-      { error: error instanceof Error ? error.message : error },
+      { error: error instanceof Error ? error.message : String(error) },
       "[BySession] Error in GET /api/passes/by-session",
     )
     if (error instanceof ZodError) {

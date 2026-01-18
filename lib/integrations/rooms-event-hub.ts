@@ -84,10 +84,10 @@ export async function createRoomsReservation(
       .eq("organisation_id", organisationId)
       .eq("integration_type", "rooms_event_hub")
       .eq("status", "active")
-      .single()
+      .maybeSingle()
 
     if (configError || !integration) {
-      logger.error({ organisationId, configError }, "Rooms integration not configured")
+      logger.warn({ organisationId, configError: configError?.message || "No integration found" }, "Rooms integration not configured")
       return {
         success: false,
         error: "Rooms integration not configured for this organisation",
@@ -189,7 +189,7 @@ export async function createRoomsReservation(
         .select("id")
         .eq("organisation_id", organisationId)
         .eq("integration_type", "rooms_event_hub")
-        .single()
+        .maybeSingle()
 
       if (integration) {
         await core.from("integration_logs").insert({

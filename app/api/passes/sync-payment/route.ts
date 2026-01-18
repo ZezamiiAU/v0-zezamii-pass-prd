@@ -39,14 +39,14 @@ export async function POST(req: NextRequest) {
     const passDb = createSchemaServiceClient("pass")
 
     // Check if pass is already active
-    const { data: existingPass } = await passDb.from("passes").select("status").eq("id", passId).single()
+    const { data: existingPass } = await passDb.from("passes").select("status").eq("id", passId).maybeSingle()
 
     if (existingPass?.status === "active") {
       return NextResponse.json({ success: true, alreadyActive: true })
     }
 
     // Check if lock code already exists
-    const { data: existingLockCode } = await passDb.from("lock_codes").select("id, code").eq("pass_id", passId).single()
+    const { data: existingLockCode } = await passDb.from("lock_codes").select("id, code").eq("pass_id", passId).maybeSingle()
 
     if (!existingLockCode) {
       // Need to generate pincode - try Rooms first, then backup
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         .from("passes")
         .select("id, valid_from, valid_to, org_id")
         .eq("id", passId)
-        .single()
+        .maybeSingle()
 
       if (!pass) {
         return NextResponse.json({ error: "Pass not found" }, { status: 404 })
@@ -101,14 +101,18 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Store the pincode
-      await passDb.from("lock_codes").insert({
+      // Store the pincode (use upsert to handle race conditions)
+      const { error: insertError } = await passDb.from("lock_codes").upsert({
         pass_id: pass.id,
         code: pinCode,
         provider: pinProvider,
         starts_at: startsAt,
         ends_at: endsAt,
-      })
+      }, { onConflict: "pass_id" })
+      
+      if (insertError && !insertError.message.includes("duplicate")) {
+        logger.error({ passId, insertError }, "Failed to store lock code")
+      }
     }
 
     // Update pass status to active
@@ -124,7 +128,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof ZodError) {
       return handleValidationError(error)
     }
-    logger.error({ error }, "Payment sync failed")
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, "Payment sync failed")
     return NextResponse.json({ error: "Failed to sync payment" }, { status: 500 })
   }
 }

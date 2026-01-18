@@ -1,20 +1,24 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { sessionQuerySchema } from "@/lib/schemas/api.schema"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, Clock } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
+const COUNTDOWN_SECONDS = 12
 
 interface PassDetails {
   pass_id: string
   accessPointName: string
   timezone: string
   code: string | null
+  backupCode?: string | null
+  pinSource?: "rooms" | "backup" | null
   codeUnavailable?: boolean
   valid_from: string
   valid_to: string
@@ -47,6 +51,14 @@ export default function SuccessPage() {
   const [supportEmail, setSupportEmail] = useState("support@zezamii.com")
   const [copiedToClipboard, setCopiedToClipboard] = useState(false)
   const [isTechnicalDetailsOpen, setIsTechnicalDetailsOpen] = useState(false)
+  
+  // Countdown timer for waiting for Rooms pincode - starts immediately
+  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS)
+  const [isWaitingForRooms, setIsWaitingForRooms] = useState(true) // Start waiting immediately
+  const [roomsPinReceived, setRoomsPinReceived] = useState(false)
+  const [displayedCode, setDisplayedCode] = useState<string | null>(null)
+  const [pinSource, setPinSource] = useState<"rooms" | "backup" | null>(null)
+  const [backupCodeCached, setBackupCodeCached] = useState<string | null>(null)
 
   const rawParams = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams])
 
@@ -67,6 +79,34 @@ export default function SuccessPage() {
     const email = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@zezamii.com"
     setSupportEmail(email)
   }, [])
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!isWaitingForRooms || roomsPinReceived || countdown <= 0) return
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [isWaitingForRooms, roomsPinReceived, countdown])
+
+  // When countdown ends and no Rooms pin, use backup immediately
+  useEffect(() => {
+    const backup = backupCodeCached || passDetails?.backupCode
+    if (countdown === 0 && isWaitingForRooms && !roomsPinReceived && backup) {
+      setDisplayedCode(backup)
+      setPinSource("backup")
+      setIsWaitingForRooms(false)
+      setIsLoading(false) // Stop loading immediately when using backup
+    }
+  }, [countdown, isWaitingForRooms, roomsPinReceived, passDetails?.backupCode, backupCodeCached])
 
   useEffect(() => {
     const checkOnlineStatus = () => {
@@ -201,7 +241,25 @@ export default function SuccessPage() {
 
         if (!isMounted) return
 
-        if (data.code === null || data.codeUnavailable) {
+        // Handle pincode display logic
+        if (data.code) {
+          // We have a pincode from the API - show it immediately (Rooms worked!)
+          setDisplayedCode(data.code)
+          setPinSource(data.pinSource || "rooms")
+          setRoomsPinReceived(true)
+          setIsWaitingForRooms(false)
+        } else if (data.backupCode) {
+          // Cache the backup code
+          setBackupCodeCached(data.backupCode)
+          // If countdown already ended, show backup immediately
+          if (countdown === 0 && !displayedCode) {
+            setDisplayedCode(data.backupCode)
+            setPinSource("backup")
+            setIsWaitingForRooms(false)
+          }
+        }
+
+        if ((data.code === null && !data.backupCode) || data.codeUnavailable) {
           setCodeWarning(true)
         }
 
@@ -252,12 +310,19 @@ export default function SuccessPage() {
   const handleShareSMS = () => {
     if (!passDetails) return
 
+    const validUntilDate = new Date(passDetails.valid_to).toLocaleDateString("en-AU", {
+      timeZone: passDetails.timezone,
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+
     const message = `Your Access Pass:
 Access Point: ${passDetails.accessPointName}
-PIN: ${passDetails.code || "Contact support"}
-Valid until: ${formatDateTime(passDetails.valid_to, passDetails.timezone)}
+PIN: ${displayedCode || "Contact support"}
+Valid until: 11:59 PM on ${validUntilDate}
 
-${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact ${supportEmail} for your PIN.`}`
+${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please contact ${supportEmail} for your PIN.`}`
 
     const smsUrl = `sms:?&body=${encodeURIComponent(message)}`
     window.location.href = smsUrl
@@ -285,10 +350,52 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
           )}
         </CardHeader>
         <CardContent className="space-y-2 pb-2">
-          {isLoading && (
+          {isLoading && !displayedCode && (
             <div className="text-center py-4">
-              <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading your pass...</p>
+              {/* Show countdown timer while loading */}
+              {isWaitingForRooms && countdown > 0 && (
+                <div className="py-2">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <Clock className="h-5 w-5 text-blue-600 animate-pulse" />
+                    <span className="text-sm font-medium text-blue-600">Generating your PIN...</span>
+                  </div>
+                  <div className="relative w-20 h-20 mx-auto">
+                    <svg className="w-20 h-20 transform -rotate-90">
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="36"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                        className="text-gray-200"
+                      />
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="36"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                        className="text-blue-600 transition-all duration-1000"
+                        strokeDasharray={226}
+                        strokeDashoffset={226 - (226 * countdown) / COUNTDOWN_SECONDS}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-blue-600">
+                      {countdown}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">Connecting to access system...</p>
+                </div>
+              )}
+              {(!isWaitingForRooms || countdown <= 0) && !displayedCode && (
+                <>
+                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Loading your pass...</p>
+                </>
+              )}
             </div>
           )}
 
@@ -311,6 +418,22 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
             </Alert>
           )}
 
+          {/* Show PIN immediately when available, even without full passDetails */}
+          {displayedCode && (
+            <div className="space-y-2">
+              <div className="bg-primary/10 p-3 rounded-lg text-center border-2 border-primary/20">
+                <p className="text-xs text-muted-foreground mb-1 font-medium">Your Access PIN</p>
+                <p className="text-4xl font-bold tracking-widest text-primary">{displayedCode}</p>
+                {pinSource === "backup" && (
+                  <p className="text-xs text-orange-600 mt-1 font-medium">Backup Code</p>
+                )}
+                <p className="text-sm font-semibold text-primary mt-2 bg-yellow-100 border border-yellow-400 rounded px-2 py-1">
+                  Enter PIN followed by <span className="text-lg">#</span>
+                </p>
+              </div>
+            </div>
+          )}
+          
           {passDetails && (
             <div className="space-y-2">
               {codeWarning && (
@@ -322,11 +445,59 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                 </Alert>
               )}
 
-              <div className="bg-primary/10 p-3 rounded-lg text-center border-2 border-primary/20">
-                <p className="text-xs text-muted-foreground mb-1 font-medium">Your Access PIN</p>
-                <p className="text-4xl font-bold tracking-widest text-primary">{passDetails.code || "----"}</p>
-                {!passDetails.code && <p className="text-xs text-muted-foreground mt-1">Contact support for PIN</p>}
-              </div>
+              {/* Show PIN in passDetails section only if not already shown above */}
+              {!displayedCode && (
+                <div className="bg-primary/10 p-3 rounded-lg text-center border-2 border-primary/20">
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">Your Access PIN</p>
+                  
+                  {/* Countdown timer while waiting for Rooms */}
+                  {isWaitingForRooms && (
+                    <div className="py-2">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <Clock className="h-5 w-5 text-blue-600 animate-pulse" />
+                        <span className="text-sm font-medium text-blue-600">Retrieving PIN...</span>
+                      </div>
+                      <div className="relative w-16 h-16 mx-auto">
+                        <svg className="w-16 h-16 transform -rotate-90">
+                          <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            className="text-gray-200"
+                          />
+                          <circle
+                            cx="32"
+                            cy="32"
+                            r="28"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            className="text-blue-600"
+                            strokeDasharray={176}
+                            strokeDashoffset={176 - (176 * countdown) / COUNTDOWN_SECONDS}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-blue-600">
+                          {countdown}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">Using backup code in {countdown}s</p>
+                    </div>
+                  )}
+                  
+                  {/* No PIN available */}
+                  {!isWaitingForRooms && (
+                    <>
+                      <p className="text-4xl font-bold tracking-widest text-primary">----</p>
+                      <p className="text-xs text-muted-foreground mt-1">Contact support for PIN</p>
+                    </>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-0.5 text-xs">
                 <div className="flex justify-between py-0.5 border-b">
@@ -353,17 +524,19 @@ ${passDetails.code ? "Enter this PIN at the keypad to access." : `Please contact
                 )}
               </div>
 
-              <Alert className="py-1.5">
+              <Alert className="py-1.5 bg-blue-50 border-blue-200">
                 <AlertDescription className="text-xs leading-tight">
                   <strong>Instructions:</strong>{" "}
-                  {passDetails.code
-                    ? `Enter this PIN at the keypad at ${passDetails.accessPointName} to gain access. Your pass is valid until ${formatDateTime(passDetails.valid_to, passDetails.timezone)}.`
-                    : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}
+                  {displayedCode
+                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until 11:59 PM on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone, day: "numeric", month: "short", year: "numeric" })}.`
+                    : isWaitingForRooms
+                      ? "Retrieving your PIN..."
+                      : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-1.5">
-                {passDetails.code && (
+                {displayedCode && (
                   <Button variant="outline" onClick={handleShareSMS} className="w-full bg-transparent text-xs h-8">
                     <MessageSquare className="mr-1 h-3 w-3" />
                     Share via SMS

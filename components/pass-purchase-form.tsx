@@ -282,7 +282,7 @@ export function PassPurchaseForm({
                 onValueChange={(val) => setNumberOfDays(Number.parseInt(val, 10))}
               >
                 <SelectTrigger id="numberOfDays" className="h-7 text-sm">
-                  <SelectValue placeholder="Select number of days" /> // Show placeholder when no days selected
+                  <SelectValue placeholder="Select number of days" />
                 </SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map((days) => (
@@ -410,27 +410,35 @@ export function PassPurchaseForm({
             </Card>
           )}
 
-          <div className="flex items-start space-x-1.5 pt-1">
+          <label
+            htmlFor="terms"
+            className={`flex items-center gap-3 p-3 mt-2 rounded-lg border-2 cursor-pointer transition-all ${
+              termsAccepted 
+                ? "border-green-500 bg-green-50" 
+                : "border-gray-300 bg-gray-50 hover:border-gray-400"
+            }`}
+          >
             <input
               type="checkbox"
               id="terms"
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
-              className="mt-0.5 h-3 w-3"
+              className="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
             />
-            <Label htmlFor="terms" className="text-xs font-normal leading-tight">
+            <span className="text-sm leading-tight">
               I accept the{" "}
               <a
                 href="/terms"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary underline hover:no-underline"
+                className="text-[#002147] font-semibold underline hover:no-underline"
+                onClick={(e) => e.stopPropagation()}
               >
                 terms and conditions
               </a>{" "}
               for pass usage
-            </Label>
-          </div>
+            </span>
+          </label>
 
           {error && (
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2 mt-2">

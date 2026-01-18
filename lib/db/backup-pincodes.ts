@@ -23,18 +23,30 @@ export async function getBackupPincode(
   const supabase = createSchemaServiceClient("pass")
   const now = new Date().toISOString()
 
+  console.log("[v0] getBackupPincode called with:", { orgId, siteId, deviceId, now })
+
   const { data, error } = await supabase
     .from("backup_pincodes")
-    .select("pincode, fortnight_number")
+    .select("pincode, fortnight_number, period_start, period_end")
     .eq("org_id", orgId)
     .eq("site_id", siteId)
     .eq("device_id", deviceId)
     .lte("period_start", now)
     .gte("period_end", now)
-    .single()
+    .maybeSingle()
+
+  console.log("[v0] getBackupPincode result:", { data, error })
 
   if (error || !data) {
-    console.error("[BackupPincodes] Failed to get backup pincode:", error)
+    console.error("[BackupPincodes] Failed to get backup pincode:", error ? JSON.stringify(error) : "No data found")
+
+    const { data: allPincodes, error: listError } = await supabase
+      .from("backup_pincodes")
+      .select("pincode, fortnight_number, period_start, period_end, org_id, site_id, device_id")
+      .limit(5)
+
+    console.log("[v0] Available backup pincodes sample:", { allPincodes, listError })
+
     return null
   }
 
@@ -58,10 +70,10 @@ export async function getCurrentBackupPincode(deviceId: string): Promise<string 
     .eq("device_id", deviceId)
     .lte("period_start", now)
     .gte("period_end", now)
-    .single()
+    .maybeSingle()
 
   if (error || !data) {
-    console.error("[BackupPincodes] Failed to get backup pincode:", error)
+    console.error("[BackupPincodes] Failed to get backup pincode:", error ? JSON.stringify(error) : "No data found")
     return null
   }
 
@@ -105,10 +117,10 @@ export async function getBackupPincodeByFortnight(deviceId: string, fortnightNum
     .select("pincode")
     .eq("device_id", deviceId)
     .eq("fortnight_number", fortnightNumber)
-    .single()
+    .maybeSingle()
 
   if (error || !data) {
-    console.error("[BackupPincodes] Failed to get backup pincode for fortnight:", fortnightNumber, error)
+    console.error("[BackupPincodes] Failed to get backup pincode for fortnight:", fortnightNumber, error ? JSON.stringify(error) : "No data found")
     return null
   }
 

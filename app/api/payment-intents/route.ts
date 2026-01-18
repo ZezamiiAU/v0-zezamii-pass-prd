@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
     }
 
     let siteId: string | null = device.site_id || null
-    let siteSlug: string | null = null
 
     if (!siteId && device.floor_id) {
       const { data: floor, error: floorError } = await coreClient
@@ -120,7 +119,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: site } = await coreClient.from("sites").select("slug").eq("id", siteId).single()
-    siteSlug = site?.slug || null
+
+    const siteSlug = site?.slug || null
 
     const passType = await getPassTypeById(passTypeId)
     if (!passType) {
