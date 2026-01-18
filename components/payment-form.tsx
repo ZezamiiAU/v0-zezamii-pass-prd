@@ -39,10 +39,7 @@ function PaymentFormBase({ returnUrl, customerEmail }: PaymentFormProps) {
         setErrorMessage(error.message || "An error occurred during payment")
         setIsProcessing(false)
       } else if (paymentIntent && paymentIntent.status === "succeeded") {
-        const successUrl = customerEmail 
-          ? `/success?payment_intent=${paymentIntent.id}&customer_email=${encodeURIComponent(customerEmail)}`
-          : `/success?payment_intent=${paymentIntent.id}`
-        router.push(successUrl)
+        router.push(`/success?payment_intent=${paymentIntent.id}`)
       } else {
         setErrorMessage("Payment processing failed. Please try again.")
         setIsProcessing(false)

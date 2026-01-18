@@ -69,7 +69,6 @@ export default function SuccessPage() {
   const [displayedCode, setDisplayedCode] = useState<string | null>(null)
   const [pinSource, setPinSource] = useState<"rooms" | "backup" | null>(null)
   const [backupCodeCached, setBackupCodeCached] = useState<string | null>(null)
-  const [emailSent, setEmailSent] = useState(false)
 
   const rawParams = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams])
 
@@ -90,38 +89,6 @@ export default function SuccessPage() {
     const email = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@zezamii.com"
     setSupportEmail(email)
   }, [])
-
-  // Send email notification when PIN is displayed
-  useEffect(() => {
-    if (emailSent || !displayedCode || !passDetails) return
-    
-    // Get customer email from URL params (stored by Stripe)
-    const customerEmail = searchParams.get("customer_email")
-    if (!customerEmail) {
-      console.log("[v0] No customer email in URL params, skipping email send")
-      return
-    }
-
-    console.log("[v0] Sending pass email to:", customerEmail)
-    setEmailSent(true)
-
-    fetch("/api/passes/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: customerEmail,
-        pin: displayedCode,
-        accessPointName: passDetails.accessPointName,
-        validFrom: passDetails.valid_from,
-        validTo: passDetails.valid_to,
-        vehiclePlate: passDetails.vehiclePlate,
-        timezone: passDetails.timezone,
-        passId: passDetails.id,
-      }),
-    }).catch((e) => {
-      console.log("[v0] Email send failed:", e)
-    })
-  }, [displayedCode, passDetails, emailSent, searchParams])
 
   // Countdown timer effect
   useEffect(() => {

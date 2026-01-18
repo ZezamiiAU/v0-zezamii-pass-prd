@@ -379,7 +379,6 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
   }
 
   // Send email notification if we have a pinCode and customer email
-  console.log("[v0] Email check - pinCode:", pinCode, "customer_email:", meta.data.customer_email)
   if (pinCode && meta.data.customer_email) {
     // Get access point name for the email
     let accessPointName = "Access Point"

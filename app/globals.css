@@ -1,80 +1,80 @@
 @import "tailwindcss";
-/* tw-animate-css removed due to Tailwind v4 compatibility issues */
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff; /* Existing preserved */
-  --foreground: #171717; /* Existing preserved */
-  --card: #ffffff; /* Existing preserved */
-  --card-foreground: #171717; /* Existing preserved */
-  --popover: #ffffff; /* Existing preserved */
-  --popover-foreground: #171717; /* Existing preserved */
-  --primary: #171717; /* Existing preserved */
-  --primary-foreground: #fafafa; /* Existing preserved */
-  --secondary: #f5f5f5; /* Existing preserved */
-  --secondary-foreground: #171717; /* Existing preserved */
-  --muted: #f5f5f5; /* Existing preserved */
-  --muted-foreground: #737373; /* Existing preserved */
-  --accent: #f5f5f5; /* Existing preserved */
-  --accent-foreground: #171717; /* Existing preserved */
-  --destructive: #ef4444; /* Existing preserved */
-  --destructive-foreground: #fafafa; /* Existing preserved */
-  --border: #e5e5e5; /* Existing preserved */
-  --input: #e5e5e5; /* Existing preserved */
-  --ring: #a3a3a3; /* Existing preserved */
-  --radius: 0.625rem; /* Existing preserved */
-  --brand-bg: #0b1e3d; /* Existing custom */
-  --brand-bg-2: #1a3a5c; /* Existing custom */
-  --brand-accent: #0ca3c1; /* Existing custom */
-  --chart-1: oklch(0.646 0.222 41.116); /* Existing preserved */
-  --chart-2: oklch(0.6 0.118 184.704); /* Existing preserved */
-  --chart-3: oklch(0.398 0.07 227.392); /* Existing preserved */
-  --chart-4: oklch(0.828 0.189 84.429); /* Existing preserved */
-  --chart-5: oklch(0.769 0.188 70.08); /* Existing preserved */
-  --sidebar: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-foreground: oklch(0.145 0 0); /* Existing preserved */
-  --sidebar-primary: oklch(0.205 0 0); /* Existing preserved */
-  --sidebar-primary-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-accent: oklch(0.97 0 0); /* Existing preserved */
-  --sidebar-accent-foreground: oklch(0.205 0 0); /* Existing preserved */
-  --sidebar-border: oklch(0.922 0 0); /* Existing preserved */
-  --sidebar-ring: oklch(0.708 0 0); /* Existing preserved */
+  --background: #ffffff;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #a3a3a3;
+  --radius: 0.625rem;
+  --brand-bg: #0b1e3d;
+  --brand-bg-2: #1a3a5c;
+  --brand-accent: #0ca3c1;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  --background: #171717; /* Existing preserved */
-  --foreground: #fafafa; /* Existing preserved */
-  --card: #171717; /* Existing preserved */
-  --card-foreground: #fafafa; /* Existing preserved */
-  --popover: #171717; /* Existing preserved */
-  --popover-foreground: #fafafa; /* Existing preserved */
-  --primary: #fafafa; /* Existing preserved */
-  --primary-foreground: #171717; /* Existing preserved */
-  --secondary: #404040; /* Existing preserved */
-  --secondary-foreground: #fafafa; /* Existing preserved */
-  --muted: #404040; /* Existing preserved */
-  --muted-foreground: #a3a3a3; /* Existing preserved */
-  --accent: #404040; /* Existing preserved */
-  --accent-foreground: #fafafa; /* Existing preserved */
-  --destructive: #7f1d1d; /* Existing preserved */
-  --destructive-foreground: #fca5a5; /* Existing preserved */
-  --border: #404040; /* Existing preserved */
-  --input: #404040; /* Existing preserved */
-  --ring: #525252; /* Existing preserved */
-  --chart-1: oklch(0.488 0.243 264.376); /* Existing preserved */
-  --chart-2: oklch(0.696 0.17 162.48); /* Existing preserved */
-  --chart-3: oklch(0.769 0.188 70.08); /* Existing preserved */
-  --chart-4: oklch(0.627 0.265 303.9); /* Existing preserved */
-  --chart-5: oklch(0.645 0.246 16.439); /* Existing preserved */
-  --sidebar: oklch(0.205 0 0); /* Existing preserved */
-  --sidebar-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-primary: oklch(0.488 0.243 264.376); /* Existing preserved */
-  --sidebar-primary-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-accent: oklch(0.269 0 0); /* Existing preserved */
-  --sidebar-accent-foreground: oklch(0.985 0 0); /* Existing preserved */
-  --sidebar-border: oklch(0.269 0 0); /* Existing preserved */
-  --sidebar-ring: oklch(0.439 0 0); /* Existing preserved */
+  --background: #171717;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #171717;
+  --secondary: #404040;
+  --secondary-foreground: #fafafa;
+  --muted: #404040;
+  --muted-foreground: #a3a3a3;
+  --accent: #404040;
+  --accent-foreground: #fafafa;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fca5a5;
+  --border: #404040;
+  --input: #404040;
+  --ring: #525252;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
 @theme inline {
@@ -126,7 +126,6 @@
   }
 }
 
-/* Custom styles preserved from original globals.css */
 * {
   border-color: var(--border);
 }

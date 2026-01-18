@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-/* tw-animate-css removed due to Tailwind v4 compatibility issues */
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
