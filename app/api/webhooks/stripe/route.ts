@@ -5,7 +5,6 @@ import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { ENV } from "@/lib/env"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
-import { sendPassNotifications } from "@/lib/notifications"
 
 export const runtime = "nodejs"
 
@@ -376,48 +375,6 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
         occurred_at: new Date().toISOString(),
       },
     })
-  }
-
-  // Send email notification if we have a pinCode and customer email
-  if (pinCode && meta.data.customer_email) {
-    // Get access point name for the email
-    let accessPointName = "Access Point"
-    let timezone = "Australia/Sydney"
-    try {
-      const core = createSchemaServiceClient("core")
-      const deviceId = meta.data.access_point_id || meta.data.gate_id
-      if (deviceId) {
-        const { data: device } = await core
-          .from("devices")
-          .select("name, sites(timezone)")
-          .eq("id", deviceId)
-          .single()
-        if (device?.name) accessPointName = device.name
-        if (device?.sites && typeof device.sites === "object" && "timezone" in device.sites) {
-          timezone = (device.sites as { timezone?: string }).timezone || timezone
-        }
-      }
-    } catch (e) {
-      logger.warn({ error: e }, "Failed to fetch device name for email")
-    }
-
-    // Send the email notification (fire and forget - don't block webhook response)
-    sendPassNotifications(
-      meta.data.customer_email,
-      meta.data.customer_phone || null,
-      {
-        accessPointName,
-        pin: pinCode,
-        validFrom: startsAt,
-        validTo: endsAt,
-        vehiclePlate: meta.data.customer_plate,
-      },
-      timezone
-    ).catch((e) => {
-      logger.error({ error: e, passId: meta.data.pass_id }, "Failed to send pass notification email")
-    })
-
-    logger.info({ passId: meta.data.pass_id, email: meta.data.customer_email }, "Pass notification email queued")
   }
 
   console.log("[v0] Webhook completed. pinCode:", pinCode, "pinProvider:", pinProvider)

@@ -7,7 +7,6 @@ import { syncPaymentBodySchema } from "@/lib/schemas/api.schema"
 import { ZodError } from "zod"
 import { ENV } from "@/lib/env"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
-import { sendPassNotifications } from "@/lib/notifications"
 
 const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
@@ -49,11 +48,6 @@ export async function POST(req: NextRequest) {
     // Check if lock code already exists
     const { data: existingLockCode } = await passDb.from("lock_codes").select("id, code").eq("pass_id", passId).maybeSingle()
 
-    let pinCode: string | null = existingLockCode?.code || null
-    let pinProvider: "rooms" | "backup" = "rooms"
-    let startsAt: string = new Date().toISOString()
-    let endsAt: string = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-
     if (!existingLockCode) {
       // Need to generate pincode - try Rooms first, then backup
       const { data: pass } = await passDb
@@ -67,8 +61,11 @@ export async function POST(req: NextRequest) {
       }
 
       const now = new Date()
-      startsAt = pass.valid_from || now.toISOString()
-      endsAt = pass.valid_to || new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+      const startsAt = pass.valid_from || now.toISOString()
+      const endsAt = pass.valid_to || new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+
+      let pinCode: string | null = null
+      let pinProvider: "rooms" | "backup" = "rooms"
 
       // Try Rooms endpoint first
       const accessPointId = meta.access_point_id || meta.gate_id
@@ -123,46 +120,6 @@ export async function POST(req: NextRequest) {
 
     // Update payment status
     await passDb.from("payments").update({ status: "succeeded" }).eq("stripe_payment_intent", paymentIntentId)
-
-    // Send email notification if we have customer email and a pinCode was generated
-    if (meta.customer_email && pinCode) {
-      let accessPointName = "Access Point"
-      let timezone = "Australia/Sydney"
-      try {
-        const core = createSchemaServiceClient("core")
-        const deviceId = meta.access_point_id || meta.gate_id
-        if (deviceId) {
-          const { data: device } = await core
-            .from("devices")
-            .select("name, sites(timezone)")
-            .eq("id", deviceId)
-            .single()
-          if (device?.name) accessPointName = device.name
-          if (device?.sites && typeof device.sites === "object" && "timezone" in device.sites) {
-            timezone = (device.sites as { timezone?: string }).timezone || timezone
-          }
-        }
-      } catch (e) {
-        logger.warn({ error: e }, "Failed to fetch device name for email (sync-payment)")
-      }
-
-      sendPassNotifications(
-        meta.customer_email,
-        meta.customer_phone || null,
-        {
-          accessPointName,
-          pin: pinCode,
-          validFrom: startsAt,
-          validTo: endsAt,
-          vehiclePlate: meta.customer_plate,
-        },
-        timezone
-      ).catch((e) => {
-        logger.error({ error: e, passId }, "Failed to send pass notification email (sync-payment)")
-      })
-
-      logger.info({ passId, email: meta.customer_email }, "Pass notification email queued (sync-payment)")
-    }
 
     logger.info({ passId, paymentIntentId }, "Payment synced manually (webhook fallback)")
 
