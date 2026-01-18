@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         pin: data.pin,
         validFrom: data.validFrom,
         validTo: data.validTo,
-        vehiclePlate: data.vehiclePlate,
+        vehiclePlate: data.vehiclePlate ?? undefined,
       },
       data.timezone
     )
