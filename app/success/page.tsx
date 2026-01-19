@@ -261,6 +261,11 @@ export default function SuccessPage() {
           }
 
           // Call sync-payment on ANY 400 error (pass not active yet) - not just when status is "pending"
+          console.log("[v0] Checking sync condition:", { 
+            responseStatus: response.status, 
+            paymentIntent, 
+            syncAttempted 
+          })
           if (response.status === 400 && paymentIntent && !syncAttempted) {
             syncAttempted = true
             console.log("[v0] Calling sync-payment due to 400 error from by-session")
