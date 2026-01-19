@@ -70,7 +70,7 @@ export function createCoreServiceClient() {
   })
 }
 
-export function createSchemaServiceClient(schema: string) {
+export function createSchemaServiceClient(schema: string = "core") {
   const { NEXT_PUBLIC_SUPABASE_URL } = ENV.client()
   const { SUPABASE_SERVICE_ROLE_KEY } = ENV.server()
 
