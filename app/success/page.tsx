@@ -189,25 +189,9 @@ export default function SuccessPage() {
           const backupFromResponse = errorData.backupCode
           
           if (backupFromResponse) {
-            // We have a backup code - cache it
+            // We have a backup code - cache it and let the countdown effect handle display
             setBackupCodeCached(backupFromResponse)
-            
-            // Also extract pass details if available in error response
-            if (errorData.id && errorData.accessPointName) {
-              setPassDetails({
-                id: errorData.id,
-                accessPointName: errorData.accessPointName,
-                passType: errorData.passType,
-                valid_from: errorData.valid_from,
-                valid_to: errorData.valid_to,
-                timezone: errorData.timezone || "Australia/Sydney",
-                vehiclePlate: errorData.vehiclePlate,
-                code: null,
-                backupCode: backupFromResponse,
-              })
-            }
-            
-            // Let countdown effect handle display
+            // Don't show any errors, don't set isLoading false - let countdown effect handle it
             return
           }
 
