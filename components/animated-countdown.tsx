@@ -41,7 +41,16 @@ export function AnimatedCountdown({
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const particles = []
+    interface Particle {
+      angle: number
+      radius: number
+      size: number
+      speed: number
+      opacity: number
+      pulseOffset: number
+    }
+
+    const particles: Particle[] = []
     const particleCount = 30
 
     // Initialize particles in a ring
@@ -57,7 +66,7 @@ export function AnimatedCountdown({
       })
     }
 
-    let animationId
+    let animationId: number
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
