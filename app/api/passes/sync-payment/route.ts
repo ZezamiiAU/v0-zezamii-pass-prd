@@ -7,13 +7,16 @@ import { syncPaymentBodySchema } from "@/lib/schemas/api.schema"
 import { ZodError } from "zod"
 import { ENV } from "@/lib/env"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
+import { sendPassNotifications } from "@/lib/notifications"
 
 const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
 
 export async function POST(req: NextRequest) {
+  console.log("[v0] sync-payment: POST called")
   try {
     const { paymentIntentId } = await validateBody(req, syncPaymentBodySchema)
+    console.log("[v0] sync-payment: paymentIntentId =", paymentIntentId)
 
     // Fetch the payment intent from Stripe to check its status
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
@@ -42,13 +45,16 @@ export async function POST(req: NextRequest) {
     const { data: existingPass } = await passDb.from("passes").select("status").eq("id", passId).maybeSingle()
 
     if (existingPass?.status === "active") {
+      console.log("[v0] sync-payment: Pass already active, returning early")
       return NextResponse.json({ success: true, alreadyActive: true })
     }
 
     // Check if lock code already exists
     const { data: existingLockCode } = await passDb.from("lock_codes").select("id, code").eq("pass_id", passId).maybeSingle()
+    console.log("[v0] sync-payment: existingLockCode =", existingLockCode)
 
     if (!existingLockCode) {
+      console.log("[v0] sync-payment: No existing lock code, generating new one")
       // Need to generate pincode - try Rooms first, then backup
       const { data: pass } = await passDb
         .from("passes")
@@ -102,16 +108,60 @@ export async function POST(req: NextRequest) {
       }
 
       // Store the pincode (use upsert to handle race conditions)
-      const { error: insertError } = await passDb.from("lock_codes").upsert({
-        pass_id: pass.id,
-        code: pinCode,
-        provider: pinProvider,
-        starts_at: startsAt,
-        ends_at: endsAt,
-      }, { onConflict: "pass_id" })
-      
+      const { error: insertError } = await passDb
+        .from("lock_codes")
+        .upsert(
+          {
+            pass_id: pass.id,
+            code: pinCode,
+            provider: pinProvider,
+            starts_at: startsAt,
+            ends_at: endsAt,
+          },
+          { onConflict: "pass_id" },
+        )
+
       if (insertError && !insertError.message.includes("duplicate")) {
         logger.error({ passId, insertError }, "Failed to store lock code")
+      }
+
+      // Send email notification with pincode
+      console.log("[v0] sync-payment: Checking email condition", { customer_email: meta.customer_email, pinCode })
+      if (meta.customer_email && pinCode) {
+        // Get access point name
+        let accessPointName = "Access Point"
+        if (accessPointId) {
+          const coreDb = createSchemaServiceClient("core")
+          const { data: device } = await coreDb.from("qr_ready_devices").select("name").eq("id", accessPointId).single()
+          if (device?.name) {
+            accessPointName = device.name
+          }
+        }
+
+        const timezone = "Australia/Sydney"
+
+        try {
+          console.log("[v0] sync-payment: Sending email notification", {
+            email: meta.customer_email,
+            pinCode,
+            pinProvider,
+          })
+          await sendPassNotifications(
+            meta.customer_email,
+            meta.customer_phone || null,
+            {
+              accessPointName,
+              pin: pinCode,
+              validFrom: startsAt,
+              validTo: endsAt,
+              vehiclePlate: meta.customer_plate,
+            },
+            timezone,
+          )
+          logger.info({ passId, email: meta.customer_email, pinProvider }, "Pass notification email sent (sync-payment)")
+        } catch (emailError) {
+          logger.error({ passId, email: meta.customer_email, emailError }, "Failed to send email (sync-payment)")
+        }
       }
     }
 
