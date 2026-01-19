@@ -97,9 +97,8 @@ export async function GET(request: NextRequest) {
     let returnUrl: string | null = null
 
     try {
-      const supabase = await createSchemaServiceClient()
+      const supabase = createSchemaServiceClient("core")
       const { data: device } = await supabase
-        .schema("core")
         .from("devices")
         .select("name, sites(timezone)")
         .eq("id", pass.device_id)

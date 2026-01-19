@@ -163,18 +163,20 @@ export default function DevicePassPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#002147]">
-      <PassPurchaseForm
-        organizationId={accessPointData.organizationId}
-        organizationName={accessPointData.organizationName}
-        organizationLogo={accessPointData.organizationLogo}
-        siteId={accessPointData.siteId}
-        siteName={accessPointData.siteName}
-        deviceId={accessPointData.deviceId}
-        deviceName={accessPointData.deviceName}
-        deviceDescription={accessPointData.deviceDescription}
-        preSelectedPassTypeId={selectedPassTypeId || undefined}
-      />
+    <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md">
+        <PassPurchaseForm
+          organizationId={accessPointData.organizationId}
+          organizationName={accessPointData.organizationName}
+          organizationLogo={accessPointData.organizationLogo}
+          siteId={accessPointData.siteId}
+          siteName={accessPointData.siteName}
+          deviceId={accessPointData.deviceId}
+          deviceName={accessPointData.deviceName}
+          deviceDescription={accessPointData.deviceDescription}
+          preSelectedPassTypeId={selectedPassTypeId || undefined}
+        />
+      </div>
     </main>
   )
 }
