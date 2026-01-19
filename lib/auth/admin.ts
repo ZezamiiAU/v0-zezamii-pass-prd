@@ -65,3 +65,17 @@ export function checkAdminToken(request: Request): boolean {
   const token = authHeader?.replace("Bearer ", "")
   return token === adminToken
 }
+
+/**
+ * Verify a token string against the ADMIN_TOKEN.
+ * Returns true if the token matches.
+ */
+export function verifyAdminToken(token: string): boolean {
+  const adminToken = ENV.server().ADMIN_TOKEN
+
+  if (!adminToken || !token) {
+    return false
+  }
+
+  return token === adminToken
+}
