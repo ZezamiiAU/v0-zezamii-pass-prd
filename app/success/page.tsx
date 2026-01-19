@@ -202,18 +202,15 @@ export default function SuccessPage() {
             setBackupCodeCached(backupFromResponse)
             
             // Also extract pass details if available in error response
-            // API returns 'id' in error responses and 'pass_id' in success responses
-            const passId = errorData.id || errorData.pass_id
-            if (passId && errorData.accessPointName) {
+            if (errorData.id && errorData.accessPointName) {
               setPassDetails({
-                pass_id: passId,
+                id: errorData.id,
                 accessPointName: errorData.accessPointName,
-                passType: errorData.passType || "",
-                valid_from: errorData.valid_from || "",
-                valid_to: errorData.valid_to || "",
+                passType: errorData.passType,
+                valid_from: errorData.valid_from,
+                valid_to: errorData.valid_to,
                 timezone: errorData.timezone || "Australia/Sydney",
-                vehiclePlate: errorData.vehiclePlate || "",
-                device_id: errorData.device_id || "",
+                vehiclePlate: errorData.vehiclePlate,
                 code: null,
                 backupCode: backupFromResponse,
               })
