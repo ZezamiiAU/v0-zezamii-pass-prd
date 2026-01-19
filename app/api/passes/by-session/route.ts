@@ -10,8 +10,9 @@ import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import logger from "@/lib/logger"
 import Stripe from "stripe"
 import { sendPassNotifications } from "@/lib/notifications"
-import { getNextAvailableBackupPincode, markBackupPincodeAsUsed } from "@/lib/db/backup-pincodes"
+import { getCurrentBackupPincode } from "@/lib/db/backup-pincodes"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
+import { getNextAvailableBackupPincode, markBackupPincodeAsUsed } from "@/lib/db/backup-pincodes"
 
 const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
@@ -199,17 +200,17 @@ export async function GET(request: NextRequest) {
             
             // Fallback to backup pincode
             if (!pinCode) {
-              const orgId = meta.org_id
-              if (orgId) {
-                const backupPin = await getNextAvailableBackupPincode(orgId)
-                if (backupPin) {
-                  pinCode = backupPin.code
-                  pinProvider = "backup"
-                  await markBackupPincodeAsUsed(backupPin.id, pass.id)
-                }
-              } else if (backupCodeFromMeta) {
+              // First try backup code from Stripe metadata
+              if (backupCodeFromMeta) {
                 pinCode = backupCodeFromMeta
                 pinProvider = "backup"
+              } else if (pass.device_id) {
+                // Try to get current backup pincode for this device
+                const deviceBackupCode = await getCurrentBackupPincode(pass.device_id)
+                if (deviceBackupCode) {
+                  pinCode = deviceBackupCode
+                  pinProvider = "backup"
+                }
               }
             }
             
