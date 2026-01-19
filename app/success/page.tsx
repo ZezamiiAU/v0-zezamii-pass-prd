@@ -261,22 +261,15 @@ export default function SuccessPage() {
           }
 
           // Call sync-payment on ANY 400 error (pass not active yet) - not just when status is "pending"
-          console.log("[v0] Checking sync condition:", { 
-            responseStatus: response.status, 
-            paymentIntent, 
-            syncAttempted 
-          })
           if (response.status === 400 && paymentIntent && !syncAttempted) {
             syncAttempted = true
-            console.log("[v0] Calling sync-payment due to 400 error from by-session")
             try {
-              const syncResponse = await fetch("/api/passes/sync-payment", {
+              await fetch("/api/passes/sync-payment", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ paymentIntentId: paymentIntent }),
                 signal: abortController.signal,
               })
-              console.log("[v0] sync-payment response status:", syncResponse.status)
             } catch (syncError) {
               console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
             }
@@ -420,23 +413,23 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           )}
         </CardHeader>
         <CardContent className="space-y-2 pb-2">
-          {isLoading && !displayedCode && (
+          {/* Show animated countdown timer while waiting for Rooms PIN - independent of loading state */}
+          {isWaitingForRooms && countdown > 0 && !displayedCode && (
             <div className="text-center">
-              {/* Show animated countdown timer while loading */}
-              {isWaitingForRooms && countdown > 0 && (
-                <AnimatedCountdown
-                  seconds={countdown}
-                  totalSeconds={COUNTDOWN_SECONDS}
-                  label="Generating your PIN..."
-                  sublabel="Connecting to access system..."
-                />
-              )}
-              {(!isWaitingForRooms || countdown <= 0) && !displayedCode && (
-                <div className="py-4">
-                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
-                  <p className="mt-2 text-sm text-muted-foreground">Loading your pass...</p>
-                </div>
-              )}
+              <AnimatedCountdown
+                seconds={countdown}
+                totalSeconds={COUNTDOWN_SECONDS}
+                label="Generating your PIN..."
+                sublabel="Connecting to access system..."
+              />
+            </div>
+          )}
+
+          {/* Show loading spinner only when loading AND countdown is done AND no code yet */}
+          {isLoading && !displayedCode && (!isWaitingForRooms || countdown <= 0) && (
+            <div className="text-center py-4">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
+              <p className="mt-2 text-sm text-muted-foreground">Loading your pass...</p>
             </div>
           )}
 

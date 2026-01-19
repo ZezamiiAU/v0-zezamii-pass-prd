@@ -9,15 +9,10 @@ export async function sendPassNotifications(
   data: PassNotificationData,
   timezone: string,
 ): Promise<void> {
-  console.log("[v0] sendPassNotifications called with:", { email, phone, pin: data.pin })
-  console.log("[v0] RESEND_API_KEY exists:", !!process.env.RESEND_API_KEY)
-  console.log("[v0] EMAIL_FROM:", process.env.EMAIL_FROM)
-  
   const promises: Promise<any>[] = []
 
   // Send email notification
   if (email) {
-    console.log("[v0] Email is provided, creating EmailProvider")
     const emailProvider = new EmailProvider()
     const textBody = generatePassNotificationText(data, timezone)
     const htmlBody = generatePassNotificationHTML(data, timezone)

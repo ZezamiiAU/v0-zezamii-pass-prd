@@ -39,13 +39,8 @@ export class EmailProvider implements NotificationProvider {
   }
 
   async send(message: NotificationMessage): Promise<{ success: boolean; error?: string }> {
-    console.log("[v0] EmailProvider.send called with:", { to: message.to, subject: message.subject })
-    console.log("[v0] this.resend exists:", !!this.resend)
-    console.log("[v0] this.fromAddress:", this.fromAddress)
-    
     if (!this.resend) {
       const error = "Email provider not configured (missing RESEND_API_KEY)"
-      console.log("[v0] Email provider not configured!")
       logger.error({ recipient: message.to }, error)
       return { success: false, error }
     }
@@ -57,8 +52,7 @@ export class EmailProvider implements NotificationProvider {
       attempts++
 
       try {
-        console.log("[v0] Attempting to send email via Resend...")
-        const result = await this.resend.emails.send({
+        await this.resend.emails.send({
           from: this.fromAddress,
           to: message.to,
           subject: message.subject || "Notification",
@@ -66,7 +60,6 @@ export class EmailProvider implements NotificationProvider {
           text: message.body,
           ...(this.replyTo && { reply_to: this.replyTo }),
         })
-        console.log("[v0] Resend response:", result)
 
         logger.info(
           {
