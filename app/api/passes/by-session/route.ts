@@ -9,6 +9,9 @@ import { ENV } from "@/lib/env"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import logger from "@/lib/logger"
 import Stripe from "stripe"
+import { sendPassNotifications } from "@/lib/notifications"
+import { getNextAvailableBackupPincode, markBackupPincodeAsUsed } from "@/lib/db/backup-pincodes"
+import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
 
 const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
@@ -143,6 +146,148 @@ export async function GET(request: NextRequest) {
     }
 
     if (!devMode) {
+      // Auto-sync: If payment succeeded but pass is not active, activate it now
+      if (pass.status !== "active" && payment.status === "succeeded") {
+        console.log("[v0] by-session: Auto-syncing pass - payment succeeded but pass not active")
+        
+        try {
+          const passDb = createSchemaServiceClient("pass")
+          const coreDb = createSchemaServiceClient("core")
+          
+          // Get metadata from Stripe
+          let meta: Record<string, string> = {}
+          if (payment.stripe_payment_intent) {
+            const stripeIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent)
+            meta = stripeIntent.metadata || {}
+          }
+          
+          // Calculate validity dates
+          const numberOfDays = Number.parseInt(meta.number_of_days || "1", 10)
+          const now = new Date()
+          const startsAt = now.toISOString()
+          const endsAt = new Date(now.getTime() + numberOfDays * 24 * 60 * 60 * 1000).toISOString()
+          
+          // Check if lock code already exists
+          const existingLockCode = await getLockCodeByPassId(pass.id)
+          
+          let pinCode: string | null = null
+          let pinProvider: "rooms" | "backup" = "backup"
+          
+          if (!existingLockCode) {
+            // Try Rooms API first
+            const accessPointId = pass.device_id || meta.access_point_id || meta.gate_id
+            if (accessPointId) {
+              try {
+                const roomsPayload = buildRoomsPayload({
+                  accessPointId,
+                  startsAt,
+                  endsAt,
+                  customerEmail: meta.customer_email,
+                  customerPhone: meta.customer_phone,
+                  customerPlate: meta.customer_plate,
+                  passId: pass.id,
+                })
+                const roomsResult = await createRoomsReservation(roomsPayload)
+                if (roomsResult?.pinCode) {
+                  pinCode = roomsResult.pinCode
+                  pinProvider = "rooms"
+                }
+              } catch (roomsError) {
+                console.log("[v0] by-session: Rooms API failed, using backup pincode")
+              }
+            }
+            
+            // Fallback to backup pincode
+            if (!pinCode) {
+              const orgId = meta.org_id
+              if (orgId) {
+                const backupPin = await getNextAvailableBackupPincode(orgId)
+                if (backupPin) {
+                  pinCode = backupPin.code
+                  pinProvider = "backup"
+                  await markBackupPincodeAsUsed(backupPin.id, pass.id)
+                }
+              } else if (backupCodeFromMeta) {
+                pinCode = backupCodeFromMeta
+                pinProvider = "backup"
+              }
+            }
+            
+            // Store lock code
+            if (pinCode) {
+              await passDb.from("lock_codes").upsert({
+                pass_id: pass.id,
+                code: pinCode,
+                provider: pinProvider,
+                starts_at: startsAt,
+                ends_at: endsAt,
+              }, { onConflict: "pass_id" })
+            }
+          } else {
+            pinCode = existingLockCode.code
+            pinProvider = (existingLockCode.provider as "rooms" | "backup") || "backup"
+          }
+          
+          // Activate the pass
+          await passDb.from("passes").update({ 
+            status: "active",
+            valid_from: startsAt,
+            valid_to: endsAt,
+          }).eq("id", pass.id)
+          
+          // Update payment status
+          await passDb.from("payments").update({ status: "succeeded" }).eq("id", payment.id)
+          
+          // Send email notification
+          if (meta.customer_email && pinCode) {
+            let accessPointName = "Access Point"
+            if (pass.device_id) {
+              const { data: device } = await coreDb.from("qr_ready_devices").select("name").eq("id", pass.device_id).single()
+              if (device?.name) accessPointName = device.name
+            }
+            
+            console.log("[v0] by-session: Sending email to", meta.customer_email)
+            try {
+              await sendPassNotifications(
+                meta.customer_email,
+                meta.customer_phone || null,
+                {
+                  accessPointName,
+                  pin: pinCode,
+                  validFrom: startsAt,
+                  validTo: endsAt,
+                  vehiclePlate: meta.customer_plate,
+                },
+                "Australia/Sydney",
+              )
+              console.log("[v0] by-session: Email sent successfully")
+            } catch (emailErr) {
+              console.log("[v0] by-session: Email failed:", emailErr)
+            }
+          }
+          
+          // Return successful response with the data
+          return NextResponse.json({
+            pass_id: pass.id,
+            accessPointName: "Access Point",
+            timezone: "Australia/Sydney",
+            code: pinCode,
+            backupCode: backupCodeFromMeta,
+            pinSource: pinProvider,
+            codeUnavailable: !pinCode,
+            valid_from: startsAt,
+            valid_to: endsAt,
+            passType: pass.pass_type?.name || "Day Pass",
+            vehiclePlate: pass.vehicle_plate,
+            device_id: pass.device_id,
+            returnUrl: null,
+          })
+        } catch (syncError) {
+          console.log("[v0] by-session: Auto-sync failed:", syncError)
+          // Fall through to return the 400 error
+        }
+      }
+
       if (pass.status !== "active") {
         const partialMeta = await getPartialPassMeta()
         return NextResponse.json(
