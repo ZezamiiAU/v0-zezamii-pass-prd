@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 
 interface AnimatedCountdownProps {
   seconds: number
@@ -19,7 +19,6 @@ export function AnimatedCountdown({
 }: AnimatedCountdownProps) {
   const [prevSeconds, setPrevSeconds] = useState(seconds)
   const [isAnimating, setIsAnimating] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   // Trigger number change animation
   useEffect(() => {
@@ -32,70 +31,6 @@ export function AnimatedCountdown({
       return () => clearTimeout(timer)
     }
   }, [seconds, prevSeconds])
-
-  // Particle animation on canvas
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    interface Particle {
-      angle: number
-      radius: number
-      size: number
-      speed: number
-      opacity: number
-      pulseOffset: number
-    }
-
-    const particles: Particle[] = []
-    const particleCount = 30
-
-    // Initialize particles in a ring
-    for (let i = 0; i < particleCount; i++) {
-      const angle = (i / particleCount) * Math.PI * 2
-      particles.push({
-        angle,
-        radius: 52,
-        size: Math.random() * 2 + 1,
-        speed: Math.random() * 0.02 + 0.01,
-        opacity: Math.random() * 0.5 + 0.3,
-        pulseOffset: Math.random() * Math.PI * 2,
-      })
-    }
-
-    let animationId: number
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      const progress = seconds / totalSeconds
-      const centerX = canvas.width / 2
-      const centerY = canvas.height / 2
-
-      particles.forEach((p, i) => {
-        p.angle += p.speed
-        const pulse = Math.sin(Date.now() * 0.003 + p.pulseOffset) * 3
-        const x = centerX + Math.cos(p.angle) * (p.radius + pulse)
-        const y = centerY + Math.sin(p.angle) * (p.radius + pulse)
-
-        // Only show particles within the progress arc
-        const particleProgress = ((p.angle + Math.PI / 2) % (Math.PI * 2)) / (Math.PI * 2)
-        if (particleProgress <= progress) {
-          ctx.beginPath()
-          ctx.arc(x, y, p.size, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(59, 130, 246, ${p.opacity})`
-          ctx.fill()
-        }
-      })
-
-      animationId = requestAnimationFrame(animate)
-    }
-
-    animate()
-    return () => cancelAnimationFrame(animationId)
-  }, [seconds, totalSeconds])
 
   const progress = seconds / totalSeconds
   const circumference = 2 * Math.PI * 52 // radius = 52
@@ -114,14 +49,6 @@ export function AnimatedCountdown({
 
       {/* Main countdown ring */}
       <div className="relative w-32 h-32">
-        {/* Particle canvas */}
-        <canvas
-          ref={canvasRef}
-          width={128}
-          height={128}
-          className="absolute inset-0"
-        />
-
         {/* Background glow */}
         <div
           className="absolute inset-2 rounded-full transition-opacity duration-500"
