@@ -220,16 +220,12 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
 
 async function handlePaymentIntentSucceeded(event: Stripe.Event) {
   const paymentIntent = event.data.object as Stripe.PaymentIntent
-  console.log("[v0] handlePaymentIntentSucceeded - metadata:", JSON.stringify(paymentIntent.metadata))
 
   const meta = Meta.safeParse(paymentIntent.metadata ?? {})
   if (!meta.success) {
-    console.log("[v0] Invalid metadata:", meta.error.issues)
     logger.warn({ issues: meta.error.issues }, "Invalid Stripe metadata")
     return NextResponse.json({ error: "Invalid metadata" }, { status: 400 })
   }
-
-  console.log("[v0] Parsed metadata:", JSON.stringify(meta.data))
 
   const core = createSchemaServiceClient("core")
   const { data: org, error: orgErr } = await core
@@ -239,34 +235,26 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     .single()
 
   if (orgErr || !org) {
-    console.log("[v0] Unknown organisation:", meta.data.org_slug, orgErr)
     logger.error({ slug: meta.data.org_slug, orgErr }, "Unknown organisation")
     return NextResponse.json({ error: "Unknown organisation" }, { status: 400 })
   }
-
-  console.log("[v0] Found org:", org.id)
 
   const passDb = createSchemaServiceClient("pass")
   const amount = paymentIntent.amount ?? 0
   const currency = (paymentIntent.currency ?? "aud").toLowerCase()
   const intentId = paymentIntent.id
 
-  const { data: pass, error: passError } = await passDb
+  const { data: pass } = await passDb
     .from("passes")
     .select("id, valid_from, valid_to")
     .eq("id", meta.data.pass_id!)
     .single()
 
-  console.log("[v0] Pass lookup:", pass ? pass.id : "not found", passError?.message)
-
   if (pass) {
     const { error: activateError } = await passDb.from("passes").update({ status: "active" }).eq("id", pass.id)
 
     if (activateError) {
-      console.log("[v0] Failed to activate pass:", activateError.message)
       logger.error({ passId: pass.id, activateError }, "Failed to activate pass")
-    } else {
-      console.log("[v0] Pass activated successfully:", pass.id)
     }
   }
 
@@ -302,19 +290,13 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     slugPath,
   })
 
-  console.log("[v0] Attempting Rooms webhook for pincode...")
   const roomsResult = await createRoomsReservation(org.id, roomsPayload)
-  console.log("[v0] Rooms result:", roomsResult.success, roomsResult.pincode, roomsResult.error)
 
   if (roomsResult.success && roomsResult.pincode) {
     pinCode = roomsResult.pincode
     pinProvider = "rooms"
-    console.log("[v0] Pincode from Rooms:", pinCode)
     logger.info({ passId: meta.data.pass_id, pinCode }, "Pincode received from Rooms webhook")
   } else {
-    console.log("[v0] Rooms failed, checking backup pincode in metadata...")
-    console.log("[v0] backup_pincode in metadata:", meta.data.backup_pincode)
-
     logger.warn(
       { passId: meta.data.pass_id, error: roomsResult.error },
       "Rooms webhook failed, using cached backup pincode from metadata",
@@ -323,13 +305,10 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     if (meta.data.backup_pincode) {
       pinCode = meta.data.backup_pincode
       pinProvider = "backup"
-      console.log("[v0] Using backup pincode:", pinCode)
       logger.info(
         { passId: meta.data.pass_id, pinCode, fortnight: meta.data.backup_pincode_fortnight },
         "Using cached backup pincode from payment metadata",
       )
-    } else {
-      console.log("[v0] No backup pincode in metadata!")
     }
   }
 
@@ -377,7 +356,6 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     })
   }
 
-  console.log("[v0] Webhook completed. pinCode:", pinCode, "pinProvider:", pinProvider)
   logger.info({ passId: meta.data.pass_id, eventId: event.id, pinProvider }, "Payment intent succeeded")
   return NextResponse.json({ received: true })
 }

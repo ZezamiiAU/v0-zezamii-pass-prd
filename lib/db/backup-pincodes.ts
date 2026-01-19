@@ -23,8 +23,6 @@ export async function getBackupPincode(
   const supabase = createSchemaServiceClient("pass")
   const now = new Date().toISOString()
 
-  console.log("[v0] getBackupPincode called with:", { orgId, siteId, deviceId, now })
-
   const { data, error } = await supabase
     .from("backup_pincodes")
     .select("pincode, fortnight_number, period_start, period_end")
@@ -35,17 +33,8 @@ export async function getBackupPincode(
     .gte("period_end", now)
     .maybeSingle()
 
-  console.log("[v0] getBackupPincode result:", { data, error })
-
   if (error || !data) {
     console.error("[BackupPincodes] Failed to get backup pincode:", error ? JSON.stringify(error) : "No data found")
-
-    const { data: allPincodes, error: listError } = await supabase
-      .from("backup_pincodes")
-      .select("pincode, fortnight_number, period_start, period_end, org_id, site_id, device_id")
-      .limit(5)
-
-    console.log("[v0] Available backup pincodes sample:", { allPincodes, listError })
 
     return null
   }

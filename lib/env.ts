@@ -35,6 +35,7 @@ const ClientEnvSchema = z.object({
   NEXT_PUBLIC_APP_TITLE: z.string().optional(),
   NEXT_PUBLIC_APP_DESCRIPTION: z.string().optional(),
   NEXT_PUBLIC_SUPPORT_EMAIL: z.string().email().optional(),
+  NEXT_PUBLIC_WALLET_ENABLED: z.string().optional(), // "true" to enable wallet buttons
 })
 
 let serverEnvCache: z.infer<typeof ServerEnvSchema> | null = null
@@ -94,6 +95,7 @@ function getClientEnv() {
     NEXT_PUBLIC_APP_TITLE: process.env.NEXT_PUBLIC_APP_TITLE,
     NEXT_PUBLIC_APP_DESCRIPTION: process.env.NEXT_PUBLIC_APP_DESCRIPTION,
     NEXT_PUBLIC_SUPPORT_EMAIL: process.env.NEXT_PUBLIC_SUPPORT_EMAIL,
+    NEXT_PUBLIC_WALLET_ENABLED: process.env.NEXT_PUBLIC_WALLET_ENABLED,
   })
 
   if (!result.success) {
@@ -110,6 +112,7 @@ function getClientEnv() {
       NEXT_PUBLIC_APP_TITLE: undefined,
       NEXT_PUBLIC_APP_DESCRIPTION: undefined,
       NEXT_PUBLIC_SUPPORT_EMAIL: undefined,
+      NEXT_PUBLIC_WALLET_ENABLED: undefined,
     }
     return clientEnvCache
   }
@@ -150,6 +153,9 @@ export const ENV = {
   },
   get LOCK_CALLBACK_SECRET() {
     return getServerEnv().LOCK_CALLBACK_SECRET
+  },
+  get NEXT_PUBLIC_WALLET_ENABLED() {
+    return getClientEnv().NEXT_PUBLIC_WALLET_ENABLED === "true"
   },
 }
 

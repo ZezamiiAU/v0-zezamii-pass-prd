@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, Clock } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { AnimatedCountdown } from "@/components/animated-countdown"
 
 // Use environment variable or default to 20 seconds (matches ROOMS_API_TIMEOUT_MS=20000)
 const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS) || 20
@@ -60,8 +61,33 @@ export default function SuccessPage() {
   const [displayedCode, setDisplayedCode] = useState<string | null>(null)
   const [pinSource, setPinSource] = useState<"rooms" | "backup" | null>(null)
   const [backupCodeCached, setBackupCodeCached] = useState<string | null>(null)
+  
+  // Wallet state - controlled by NEXT_PUBLIC_WALLET_ENABLED env var
+  const [walletEnabled] = useState(() => process.env.NEXT_PUBLIC_WALLET_ENABLED === "true")
+  const [googleWalletUrl, setGoogleWalletUrl] = useState<string | null>(null)
+  const [walletLoading, setWalletLoading] = useState(false)
 
   const rawParams = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams])
+
+  // Fetch Google Wallet URL when pass details are available and wallet is enabled
+  const fetchGoogleWalletUrl = useCallback(async (passId: string) => {
+    if (!walletEnabled || !passId) return
+    
+    setWalletLoading(true)
+    try {
+      const res = await fetch(`/api/wallet/google?pass_id=${passId}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.url) {
+          setGoogleWalletUrl(data.url)
+        }
+      }
+    } catch (err) {
+      // Wallet is optional - don't show errors
+    } finally {
+      setWalletLoading(false)
+    }
+  }, [walletEnabled])
 
   const paramsValidation = useMemo(
     () =>
@@ -289,8 +315,13 @@ export default function SuccessPage() {
           setCodeWarning(true)
         }
 
-        setPassDetails(data)
-        setIsLoading(false)
+setPassDetails(data)
+  setIsLoading(false)
+  
+  // Fetch wallet URL when pass details loaded
+  if (data.pass_id && walletEnabled) {
+    fetchGoogleWalletUrl(data.pass_id)
+  }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
           return
@@ -382,50 +413,21 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
         </CardHeader>
         <CardContent className="space-y-2 pb-2">
           {isLoading && !displayedCode && (
-            <div className="text-center py-4">
-              {/* Show countdown timer while loading */}
+            <div className="text-center">
+              {/* Show animated countdown timer while loading */}
               {isWaitingForRooms && countdown > 0 && (
-                <div className="py-2">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <Clock className="h-5 w-5 text-blue-600 animate-pulse" />
-                    <span className="text-sm font-medium text-blue-600">Generating your PIN...</span>
-                  </div>
-                  <div className="relative w-20 h-20 mx-auto">
-                    <svg className="w-20 h-20 transform -rotate-90">
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="36"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                        className="text-gray-200"
-                      />
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="36"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                        className="text-blue-600 transition-all duration-1000"
-                        strokeDasharray={226}
-                        strokeDashoffset={226 - (226 * countdown) / COUNTDOWN_SECONDS}
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-blue-600">
-                      {countdown}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">Connecting to access system...</p>
-                </div>
+                <AnimatedCountdown
+                  seconds={countdown}
+                  totalSeconds={COUNTDOWN_SECONDS}
+                  label="Generating your PIN..."
+                  sublabel="Connecting to access system..."
+                />
               )}
               {(!isWaitingForRooms || countdown <= 0) && !displayedCode && (
-                <>
-                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+                <div className="py-4">
+                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
                   <p className="mt-2 text-sm text-muted-foreground">Loading your pass...</p>
-                </>
+                </div>
               )}
             </div>
           )}
@@ -472,7 +474,6 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                   <p className="text-xs text-muted-foreground mt-1">PIN unavailable</p>
                 </div>
               )}
-
 
 
               <div className="space-y-0.5 text-xs">
@@ -524,6 +525,33 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                     <MessageSquare className="mr-1 h-3 w-3" />
                     Share via SMS
                   </Button>
+                )}
+
+                {/* Wallet Buttons - only shown when NEXT_PUBLIC_WALLET_ENABLED=true */}
+                {walletEnabled && displayedCode && (
+                  <div className="flex gap-2">
+                    {googleWalletUrl ? (
+                      <a
+                        href={googleWalletUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1"
+                      >
+                        <Button variant="outline" className="w-full bg-transparent text-xs h-8">
+                          <img
+                            src="/add-to-google-wallet.svg"
+                            alt="Add to Google Wallet"
+                            className="h-4 mr-1"
+                          />
+                          Google Wallet
+                        </Button>
+                      </a>
+                    ) : walletLoading ? (
+                      <Button variant="outline" className="flex-1 bg-transparent text-xs h-8" disabled>
+                        Loading...
+                      </Button>
+                    ) : null}
+                  </div>
                 )}
 
                 <Button
