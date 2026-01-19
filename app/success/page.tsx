@@ -464,59 +464,16 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 </Alert>
               )}
 
-              {/* Show PIN in passDetails section only if not already shown above */}
-              {!displayedCode && (
+              {/* Show PIN placeholder only when we have passDetails but no code yet and NOT waiting for countdown */}
+              {!displayedCode && !isWaitingForRooms && (
                 <div className="bg-primary/10 p-3 rounded-lg text-center border-2 border-primary/20">
                   <p className="text-xs text-muted-foreground mb-1 font-medium">Your Access PIN</p>
-                  
-                  {/* Countdown timer while waiting for Rooms */}
-                  {isWaitingForRooms && (
-                    <div className="py-2">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <Clock className="h-5 w-5 text-blue-600 animate-pulse" />
-                        <span className="text-sm font-medium text-blue-600">Retrieving PIN...</span>
-                      </div>
-                      <div className="relative w-16 h-16 mx-auto">
-                        <svg className="w-16 h-16 transform -rotate-90">
-                          <circle
-                            cx="32"
-                            cy="32"
-                            r="28"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                            className="text-gray-200"
-                          />
-                          <circle
-                            cx="32"
-                            cy="32"
-                            r="28"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                            className="text-blue-600"
-                            strokeDasharray={176}
-                            strokeDashoffset={176 - (176 * countdown) / COUNTDOWN_SECONDS}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-blue-600">
-                          {countdown}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">Using backup code in {countdown}s</p>
-                    </div>
-                  )}
-                  
-                  {/* No PIN available */}
-                  {!isWaitingForRooms && (
-                    <>
-                      <p className="text-4xl font-bold tracking-widest text-primary">----</p>
-                      <p className="text-xs text-muted-foreground mt-1">Contact support for PIN</p>
-                    </>
-                  )}
+                  <p className="text-2xl font-bold tracking-widest text-muted-foreground">----</p>
+                  <p className="text-xs text-muted-foreground mt-1">PIN unavailable</p>
                 </div>
               )}
+
+
 
               <div className="space-y-0.5 text-xs">
                 <div className="flex justify-between py-0.5 border-b">
