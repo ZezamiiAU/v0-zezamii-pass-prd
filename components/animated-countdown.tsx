@@ -38,12 +38,8 @@ export function AnimatedCountdown({
 
   return (
     <div className="flex flex-col items-center py-4">
-      {/* Label with pulsing dot */}
+      {/* Label */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500" />
-        </span>
         <span className="text-sm font-medium text-blue-600">{label}</span>
       </div>
 
@@ -105,19 +101,7 @@ export function AnimatedCountdown({
             }}
           />
 
-          {/* Animated end cap dot */}
-          {progress > 0.02 && (
-            <circle
-              cx={64 + 52 * Math.cos((progress * Math.PI * 2) - Math.PI / 2)}
-              cy={64 + 52 * Math.sin((progress * Math.PI * 2) - Math.PI / 2)}
-              r="4"
-              fill="#3b82f6"
-              className="transition-all duration-1000"
-              style={{
-                filter: "drop-shadow(0 0 4px rgba(59, 130, 246, 0.8))",
-              }}
-            />
-          )}
+
         </svg>
 
         {/* Center number */}
