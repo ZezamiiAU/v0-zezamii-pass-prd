@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react"
 export function AnimatedCountdown({
   seconds,
   totalSeconds,
-  onComplete,
+  onComplete = null,
   label = "Generating your PIN...",
   sublabel = "Connecting to access system...",
 }) {
