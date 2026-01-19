@@ -2,16 +2,24 @@
 
 import { useEffect, useState, useRef } from "react"
 
+interface AnimatedCountdownProps {
+  seconds: number
+  totalSeconds: number
+  onComplete?: (() => void) | null
+  label?: string
+  sublabel?: string
+}
+
 export function AnimatedCountdown({
   seconds,
   totalSeconds,
   onComplete = null,
   label = "Generating your PIN...",
   sublabel = "Connecting to access system...",
-}) {
+}: AnimatedCountdownProps) {
   const [prevSeconds, setPrevSeconds] = useState(seconds)
   const [isAnimating, setIsAnimating] = useState(false)
-  const canvasRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   // Trigger number change animation
   useEffect(() => {
