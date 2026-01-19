@@ -357,6 +357,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     }
   }
 
+  console.log("[v0] pinCode exists:", pinCode)
   if (pinCode) {
     const { error: lockCodeError } = await passDb.from("lock_codes").insert({
       pass_id: meta.data.pass_id!,
@@ -371,6 +372,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     }
 
     // Send email notification with pincode
+    console.log("[v0] customer_email:", meta.data.customer_email)
     if (meta.data.customer_email) {
       // Fetch access point name for the email
       let accessPointName = "Access Point"
@@ -389,6 +391,14 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
       const timezone = "Australia/Sydney"
 
       try {
+        console.log("[v0] About to call sendPassNotifications with:", {
+          email: meta.data.customer_email,
+          phone: meta.data.customer_phone,
+          accessPointName,
+          pin: pinCode,
+          validFrom: startsAt,
+          validTo: endsAt,
+        })
         await sendPassNotifications(
           meta.data.customer_email,
           meta.data.customer_phone || null,
@@ -401,11 +411,13 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
           },
           timezone,
         )
+        console.log("[v0] sendPassNotifications completed successfully")
         logger.info(
           { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider },
           "Pass notification email sent successfully",
         )
       } catch (emailError) {
+        console.log("[v0] sendPassNotifications threw error:", emailError)
         logger.error(
           { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
           "Failed to send pass notification email",
