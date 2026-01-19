@@ -12,7 +12,6 @@ import Stripe from "stripe"
 import { sendPassNotifications } from "@/lib/notifications"
 import { getCurrentBackupPincode } from "@/lib/db/backup-pincodes"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
-import { getNextAvailableBackupPincode, markBackupPincodeAsUsed } from "@/lib/db/backup-pincodes"
 
 const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
