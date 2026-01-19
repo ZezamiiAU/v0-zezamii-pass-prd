@@ -5,6 +5,7 @@ import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { ENV } from "@/lib/env"
 import { createRoomsReservation, buildRoomsPayload } from "@/lib/integrations/rooms-event-hub"
+import { sendPassNotifications } from "@/lib/notifications"
 
 export const runtime = "nodejs"
 
@@ -184,6 +185,50 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
   }
 
   if (pinCode) {
+    // Send email notification with pincode
+    if (meta.data.customer_email) {
+      // Fetch access point name for the email
+      let accessPointName = "Access Point"
+      const accessPointId = meta.data.access_point_id || meta.data.gate_id
+      if (accessPointId) {
+        const { data: accessPoint } = await core
+          .from("qr_ready_devices")
+          .select("name")
+          .eq("id", accessPointId)
+          .single()
+        if (accessPoint?.name) {
+          accessPointName = accessPoint.name
+        }
+      }
+
+      // Determine timezone - default to Australia/Sydney
+      const timezone = "Australia/Sydney"
+
+      try {
+        await sendPassNotifications(
+          meta.data.customer_email,
+          meta.data.customer_phone || null,
+          {
+            accessPointName,
+            pin: pinCode,
+            validFrom: startsAt,
+            validTo: endsAt,
+            vehiclePlate: meta.data.customer_plate,
+          },
+          timezone,
+        )
+        logger.info(
+          { passId: meta.data.pass_id, email: meta.data.customer_email },
+          "Pass notification email sent successfully (checkout)",
+        )
+      } catch (emailError) {
+        logger.error(
+          { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
+          "Failed to send pass notification email (checkout)",
+        )
+      }
+    }
+
     const customerIdentifier =
       meta.data.customer_email || meta.data.customer_phone || meta.data.customer_plate || "unknown"
 
@@ -323,6 +368,49 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
 
     if (lockCodeError) {
       logger.error({ passId: meta.data.pass_id, lockCodeError }, "Failed to store pincode")
+    }
+
+    // Send email notification with pincode
+    if (meta.data.customer_email) {
+      // Fetch access point name for the email
+      let accessPointName = "Access Point"
+      if (accessPointId) {
+        const { data: accessPoint } = await core
+          .from("qr_ready_devices")
+          .select("name")
+          .eq("id", accessPointId)
+          .single()
+        if (accessPoint?.name) {
+          accessPointName = accessPoint.name
+        }
+      }
+
+      // Determine timezone - default to Australia/Sydney
+      const timezone = "Australia/Sydney"
+
+      try {
+        await sendPassNotifications(
+          meta.data.customer_email,
+          meta.data.customer_phone || null,
+          {
+            accessPointName,
+            pin: pinCode,
+            validFrom: startsAt,
+            validTo: endsAt,
+            vehiclePlate: meta.data.customer_plate,
+          },
+          timezone,
+        )
+        logger.info(
+          { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider },
+          "Pass notification email sent successfully",
+        )
+      } catch (emailError) {
+        logger.error(
+          { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
+          "Failed to send pass notification email",
+        )
+      }
     }
 
     const customerIdentifier =
