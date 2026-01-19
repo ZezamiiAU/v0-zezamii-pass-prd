@@ -78,7 +78,6 @@
     "sonner": "latest",
     "stripe": "latest",
     "tailwind-merge": "^2.5.5",
-    "tailwindcss-animate": "1.0.7",
     "uuid": "13.0.0",
     "vaul": "latest",
     "zod": "^3.25.0"
@@ -106,9 +105,6 @@
       "esbuild",
       "sharp",
       "unrs-resolver"
-    ],
-    "overrides": {
-      "tw-animate-css": "1.3.3"
-    }
+    ]
   }
 }
