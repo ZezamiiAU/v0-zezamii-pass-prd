@@ -260,28 +260,31 @@ export default function SuccessPage() {
             return
           }
 
-          if ((errorData.status === "pending" || errorData.paymentStatus === "pending") && paymentIntent) {
-            // Only call sync-payment ONCE
-            if (!syncAttempted) {
-              syncAttempted = true
-              try {
-                await fetch("/api/passes/sync-payment", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ paymentIntentId: paymentIntent }),
-                  signal: abortController.signal,
-                })
-              } catch (syncError) {
-                console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
-              }
-              
-              // One retry after sync
-              if (isMounted) {
-                pollInterval = setTimeout(() => fetchPassDetails(), 3000)
-                return
-              }
+          // Call sync-payment on ANY 400 error (pass not active yet) - not just when status is "pending"
+          if (response.status === 400 && paymentIntent && !syncAttempted) {
+            syncAttempted = true
+            console.log("[v0] Calling sync-payment due to 400 error from by-session")
+            try {
+              const syncResponse = await fetch("/api/passes/sync-payment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentIntentId: paymentIntent }),
+                signal: abortController.signal,
+              })
+              console.log("[v0] sync-payment response status:", syncResponse.status)
+            } catch (syncError) {
+              console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
             }
 
+            // One retry after sync
+            if (isMounted) {
+              pollInterval = setTimeout(() => fetchPassDetails(), 3000)
+              return
+            }
+          }
+
+          // If we've already tried sync and still getting errors, show error message
+          if (errorData.status === "pending" || errorData.paymentStatus === "pending") {
             setError(`Lock not connected. Contact ${supportEmail}`)
             setIsLoading(false)
           } else {
