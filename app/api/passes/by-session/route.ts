@@ -174,26 +174,53 @@ export async function GET(request: NextRequest) {
           let pinProvider: "rooms" | "backup" = "backup"
           
           if (!existingLockCode) {
-            // Try Rooms API first
-            const accessPointId = pass.device_id || meta.access_point_id || meta.gate_id
-            if (accessPointId) {
+            // Try Rooms API first - need device info for the payload
+            const deviceId = pass.device_id || meta.access_point_id || meta.gate_id
+            if (deviceId && meta.org_id) {
               try {
-                const roomsPayload = buildRoomsPayload({
-                  accessPointId,
-                  startsAt,
-                  endsAt,
-                  customerEmail: meta.customer_email,
-                  customerPhone: meta.customer_phone,
-                  customerPlate: meta.customer_plate,
-                  passId: pass.id,
-                })
-                const roomsResult = await createRoomsReservation(roomsPayload)
-                if (roomsResult?.pinCode) {
-                  pinCode = roomsResult.pinCode
-                  pinProvider = "rooms"
+                // Get device and site info for Rooms payload
+                const { data: device } = await coreDb
+                  .from("qr_ready_devices")
+                  .select("site_id, slug")
+                  .eq("id", deviceId)
+                  .single()
+
+                if (device?.site_id) {
+                  const { data: site } = await coreDb
+                    .from("sites")
+                    .select("slug, org_id")
+                    .eq("id", device.site_id)
+                    .single()
+
+                  if (site) {
+                    const { data: org } = await coreDb
+                      .from("organisations")
+                      .select("slug")
+                      .eq("id", site.org_id)
+                      .single()
+
+                    if (org) {
+                      const slugPath = `${org.slug}/${site.slug}/${device.slug}`
+                      const roomsPayload = buildRoomsPayload({
+                        siteId: device.site_id,
+                        passId: pass.id,
+                        validFrom: startsAt,
+                        validTo: endsAt,
+                        email: meta.customer_email,
+                        phone: meta.customer_phone,
+                        deviceId: deviceId,
+                        slugPath,
+                      })
+                      const roomsResult = await createRoomsReservation(meta.org_id, roomsPayload)
+                      if (roomsResult?.pincode) {
+                        pinCode = roomsResult.pincode
+                        pinProvider = "rooms"
+                      }
+                    }
+                  }
                 }
               } catch (roomsError) {
-                console.log("[v0] by-session: Rooms API failed, using backup pincode")
+                console.log("[v0] by-session: Rooms API failed, using backup pincode", roomsError)
               }
             }
             
