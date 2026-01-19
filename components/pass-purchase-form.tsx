@@ -167,14 +167,14 @@ export function PassPurchaseForm({
 
   if (clientSecret) {
     return (
-      <Card className="w-full">
-        <CardHeader className="pb-1 pt-2 px-3">
+      <Card className="w-full max-h-[85vh] flex flex-col">
+        <CardHeader className="pb-1 pt-2 px-3 flex-shrink-0">
           <CardTitle className="text-lg">Complete Payment</CardTitle>
           {(siteName || deviceName) && (
             <CardDescription className="text-xs">{[deviceName, siteName].filter(Boolean).join(" - ")}</CardDescription>
           )}
         </CardHeader>
-        <CardContent className="space-y-2 pb-2 px-3 max-h-[70vh] overflow-y-auto">
+        <CardContent className="space-y-2 pb-2 px-3 overflow-y-auto flex-1">
           {selectedPassType && (
             <Card className="bg-muted/50">
               <CardHeader className="pb-1 pt-1.5 px-2">
@@ -240,14 +240,14 @@ export function PassPurchaseForm({
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-1 pt-2 px-3">
+    <Card className="w-full max-h-[85vh] flex flex-col">
+      <CardHeader className="pb-1 pt-2 px-3 flex-shrink-0">
         <CardTitle className="text-lg">Purchase Pass</CardTitle>
         {(siteName || deviceName) && (
           <CardDescription className="text-base">{[deviceName, siteName].filter(Boolean).join(" - ")}</CardDescription>
         )}
       </CardHeader>
-      <CardContent className="py-1.5 px-3">
+      <CardContent className="py-1.5 px-3 overflow-y-auto flex-1">
         <form onSubmit={handleSubmit} className="space-y-1.5">
           <div className="space-y-0.5">
             <Label htmlFor="passType" className="text-sm">
