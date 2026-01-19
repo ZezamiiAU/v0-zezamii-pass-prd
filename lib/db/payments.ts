@@ -25,11 +25,10 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 2, initial
     try {
       return await fn()
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(JSON.stringify(error))
-      logger.debug({ attempt, maxRetries, error: lastError.message }, "[Payments] Retry attempt failed")
+      lastError = error as Error
 
       if (attempt === maxRetries - 1) {
-        throw lastError
+        throw error
       }
 
       const delay = initialDelay * Math.pow(2, attempt)
@@ -194,7 +193,7 @@ export async function getPassByCheckoutSession(sessionId: string): Promise<Payme
     })
   } catch (error) {
     logger.error(
-      { sessionId, error: error instanceof Error ? error.message : JSON.stringify(error) },
+      { sessionId, error: error instanceof Error ? error.message : error },
       "[Payments] Error fetching pass by session",
     )
     return null
@@ -297,7 +296,7 @@ export async function getPassByPaymentIntent(intentId: string): Promise<PaymentW
     })
   } catch (error) {
     logger.error(
-      { intentId, error: error instanceof Error ? error.message : JSON.stringify(error) },
+      { intentId, error: error instanceof Error ? error.message : error },
       "[Payments] Error fetching pass by payment intent",
     )
     return null

@@ -8,10 +8,6 @@ import { ZodError } from "zod"
 import { ENV } from "@/lib/env"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import logger from "@/lib/logger"
-import Stripe from "stripe"
-
-const { STRIPE_SECRET_KEY } = ENV.server()
-const stripe = new Stripe(STRIPE_SECRET_KEY)
 
 export async function GET(request: NextRequest) {
   if (!rateLimit(request, 30, 60000)) {
@@ -52,29 +48,6 @@ export async function GET(request: NextRequest) {
     const payment = result
     const pass = payment.pass
 
-    // Extract backup code from Stripe payment intent metadata (NOT our database)
-    let backupCodeFromMeta: string | null = null
-    try {
-      // First try our database metadata
-      if (payment.metadata && typeof payment.metadata === "object") {
-        const meta = payment.metadata as Record<string, unknown>
-        if (meta.backup_pincode && typeof meta.backup_pincode === "string") {
-          backupCodeFromMeta = meta.backup_pincode
-        }
-      }
-      
-      // If not in our database, fetch from Stripe (where it's actually stored)
-      if (!backupCodeFromMeta && payment.stripe_payment_intent) {
-        const stripePaymentIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent)
-        if (stripePaymentIntent.metadata?.backup_pincode) {
-          backupCodeFromMeta = stripePaymentIntent.metadata.backup_pincode
-          logger.debug({ backupCodeFromMeta }, "[BySession] Got backup code from Stripe metadata")
-        }
-      }
-    } catch (metaError) {
-      logger.warn({ error: metaError instanceof Error ? metaError.message : String(metaError) }, "[BySession] Error fetching backup code from metadata")
-    }
-
     if (!pass) {
       if (devMode) {
         return NextResponse.json(
@@ -82,46 +55,12 @@ export async function GET(request: NextRequest) {
             status: "pending",
             message: "Pass data is still being created",
             paymentStatus: payment.status,
-            backupCode: backupCodeFromMeta,
             devMode: true,
           },
           { status: 202 },
         )
       }
-      return NextResponse.json({ error: "Pass data not found", backupCode: backupCodeFromMeta }, { status: 404 })
-    }
-
-    // Get access point details early so we can include in error responses
-    let accessPointName = "Access Point"
-    let timezone = "Australia/Sydney"
-    let returnUrl: string | null = null
-
-    try {
-      const supabase = await createSchemaServiceClient()
-      const { data: device } = await supabase
-        .schema("core")
-        .from("devices")
-        .select("name, sites(timezone)")
-        .eq("id", pass.device_id)
-        .single()
-      if (device?.name) accessPointName = device.name
-      if (device?.sites && typeof device.sites === "object" && "timezone" in device.sites) {
-        timezone = (device.sites as { timezone?: string }).timezone || timezone
-      }
-    } catch {
-      // Ignore - use defaults
-    }
-
-    // Build partial pass details for error responses
-    const partialPassDetails = {
-      id: pass.id,
-      accessPointName,
-      passType: pass.pass_type,
-      valid_from: pass.valid_from,
-      valid_to: pass.valid_to,
-      timezone,
-      vehiclePlate: pass.vehicle_plate,
-      backupCode: backupCodeFromMeta,
+      return NextResponse.json({ error: "Pass data not found" }, { status: 404 })
     }
 
     if (!devMode) {
@@ -131,7 +70,6 @@ export async function GET(request: NextRequest) {
             error: "Pass not yet active",
             status: pass.status,
             paymentStatus: payment.status,
-            ...partialPassDetails,
           },
           { status: 400 },
         )
@@ -143,12 +81,15 @@ export async function GET(request: NextRequest) {
             error: "Lock not connected. Contact support@zezamii.com",
             status: pass.status,
             paymentStatus: payment.status,
-            ...partialPassDetails,
           },
           { status: 400 },
         )
       }
     }
+
+    let accessPointName = "Access Point"
+    const timezone = "UTC"
+    let returnUrl: string | null = null
 
     try {
       const coreDb = createSchemaServiceClient("core")
