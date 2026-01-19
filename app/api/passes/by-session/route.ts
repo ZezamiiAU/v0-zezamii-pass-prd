@@ -75,6 +75,57 @@ export async function GET(request: NextRequest) {
       logger.warn({ error: metaError instanceof Error ? metaError.message : String(metaError) }, "[BySession] Error fetching backup code from metadata")
     }
 
+    // Helper to get partial pass metadata for error responses
+    const getPartialPassMeta = async () => {
+      let accessPointName = "Access Point"
+      let returnUrl: string | null = null
+      const timezone = "UTC"
+      
+      if (pass?.device_id) {
+        try {
+          const coreDb = createSchemaServiceClient("core")
+          const { data: device } = await coreDb
+            .from("devices")
+            .select("name, slug, site_id")
+            .eq("id", pass.device_id)
+            .maybeSingle()
+
+          if (device?.name) {
+            accessPointName = device.name
+          }
+
+          if (device?.site_id) {
+            const { data: site } = await coreDb
+              .from("sites")
+              .select("slug, org_id")
+              .eq("id", device.site_id)
+              .maybeSingle()
+
+            if (site?.org_id) {
+              const { data: org } = await coreDb.from("organisations").select("slug").eq("id", site.org_id).maybeSingle()
+
+              if (org?.slug && site?.slug && device?.slug) {
+                returnUrl = `/p/${org.slug}/${site.slug}/${device.slug}`
+              }
+            }
+          }
+        } catch (e) {
+          logger.warn({ error: e instanceof Error ? e.message : String(e) }, "[BySession] Error fetching partial metadata")
+        }
+      }
+      
+      return {
+        accessPointName,
+        timezone,
+        returnUrl,
+        valid_from: pass?.valid_from || null,
+        valid_to: pass?.valid_to || null,
+        passType: pass?.pass_type?.name || null,
+        vehiclePlate: pass?.vehicle_plate || null,
+        device_id: pass?.device_id || null,
+      }
+    }
+
     if (!pass) {
       if (devMode) {
         return NextResponse.json(
@@ -93,24 +144,28 @@ export async function GET(request: NextRequest) {
 
     if (!devMode) {
       if (pass.status !== "active") {
+        const partialMeta = await getPartialPassMeta()
         return NextResponse.json(
           {
             error: "Pass not yet active",
             status: pass.status,
             paymentStatus: payment.status,
             backupCode: backupCodeFromMeta,
+            ...partialMeta,
           },
           { status: 400 },
         )
       }
 
       if (payment.status !== "succeeded") {
+        const partialMeta = await getPartialPassMeta()
         return NextResponse.json(
           {
             error: "Lock not connected. Contact support@zezamii.com",
             status: pass.status,
             paymentStatus: payment.status,
             backupCode: backupCodeFromMeta,
+            ...partialMeta,
           },
           { status: 400 },
         )

@@ -185,12 +185,31 @@ export default function SuccessPage() {
         if (!response.ok) {
           const errorData = await response.json()
 
-          // Extract backup code from error response - this is the key fallback
+          // Extract backup code and metadata from error response - this is the key fallback
           const backupFromResponse = errorData.backupCode
           
           if (backupFromResponse) {
             // We have a backup code - cache it and let the countdown effect handle display
             setBackupCodeCached(backupFromResponse)
+            
+            // Also set partial passDetails from error response metadata
+            if (errorData.accessPointName || errorData.valid_from || errorData.valid_to) {
+              setPassDetails({
+                pass_id: errorData.pass_id || "",
+                accessPointName: errorData.accessPointName || "Access Point",
+                timezone: errorData.timezone || "UTC",
+                code: null,
+                backupCode: backupFromResponse,
+                pinSource: "backup",
+                codeUnavailable: true,
+                valid_from: errorData.valid_from || new Date().toISOString(),
+                valid_to: errorData.valid_to || new Date().toISOString(),
+                passType: errorData.passType || "Day Pass",
+                vehiclePlate: errorData.vehiclePlate || "",
+                device_id: errorData.device_id || "",
+                returnUrl: errorData.returnUrl || null,
+              })
+            }
             // Don't show any errors, don't set isLoading false - let countdown effect handle it
             return
           }
