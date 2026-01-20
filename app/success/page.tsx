@@ -404,11 +404,11 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
       <div className="bg-navy-banner px-4 py-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Anchor className="w-5 h-5 text-white/80" />
+            <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
             <span className="font-semibold text-white text-sm">Access Pass</span>
           </div>
           {displayedCode && (
-            <div className="flex items-center gap-1 text-[#d4af37]">
+            <div className="flex items-center gap-1 text-white">
               <ShieldCheck className="w-4 h-4" />
               <span className="text-xs font-medium">Verified</span>
             </div>
@@ -424,8 +424,8 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               <CheckCircle2 className="w-5 h-5 text-[#22c55e]" />
             </div>
           ) : (
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#f8fafc] mb-2">
-              <Anchor className="w-5 h-5 text-[#001F3F]" />
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#f8fafc] mb-2">
+              <img src="/zezamii-logo.png" alt="Zezamii" className="w-8 h-8 rounded" />
             </div>
           )}
           <h1 className="text-lg font-bold text-[#001F3F] tracking-tight">
@@ -454,7 +454,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               {/* Progress bar */}
               <div className="mt-3 h-1 bg-[#e2e8f0] rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-[#d4af37] rounded-full transition-all duration-1000 ease-linear"
+                  className="h-full bg-[#001F3F] rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${countdownProgress}%` }}
                 />
               </div>
@@ -484,16 +484,16 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs font-medium text-white/60 uppercase tracking-wider">Access PIN</p>
-                    <div className="flex items-center gap-1 text-[#d4af37]">
+                    <div className="flex items-center gap-1 text-white">
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span className="text-xs font-medium">Verified</span>
                     </div>
                   </div>
-                  <p className="pin-display text-5xl text-white animate-gold-glow inline-block">
+                  <p className="pin-display text-5xl text-white inline-block">
                     {displayedCode}
                   </p>
                   {pinSource === "backup" && (
-                    <p className="text-xs text-[#d4af37] mt-2 font-medium">Backup Code</p>
+                    <p className="text-xs text-white/80 mt-2 font-medium">Backup Code</p>
                   )}
                 </div>
               </div>

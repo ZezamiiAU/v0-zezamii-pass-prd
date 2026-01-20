@@ -143,12 +143,13 @@ export function PassPurchaseForm({
       <div className="min-h-screen bg-premium-gradient">
         {/* Compact Navy Banner */}
         <div className="bg-navy-banner px-4 py-3">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="max-w-md mx-auto flex items-center gap-2">
+            {organizationLogo ? (
+              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" />
+            ) : (
               <Anchor className="w-5 h-5 text-white/80" />
-              <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
-            </div>
-            <span className="text-white/60 text-xs">{siteName}</span>
+            )}
+            <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
           </div>
         </div>
 
@@ -188,12 +189,13 @@ export function PassPurchaseForm({
       <div className="min-h-screen bg-premium-gradient">
         {/* Compact Navy Banner */}
         <div className="bg-navy-banner px-4 py-3">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="max-w-md mx-auto flex items-center gap-2">
+            {organizationLogo ? (
+              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" />
+            ) : (
               <Anchor className="w-5 h-5 text-white/80" />
-              <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
-            </div>
-            <span className="text-white/60 text-xs">{siteName}</span>
+            )}
+            <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
           </div>
         </div>
 
@@ -295,11 +297,18 @@ export function PassPurchaseForm({
       {/* Medium Hero Header */}
       <div className="bg-nautical-gradient px-4 py-6">
         <div className="max-w-md mx-auto text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 backdrop-blur mb-3">
-            <Anchor className="w-6 h-6 text-white" />
-          </div>
+          {organizationLogo ? (
+            <img 
+              src={organizationLogo} 
+              alt={organizationName || "Organization logo"} 
+              className="w-16 h-16 rounded-full object-cover mx-auto mb-3 border-2 border-white/20"
+            />
+          ) : (
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 backdrop-blur mb-3">
+              <Anchor className="w-6 h-6 text-white" />
+            </div>
+          )}
           <h1 className="text-2xl font-bold text-white tracking-tight">{organizationName || "Access Pass"}</h1>
-          {siteName && <p className="text-white/70 text-sm mt-1">{siteName}</p>}
         </div>
       </div>
 
