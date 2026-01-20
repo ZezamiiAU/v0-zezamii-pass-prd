@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PaymentForm } from "@/components/payment-form"
 import { createPaymentIntent } from "@/lib/api/payments"
 import { getOrCreatePaymentAttemptKey, clearPaymentAttempt } from "@/lib/http/idempotency"
-import { Check, Anchor } from "lucide-react"
+import { Check } from "lucide-react"
 import type { PassType } from "@/lib/db/pass-types"
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -145,11 +145,12 @@ export function PassPurchaseForm({
         {/* Compact Navy Banner */}
         <div className="bg-navy-banner px-4 py-3">
           <div className="max-w-md mx-auto flex items-center gap-2">
-            {organizationLogo && !logoError ? (
-              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" onError={() => setLogoError(true)} />
-            ) : (
-              <Anchor className="w-5 h-5 text-white/80" />
-            )}
+            <img 
+              src={organizationLogo && !logoError ? organizationLogo : "/images/griffith-boat-club-logo.png"} 
+              alt="" 
+              className="w-8 h-8 rounded-full object-cover border border-white/20 bg-white" 
+              onError={() => setLogoError(true)} 
+            />
             <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
           </div>
         </div>
@@ -191,11 +192,12 @@ export function PassPurchaseForm({
         {/* Compact Navy Banner */}
         <div className="bg-navy-banner px-4 py-3">
           <div className="max-w-md mx-auto flex items-center gap-2">
-            {organizationLogo && !logoError ? (
-              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" onError={() => setLogoError(true)} />
-            ) : (
-              <Anchor className="w-5 h-5 text-white/80" />
-            )}
+            <img 
+              src={organizationLogo && !logoError ? organizationLogo : "/images/griffith-boat-club-logo.png"} 
+              alt="" 
+              className="w-8 h-8 rounded-full object-cover border border-white/20 bg-white" 
+              onError={() => setLogoError(true)} 
+            />
             <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
           </div>
         </div>
@@ -298,18 +300,12 @@ export function PassPurchaseForm({
       {/* Medium Hero Header */}
       <div className="bg-nautical-gradient px-4 py-6">
         <div className="max-w-md mx-auto text-center">
-          {organizationLogo && !logoError ? (
-            <img 
-              src={organizationLogo} 
-              alt={organizationName || "Organization logo"} 
-              className="w-16 h-16 rounded-full object-cover mx-auto mb-3 border-2 border-white/20"
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/10 backdrop-blur mb-3">
-              <Anchor className="w-7 h-7 text-white" />
-            </div>
-          )}
+          <img 
+            src={organizationLogo && !logoError ? organizationLogo : "/images/griffith-boat-club-logo.png"} 
+            alt={organizationName || "Organization logo"} 
+            className="w-16 h-16 rounded-full object-cover mx-auto mb-3 border-2 border-white/20 bg-white"
+            onError={() => setLogoError(true)}
+          />
           <h1 className="text-2xl font-bold text-white tracking-tight">{organizationName || "Access Pass"}</h1>
         </div>
       </div>
