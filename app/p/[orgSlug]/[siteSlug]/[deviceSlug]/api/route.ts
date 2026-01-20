@@ -94,10 +94,20 @@ export async function GET(request: NextRequest, context: RouteParams) {
       logger.error({ error: passTypesError.message }, "[DeviceAPI] Error fetching pass types")
     }
 
+    // Parse brand_settings if it's a string
+    let brandSettings = org.brand_settings
+    if (typeof brandSettings === "string") {
+      try {
+        brandSettings = JSON.parse(brandSettings)
+      } catch {
+        brandSettings = null
+      }
+    }
+
     return NextResponse.json({
       organizationId: org.id,
       organizationName: org.name,
-      organizationLogo: org.brand_settings?.logo_url || null,
+      organizationLogo: brandSettings?.logo_url || null,
       siteId: site.id,
       siteName: site.name,
       deviceId: device.id,

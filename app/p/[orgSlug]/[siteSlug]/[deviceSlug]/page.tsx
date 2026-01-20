@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { notFound } from "next/navigation"
 import { PassPurchaseForm } from "@/components/pass-purchase-form"
@@ -35,7 +35,12 @@ export default function DevicePassPage() {
   const [accessPointData, setAccessPointData] = useState<AccessPointData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedPassTypeId, setSelectedPassTypeId] = useState<string | null>(null)
+  const [logoError, setLogoError] = useState(false)
   const router = useRouter()
+
+  const handleLogoError = useCallback(() => {
+    setLogoError(true)
+  }, [])
 
   useEffect(() => {
     async function fetchAccessPoint() {
@@ -138,12 +143,13 @@ export default function DevicePassPage() {
                 </div>
               )}
 
-              {accessPointData.organizationLogo && (
+              {accessPointData.organizationLogo && !logoError && (
                 <div className="flex justify-center py-2">
                   <img
                     src={accessPointData.organizationLogo}
                     alt={accessPointData.organizationName}
                     className="h-28 w-auto"
+                    onError={handleLogoError}
                   />
                 </div>
               )}
