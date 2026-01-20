@@ -1,9 +1,10 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Nautical Premium Color Palette */
+  /* Nautical Premium Color Palette (preserved) */
   --background: #f8fafc;
   --foreground: #001F3F;
   --card: #ffffff;
@@ -23,28 +24,28 @@
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #7dd3fc;
-  --radius: 1.5rem;
+  --radius: 1rem; /* Preserved from existing */
   
-  /* Nautical Brand Colors */
+  /* Nautical Brand Colors (preserved) */
   --navy: #001F3F;
   --navy-light: #0a3d62;
-  --teal: #0d4f5c;
+  --navy-deep: #001530;
   --sky-blue: #7dd3fc;
   --sky-blue-light: #bae6fd;
   
-  /* Brand Gradient */
+  /* Brand Gradient (preserved) */
   --brand-bg: #001F3F;
   --brand-bg-2: #0d4f5c;
   --brand-accent: #7dd3fc;
   
-  /* Charts */
+  /* Charts (preserved) */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   
-  /* Sidebar */
+  /* Sidebar (preserved) */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -132,7 +133,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50; /* Added outline-ring/50 from default */
   }
   body {
     @apply bg-background text-foreground;
@@ -148,12 +149,12 @@ body {
   color: var(--foreground);
 }
 
-/* Nautical Mesh Gradient Header */
+/* Nautical Mesh Gradient Header - Deep Navy */
 .bg-nautical-gradient {
   background: 
-    radial-gradient(ellipse at 20% 20%, rgba(13, 79, 92, 0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(125, 211, 252, 0.15) 0%, transparent 50%),
-    linear-gradient(135deg, #001F3F 0%, #0d4f5c 50%, #001F3F 100%);
+    radial-gradient(ellipse at 20% 20%, rgba(10, 61, 98, 0.5) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(0, 31, 63, 0.3) 0%, transparent 50%),
+    linear-gradient(135deg, #001530 0%, #001F3F 50%, #0a3d62 100%);
 }
 
 .bg-brand-gradient {

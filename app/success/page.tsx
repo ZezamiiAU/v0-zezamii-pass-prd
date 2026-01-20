@@ -42,7 +42,7 @@ function extractErrorMessage(errorData: any): string {
 function CircularLoader() {
   return (
     <div className="circular-loader mx-auto">
-      <svg viewBox="0 0 50 50" className="w-20 h-20">
+      <svg viewBox="0 0 50 50" className="w-16 h-16">
         <circle
           cx="25"
           cy="25"
@@ -399,44 +399,44 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
   const countdownProgress = ((COUNTDOWN_SECONDS - countdown) / COUNTDOWN_SECONDS) * 100
 
   return (
-    <div className="min-h-screen bg-nautical-gradient">
-      <div className="px-4 py-8">
+    <div className="min-h-screen bg-nautical-gradient overflow-y-auto">
+      <div className="px-4 py-4">
         {/* Header */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-4">
           {displayedCode ? (
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#22c55e] mb-4 animate-spring-in">
-              <CheckCircle2 className="w-8 h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white mb-3 animate-spring-in">
+              <CheckCircle2 className="w-6 h-6 text-[#001F3F]" />
             </div>
           ) : (
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/10 backdrop-blur mb-4">
-              <Anchor className="w-8 h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 backdrop-blur mb-3">
+              <Anchor className="w-6 h-6 text-white" />
             </div>
           )}
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl font-bold text-white tracking-tight">
             {isValid ? (displayedCode ? "Payment Successful!" : "Processing...") : "Invalid Payment"}
           </h1>
-          <p className="text-sky-200 text-sm mt-1">
+          <p className="text-sky-200 text-sm">
             {displayedCode ? "Your pass is ready" : "Your pass is being created"}
           </p>
         </div>
 
         {/* Main Glass Card */}
-        <div className="glass-card rounded-3xl p-6 max-w-md mx-auto animate-spring-in">
+        <div className="glass-card rounded-2xl p-4 max-w-md mx-auto animate-spring-in">
           
           {/* Loading State with Circular Loader */}
           {isWaitingForRooms && countdown > 0 && !displayedCode && (
-            <div className="text-center py-8">
-              <div className="relative inline-block mb-6">
+            <div className="text-center py-4">
+              <div className="relative inline-block mb-4">
                 <CircularLoader />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-[#001F3F]">{countdown}</span>
+                  <span className="text-xl font-bold text-[#001F3F]">{countdown}</span>
                 </div>
               </div>
-              <p className="text-lg font-semibold text-[#001F3F]">Generating your PIN...</p>
-              <p className="text-sm text-muted-foreground mt-1">Connecting to access system</p>
+              <p className="text-base font-semibold text-[#001F3F]">Generating your PIN...</p>
+              <p className="text-sm text-muted-foreground">Connecting to access system</p>
               
               {/* Progress bar */}
-              <div className="mt-6 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+              <div className="mt-4 h-1 bg-[#e2e8f0] rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-[#001F3F] rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${countdownProgress}%` }}
@@ -447,39 +447,39 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
 
           {/* Fallback Loading */}
           {isLoading && !displayedCode && (!isWaitingForRooms || countdown <= 0) && (
-            <div className="text-center py-8">
+            <div className="text-center py-4">
               <CircularLoader />
-              <p className="mt-4 text-muted-foreground">Loading your pass...</p>
+              <p className="mt-3 text-muted-foreground">Loading your pass...</p>
             </div>
           )}
 
           {/* Error State */}
           {error && !displayedCode && (
-            <Alert variant="destructive" className="rounded-2xl border-red-200 bg-red-50">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              <AlertDescription className="text-red-700">{error}</AlertDescription>
+            <Alert variant="destructive" className="rounded-xl border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-red-700 text-sm">{error}</AlertDescription>
             </Alert>
           )}
 
           {/* PIN Display - Ticket Style */}
           {displayedCode && (
             <div className="animate-spring-in">
-              <div className="ticket-container rounded-3xl p-6 mb-6">
+              <div className="ticket-container rounded-2xl p-4 mb-4">
                 <div className="text-center">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Your Access PIN</p>
-                  <p className="pin-display text-6xl font-bold text-[#001F3F] animate-pulse-glow inline-block px-4 py-2 rounded-2xl bg-[#f8fafc]">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Your Access PIN</p>
+                  <p className="pin-display text-5xl font-bold text-[#001F3F] animate-pulse-glow inline-block px-3 py-1 rounded-xl bg-[#f8fafc]">
                     {displayedCode}
                   </p>
                   {pinSource === "backup" && (
-                    <p className="text-sm text-orange-600 mt-3 font-medium">Backup Code</p>
+                    <p className="text-xs text-orange-600 mt-2 font-medium">Backup Code</p>
                   )}
                 </div>
                 
                 <div className="ticket-divider" />
                 
                 <div className="text-center">
-                  <p className="text-base font-semibold text-[#001F3F] bg-[#fef9c3] border border-[#fde047] rounded-2xl px-4 py-3">
-                    Enter PIN followed by <span className="text-xl font-bold">#</span>
+                  <p className="text-sm font-semibold text-[#001F3F] bg-[#fef9c3] border border-[#fde047] rounded-xl px-3 py-2">
+                    Enter PIN followed by <span className="text-lg font-bold">#</span>
                   </p>
                 </div>
               </div>
@@ -488,63 +488,63 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           
           {/* Pass Details */}
           {passDetails && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {codeWarning && !displayedCode && (
-                <Alert className="border-orange-300 bg-orange-50 rounded-2xl">
-                  <AlertTriangle className="h-5 w-5 text-orange-500" />
-                  <AlertDescription className="text-orange-700 text-sm">
+                <Alert className="border-orange-300 bg-orange-50 rounded-xl">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  <AlertDescription className="text-orange-700 text-xs">
                     Your pass is active but we couldn&apos;t retrieve your PIN. Please contact {supportEmail}.
                   </AlertDescription>
                 </Alert>
               )}
 
               {/* Pass Info Grid */}
-              <div className="bg-[#f8fafc] rounded-2xl p-4 space-y-3">
+              <div className="bg-[#f8fafc] rounded-xl p-3 space-y-0">
                 <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
-                  <span className="text-sm text-muted-foreground">Access Point</span>
-                  <span className="font-semibold text-[#001F3F]">{passDetails.accessPointName}</span>
+                  <span className="text-xs text-muted-foreground">Access Point</span>
+                  <span className="text-sm font-semibold text-[#001F3F]">{passDetails.accessPointName}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
-                  <span className="text-sm text-muted-foreground">Pass Type</span>
-                  <span className="font-semibold text-[#001F3F]">{passDetails.passType}</span>
+                  <span className="text-xs text-muted-foreground">Pass Type</span>
+                  <span className="text-sm font-semibold text-[#001F3F]">{passDetails.passType}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
-                  <span className="text-sm text-muted-foreground">Valid From</span>
-                  <span className="font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</span>
+                  <span className="text-xs text-muted-foreground">Valid From</span>
+                  <span className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <span className="text-sm text-muted-foreground">Valid Until</span>
-                  <span className="font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</span>
+                  <span className="text-xs text-muted-foreground">Valid Until</span>
+                  <span className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</span>
                 </div>
                 {passDetails.vehiclePlate && (
                   <div className="flex justify-between items-center py-2 border-t border-[#e2e8f0]">
-                    <span className="text-sm text-muted-foreground">Vehicle</span>
-                    <span className="font-medium text-[#001F3F]">{passDetails.vehiclePlate}</span>
+                    <span className="text-xs text-muted-foreground">Vehicle</span>
+                    <span className="text-sm font-medium text-[#001F3F]">{passDetails.vehiclePlate}</span>
                   </div>
                 )}
               </div>
 
               {/* Instructions */}
-              <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-2xl p-4">
-                <p className="text-sm text-[#1e40af] leading-relaxed">
+              <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-xl p-3">
+                <p className="text-xs text-[#1e40af] leading-relaxed">
                   <strong>Instructions:</strong>{" "}
                   {displayedCode
-                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${formatDateTime(passDetails.valid_to, passDetails.timezone)}.`
+                    ? `Enter PIN followed by # at ${passDetails.accessPointName}. Valid until ${formatDateTime(passDetails.valid_to, passDetails.timezone)}.`
                     : isWaitingForRooms
                       ? "Retrieving your PIN..."
-                      : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}
+                      : `Your pass is active. Contact ${supportEmail} for your PIN.`}
                 </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2 pt-1">
                 {displayedCode && (
                   <Button 
                     variant="outline" 
                     onClick={handleShareSMS} 
-                    className="w-full h-12 rounded-3xl text-base border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
+                    className="w-full h-10 rounded-xl text-sm border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
                   >
-                    <MessageSquare className="mr-2 h-5 w-5" />
+                    <MessageSquare className="mr-2 h-4 w-4" />
                     Share via SMS
                   </Button>
                 )}
@@ -553,16 +553,16 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                   <a href={googleWalletUrl} target="_blank" rel="noopener noreferrer" className="block">
                     <Button 
                       variant="outline" 
-                      className="w-full h-12 rounded-3xl text-base border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
+                      className="w-full h-10 rounded-xl text-sm border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
                     >
-                      <img src="/add-to-google-wallet.svg" alt="" className="h-5 mr-2" />
+                      <img src="/add-to-google-wallet.svg" alt="" className="h-4 mr-2" />
                       Add to Google Wallet
                     </Button>
                   </a>
                 )}
 
                 <Button
-                  className="w-full h-14 rounded-3xl text-base font-semibold bg-[#001F3F] text-white hover:bg-[#0a3d62]"
+                  className="w-full h-11 rounded-xl text-sm font-semibold bg-[#001F3F] text-white hover:bg-[#0a3d62]"
                   onClick={() => {
                     const url = passDetails?.returnUrl || "/"
                     window.location.replace(`${url}?t=${Date.now()}`)
@@ -577,15 +577,15 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           {/* Technical Details Collapsible */}
           {errorDetails && (
             <Collapsible open={isTechnicalDetailsOpen} onOpenChange={setIsTechnicalDetailsOpen}>
-              <div className="bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] mt-4">
+              <div className="bg-[#f8fafc] rounded-xl border border-[#e2e8f0] mt-3">
                 <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between p-3 hover:bg-[#f1f5f9] rounded-2xl transition-colors">
+                  <div className="flex items-center justify-between p-2 hover:bg-[#f1f5f9] rounded-xl transition-colors">
                     <p className="font-medium text-muted-foreground text-xs">Technical Details</p>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs px-2"
+                        className="h-6 text-xs px-2"
                         onClick={(e) => {
                           e.stopPropagation()
                           copyErrorDetails()
@@ -595,18 +595,18 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                         {copiedToClipboard ? "Copied!" : "Copy"}
                       </Button>
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform text-muted-foreground ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
+                        className={`h-3 w-3 transition-transform text-muted-foreground ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
                       />
                     </div>
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-3 pb-3 space-y-2">
-                    <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-white p-3 rounded-xl border border-[#e2e8f0] max-h-32 overflow-y-auto">
+                  <div className="px-2 pb-2 space-y-1">
+                    <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-white p-2 rounded-lg border border-[#e2e8f0] max-h-24 overflow-y-auto">
                       {errorDetails}
                     </pre>
                     <p className="text-muted-foreground text-xs">
-                      Copy these details and send to <strong>{supportEmail}</strong>
+                      Copy and send to <strong>{supportEmail}</strong>
                     </p>
                   </div>
                 </CollapsibleContent>
