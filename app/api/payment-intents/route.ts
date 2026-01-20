@@ -143,18 +143,22 @@ export async function POST(request: NextRequest) {
     const validFrom = now
 
     const passCode = passType.code?.toLowerCase()
-    const isMultiDayPass = passCode === "camping" || passType.name?.toLowerCase().includes("camping")
+    const isCampingPass = passCode === "camping" || passType.name?.toLowerCase().includes("camping")
 
     let validTo: Date
-    if (isMultiDayPass) {
+    if (isCampingPass) {
+      // Camping pass: ends at 10:00 AM AEDT on the last day
       validTo = new Date(now)
       validTo.setDate(validTo.getDate() + numberOfDays - 1)
+      // 10:00 AM AEDT = 23:00 UTC previous day (AEDT is UTC+11)
+      validTo.setUTCHours(23, 0, 0, 0)
+      validTo.setDate(validTo.getDate() - 1)
     } else {
+      // Day pass: ends at 11:59 PM AEDT same day
       validTo = new Date(now)
+      // 11:59 PM AEDT = 12:59 UTC same day (AEDT is UTC+11)
+      validTo.setUTCHours(12, 59, 59, 999)
     }
-
-    // Set to 11:59:59 PM Australian Eastern Time
-    validTo.setUTCHours(12, 59, 59, 999)
 
     const pass = await createPass({
       passTypeId,
@@ -196,7 +200,7 @@ export async function POST(request: NextRequest) {
     }
 
     const currency = passType.currency?.toLowerCase() || "aud"
-    const totalAmountCents = isMultiDayPass ? passType.price_cents * numberOfDays : passType.price_cents
+    const totalAmountCents = isCampingPass ? passType.price_cents * numberOfDays : passType.price_cents
 
     const stripe = getStripeClient()
 
@@ -221,7 +225,7 @@ export async function POST(request: NextRequest) {
           customer_email: email || "",
           customer_phone: phone || "",
           customer_plate: plate || "",
-          number_of_days: String(isMultiDayPass ? numberOfDays : 1),
+          number_of_days: String(isCampingPass ? numberOfDays : 1),
           return_url: `/p/${slugPath}`,
           valid_from: validFrom.toISOString(),
           valid_to: validTo.toISOString(),

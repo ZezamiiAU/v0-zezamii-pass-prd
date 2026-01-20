@@ -6,6 +6,7 @@ import { notFound } from "next/navigation"
 import { PassPurchaseForm } from "@/components/pass-purchase-form"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 
 interface PassType {
   id: string
@@ -111,6 +112,11 @@ export default function DevicePassPage() {
       <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            {/* Hero Image */}
+            <div className="w-full h-40 relative">
+              <Image src="/images/image.png" alt={accessPointData.siteName} fill className="object-cover" priority />
+            </div>
+
             <div className="p-6 pb-6 space-y-4">
               <div className="text-center space-y-1">
                 <h1 className="text-2xl font-bold text-[#002147]">{accessPointData.organizationName}</h1>
