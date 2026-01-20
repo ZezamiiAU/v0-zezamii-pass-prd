@@ -99,6 +99,8 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
     return NextResponse.json({ error: "Unknown organisation" }, { status: 400 })
   }
 
+  console.log("[v0] Stripe webhook checkout - org data:", { id: org.id, name: org.name, slug: org.slug, metaOrgSlug: meta.data.org_slug })
+
   const passDb = createSchemaServiceClient("pass")
   const amount = session.amount_total ?? 0
   const currency = (session.currency ?? "aud").toLowerCase()

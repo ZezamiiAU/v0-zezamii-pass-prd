@@ -14,7 +14,8 @@ export function generatePassNotificationText(data: PassNotificationData, timezon
   const isCamping = isCampingPass(data)
   const orgName = data.orgName || "Access Pass"
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
-  const isGriffithBoatClub = data.orgSlug === "griffith-boat-club"
+  const normalizedSlugText = data.orgSlug?.toLowerCase().trim() || ""
+  const isGriffithBoatClub = normalizedSlugText === "griffith-boat-club"
 
   // Griffith Boat Club terms summary
   const gbcTermsText = isGriffithBoatClub ? `
@@ -73,8 +74,11 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
   const orgName = data.orgName || "Access Pass"
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
   
-  // Organization-specific branding
-  const isGriffithBoatClub = data.orgSlug === "griffith-boat-club"
+  // Organization-specific branding - check for griffith-boat-club (case-insensitive)
+  const normalizedSlug = data.orgSlug?.toLowerCase().trim() || ""
+  const isGriffithBoatClub = normalizedSlug === "griffith-boat-club"
+  
+  console.log("[v0] generatePassNotificationHTML - raw orgSlug:", JSON.stringify(data.orgSlug), "normalized:", normalizedSlug, "isGriffithBoatClub:", isGriffithBoatClub, "orgName:", orgName, "all data keys:", Object.keys(data))
   
   // Griffith Boat Club specific terms and conditions
   const gbcTerms = isGriffithBoatClub ? `
