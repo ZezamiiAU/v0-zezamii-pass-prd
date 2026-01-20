@@ -14,6 +14,20 @@ export function generatePassNotificationText(data: PassNotificationData, timezon
   const isCamping = isCampingPass(data)
   const orgName = data.orgName || "Access Pass"
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
+  const isGriffithBoatClub = data.orgSlug === "griffith-boat-club"
+
+  // Griffith Boat Club terms summary
+  const gbcTermsText = isGriffithBoatClub ? `
+
+---
+TERMS & CONDITIONS SUMMARY
+${isCamping 
+  ? `Camping Pass: Multi-use entry PIN valid until 10:00 AM on departure day. Keep this email as proof of camping entitlement.`
+  : `Day Pass: Single-use entry. Once used, the PIN becomes invalid.`}
+PIN codes must not be shared. Misuse may result in access being revoked.
+Entry is at visitor's own risk.
+Contact: (02) 6963 4847 or griffithboatclub@gmail.com
+Full terms: https://zezamiipassprd1.vercel.app/terms` : ""
 
   if (!data.pin) {
     return `${orgName} - ${passTypeName}
@@ -24,8 +38,8 @@ Access Point: ${data.accessPointName}
 Valid: ${validFromFormatted} - ${validToFormatted}
 ${data.vehiclePlate ? `Vehicle: ${data.vehiclePlate}` : ""}
 
-Your PIN is being generated. Please contact support@zezamii.com if you don't receive it within 5 minutes.
-${data.mapLink ? `\nMap: ${data.mapLink}` : ""}`
+Your PIN is being generated. Please contact ${isGriffithBoatClub ? "griffithboatclub@gmail.com" : "support@zezamii.com"} if you don't receive it within 5 minutes.
+${data.mapLink ? `\nMap: ${data.mapLink}` : ""}${gbcTermsText}`
   }
 
   const instructions = isCamping
@@ -45,7 +59,7 @@ Valid: ${validFromFormatted} - ${validToFormatted}
 ${data.vehiclePlate ? `Vehicle: ${data.vehiclePlate}` : ""}
 
 ${instructions}
-${data.mapLink ? `\nMap: ${data.mapLink}` : ""}`
+${data.mapLink ? `\nMap: ${data.mapLink}` : ""}${gbcTermsText}`
 }
 
 export function generatePassNotificationHTML(data: PassNotificationData, timezone: string): string {
@@ -56,13 +70,31 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
   
   // Organization-specific branding
-  const headerImage = data.orgSlug === "griffith-boat-club" 
+  const isGriffithBoatClub = data.orgSlug === "griffith-boat-club"
+  
+  const headerImage = isGriffithBoatClub 
     ? `<img src="https://zezamiipassprd1.vercel.app/images/image.png" alt="${orgName}" style="width: 100%; height: 160px; object-fit: cover; display: block;" />`
     : ""
   
   const logoImage = data.orgLogo
     ? `<div style="text-align: center; padding: 20px 0;"><img src="${data.orgLogo}" alt="${orgName}" style="max-height: 80px; width: auto;" /></div>`
     : ""
+  
+  // Griffith Boat Club specific terms and conditions
+  const gbcTerms = isGriffithBoatClub ? `
+    <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 12px; color: #6b7280; line-height: 1.6;">
+      <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #374151;">Terms & Conditions Summary</h3>
+      ${isCamping ? `
+      <p style="margin: 0 0 8px 0;"><strong>Camping Pass:</strong> Provides a multi-use entry PIN valid until 10:00 AM on your departure day. Keep this email available as proof of camping entitlement.</p>
+      ` : `
+      <p style="margin: 0 0 8px 0;"><strong>Day Pass:</strong> Single-use entry through the Boat Club gate. Once used, the PIN becomes invalid.</p>
+      `}
+      <p style="margin: 0 0 8px 0;">PIN codes must not be shared. Misuse may result in access being revoked without refund.</p>
+      <p style="margin: 0 0 8px 0;">Entry is at visitor's own risk. Griffith Boat Club accepts no responsibility for loss, damage, or injury.</p>
+      <p style="margin: 0;"><strong>Contact:</strong> (02) 6963 4847 or <a href="mailto:griffithboatclub@gmail.com" style="color: #2563eb;">griffithboatclub@gmail.com</a></p>
+      <p style="margin: 8px 0 0 0;"><a href="https://zezamiipassprd1.vercel.app/terms" style="color: #2563eb;">View full Terms and Conditions</a></p>
+    </div>
+  ` : ""
 
   const pinSection = data.pin 
     ? `<div class="pin-box">
@@ -258,11 +290,15 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
       </div>
       ${instructions}
       ${data.mapLink ? `<p style="text-align: center;"><a href="${data.mapLink}" class="button">View on Map</a></p>` : ""}
+      ${gbcTerms}
     </div>
     ${logoImage}
     <div class="footer">
       <p>This email was sent by Zezamii Pass on behalf of ${orgName}.</p>
-      <p>Need help? Contact <a href="mailto:support@zezamii.com">support@zezamii.com</a></p>
+      ${isGriffithBoatClub 
+        ? `<p>Need help? Contact <a href="mailto:griffithboatclub@gmail.com">griffithboatclub@gmail.com</a> or call (02) 6963 4847</p>`
+        : `<p>Need help? Contact <a href="mailto:support@zezamii.com">support@zezamii.com</a></p>`
+      }
     </div>
   </div>
 </body>

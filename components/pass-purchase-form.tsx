@@ -167,26 +167,26 @@ export function PassPurchaseForm({
 
   if (clientSecret) {
     return (
-      <Card className="w-full max-h-[85vh] flex flex-col">
-        <CardHeader className="pb-1 pt-2 px-3 flex-shrink-0">
-          <CardTitle className="text-lg">Complete Payment</CardTitle>
+      <Card className="w-full max-h-[90vh] flex flex-col">
+        <CardHeader className="pb-2 pt-3 px-4 flex-shrink-0">
+          <CardTitle className="text-xl">Complete Payment</CardTitle>
           {(siteName || deviceName) && (
-            <CardDescription className="text-xs">{[deviceName, siteName].filter(Boolean).join(" - ")}</CardDescription>
+            <CardDescription className="text-base">{[deviceName, siteName].filter(Boolean).join(" - ")}</CardDescription>
           )}
         </CardHeader>
-        <CardContent className="space-y-2 pb-2 px-3 overflow-y-auto flex-1">
+        <CardContent className="space-y-3 pb-3 px-4 overflow-y-auto flex-1">
           {selectedPassType && (
-            <div className="bg-muted/50 rounded-md p-2 border">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">
+            <div className="bg-muted/50 rounded-lg p-3 border">
+              <div className="flex justify-between items-center">
+                <span className="text-base text-muted-foreground">
                   {selectedPassType.name}
                   {isMultiDayPass && ` (${numberOfDays} ${numberOfDays === 1 ? "day" : "days"})`}
                 </span>
-                <span className="font-semibold">
+                <span className="text-lg font-bold">
                   {formatPrice(totalPriceCents)}
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground text-right">incl GST and fees</div>
+              <div className="text-sm text-muted-foreground text-right">incl GST and fees</div>
             </div>
           )}
 
@@ -202,26 +202,26 @@ export function PassPurchaseForm({
   }
 
   return (
-    <Card className="w-full max-h-[85vh] flex flex-col">
-      <CardHeader className="pb-1 pt-2 px-3 flex-shrink-0">
-        <CardTitle className="text-lg">Purchase Pass</CardTitle>
+    <Card className="w-full max-h-[90vh] flex flex-col">
+      <CardHeader className="pb-2 pt-3 px-4 flex-shrink-0">
+        <CardTitle className="text-xl">Purchase Pass</CardTitle>
         {(siteName || deviceName) && (
           <CardDescription className="text-base">{[deviceName, siteName].filter(Boolean).join(" - ")}</CardDescription>
         )}
       </CardHeader>
-      <CardContent className="py-1.5 px-3 overflow-y-auto flex-1">
-        <form onSubmit={handleSubmit} className="space-y-1.5">
-          <div className="space-y-0.5">
-            <Label htmlFor="passType" className="text-sm">
+      <CardContent className="py-2 px-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="passType" className="text-base font-medium">
               Pass Type
             </Label>
             <Select value={selectedPassTypeId} onValueChange={setSelectedPassTypeId}>
-              <SelectTrigger id="passType" className="h-7 text-sm">
+              <SelectTrigger id="passType" className="h-11 text-base">
                 <SelectValue placeholder="Select pass type" />
               </SelectTrigger>
               <SelectContent>
                 {passTypes.map((pt) => (
-                  <SelectItem key={pt.id} value={pt.id}>
+                  <SelectItem key={pt.id} value={pt.id} className="text-base py-3">
                     {pt.name} - {formatPrice(pt.price_cents)}
                     {pt.name?.toLowerCase().includes("camping") && " /day"}
                   </SelectItem>
@@ -231,36 +231,36 @@ export function PassPurchaseForm({
           </div>
 
           {isMultiDayPass && (
-            <div className="space-y-0.5">
-              <Label htmlFor="numberOfDays" className="text-sm font-medium">
+            <div className="space-y-1">
+              <Label htmlFor="numberOfDays" className="text-base font-medium">
                 Number of Days <span className="text-red-500 font-bold">*</span>
-                <span className="text-red-500 text-xs ml-1">(required)</span>
+                <span className="text-red-500 text-sm ml-1">(required)</span>
               </Label>
               <Select
                 value={numberOfDays === 0 ? "" : numberOfDays.toString()}
                 onValueChange={(val) => setNumberOfDays(Number.parseInt(val, 10))}
               >
-                <SelectTrigger id="numberOfDays" className={`h-7 text-sm ${numberOfDays === 0 ? "border-red-200" : ""}`}>
+                <SelectTrigger id="numberOfDays" className={`h-11 text-base ${numberOfDays === 0 ? "border-red-300 border-2" : ""}`}>
                   <SelectValue placeholder="Select number of days" />
                 </SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map((days) => (
-                    <SelectItem key={days} value={days.toString()}>
+                    <SelectItem key={days} value={days.toString()} className="text-base py-3">
                       {days} {days === 1 ? "day" : "days"} - {formatPrice(selectedPassType!.price_cents * days)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground leading-tight">
+              <p className="text-sm text-muted-foreground">
                 {formatPrice(selectedPassType?.price_cents || 0)} per day
               </p>
             </div>
           )}
 
-          <div className="space-y-0.5">
-            <Label htmlFor="email" className="text-sm font-medium">
+          <div className="space-y-1">
+            <Label htmlFor="email" className="text-base font-medium">
               Email <span className="text-red-500 font-bold">*</span>
-              <span className="text-red-500 text-xs ml-1">(required)</span>
+              <span className="text-red-500 text-sm ml-1">(required)</span>
             </Label>
             <Input
               id="email"
@@ -268,14 +268,14 @@ export function PassPurchaseForm({
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-7 text-sm border-red-200 focus:border-red-400 focus:ring-red-400"
+              className="h-11 text-base border-red-300 border-2 focus:border-red-400 focus:ring-red-400"
               required
             />
           </div>
 
-          <div className="space-y-0.5">
-            <Label htmlFor="phone" className="text-sm">
-              Mobile <span className="text-muted-foreground text-xs">(optional)</span>
+          <div className="space-y-1">
+            <Label htmlFor="phone" className="text-base">
+              Mobile <span className="text-muted-foreground text-sm">(optional)</span>
             </Label>
             <Input
               id="phone"
@@ -283,33 +283,33 @@ export function PassPurchaseForm({
               placeholder="+61 412 345 678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="h-7 text-sm"
+              className="h-11 text-base"
             />
           </div>
 
           {selectedPassType && (
-            <div className="bg-muted/50 rounded-md p-2 mt-1 border">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">
+            <div className="bg-muted/50 rounded-lg p-3 border">
+              <div className="flex justify-between items-center">
+                <span className="text-base text-muted-foreground">
                   {selectedPassType.name}
                   {isMultiDayPass && numberOfDays > 0 && ` (${numberOfDays} ${numberOfDays === 1 ? "day" : "days"})`}
                 </span>
-                <span className="font-semibold">
+                <span className="text-lg font-bold">
                   {formatPrice(totalPriceCents)}
                 </span>
               </div>
               {isMultiDayPass && numberOfDays > 1 && (
-                <div className="text-xs text-muted-foreground text-right">
+                <div className="text-sm text-muted-foreground text-right">
                   {formatPrice(selectedPassType.price_cents)} × {numberOfDays} days
                 </div>
               )}
-              <div className="text-xs text-muted-foreground text-right">incl GST and fees</div>
+              <div className="text-sm text-muted-foreground text-right">incl GST and fees</div>
             </div>
           )}
 
           <label
             htmlFor="terms"
-            className={`flex items-center gap-2 p-2 mt-1 rounded border cursor-pointer transition-all ${
+            className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all min-h-[48px] ${
               termsAccepted 
                 ? "border-green-500 bg-green-50" 
                 : "border-gray-300 bg-gray-50 hover:border-gray-400"
@@ -320,9 +320,9 @@ export function PassPurchaseForm({
               id="terms"
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+              className="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer flex-shrink-0"
             />
-            <span className="text-xs leading-tight">
+            <span className="text-sm leading-snug">
               I accept the{" "}
               <a
                 href="/terms"
@@ -337,16 +337,16 @@ export function PassPurchaseForm({
           </label>
 
           {error && (
-            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2 mt-2">
-              <p className="text-sm text-destructive">{error}</p>
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
+              <p className="text-base text-destructive">{error}</p>
             </div>
           )}
 
           <Button
             type="submit"
-            size="sm"
-            className="w-full mt-1.5 h-8 text-sm bg-brand text-white hover:opacity-90"
-            disabled={isLoading || !selectedPassType || (isMultiDayPass && numberOfDays === 0)} // Disable button if multi-day pass but no days selected
+            size="lg"
+            className="w-full h-12 text-base font-semibold bg-[#002147] text-white hover:bg-[#003366]"
+            disabled={isLoading || !selectedPassType || (isMultiDayPass && numberOfDays === 0)}
           >
             {isLoading ? "Processing..." : "Continue to Payment"}
           </Button>
