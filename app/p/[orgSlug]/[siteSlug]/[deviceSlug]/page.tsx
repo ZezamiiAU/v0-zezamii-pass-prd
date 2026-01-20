@@ -109,34 +109,34 @@ export default function DevicePassPage() {
     }
 
     return (
-      <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
+      <main className="min-h-screen bg-gradient-to-b from-[#001a3a] via-[#002147] to-[#1e3a5f] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
-          {/* Access Pass Header */}
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <img src="/zezamii-logo.png" alt="Zezamii" className="w-8 h-8 rounded-lg" />
-            <span className="text-white font-semibold text-lg">Access Pass</span>
+          {/* Glassmorphism Header Bar */}
+          <div className="flex items-center justify-center gap-2.5 mb-4 py-2.5 px-5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mx-auto w-fit">
+            <img src="/zezamii-logo.png" alt="Access" className="w-6 h-6 rounded" />
+            <span className="text-white/90 font-semibold text-[11px] uppercase tracking-[0.15em]">Access Pass</span>
           </div>
 
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             {/* Hero Image */}
-            <div className="w-full h-40 relative">
+            <div className="w-full h-36 relative">
               <Image src="/images/image.png" alt={accessPointData.siteName} fill className="object-cover" priority />
             </div>
 
             <div className="p-6 pb-6 space-y-5">
-              {/* Organization Name & Logo */}
-              <div className="text-center space-y-4">
-                <h1 className="text-2xl font-bold text-[#002147]">{accessPointData.organizationName}</h1>
-                {accessPointData.organizationLogo && !logoError && (
-                  <div className="flex justify-center pt-1">
+              {/* Organization Logo & Name */}
+              <div className="text-center space-y-3">
+                <div className="flex justify-center">
+                  <div className="w-20 h-20 rounded-full border border-gray-200 p-1.5 bg-white flex items-center justify-center">
                     <img
-                      src={accessPointData.organizationLogo}
+                      src={accessPointData.organizationLogo && !logoError ? accessPointData.organizationLogo : "/images/griffith-boat-club-logo.png"}
                       alt={accessPointData.organizationName}
-                      className="h-24 w-auto"
+                      className="w-full h-full object-contain rounded-full"
                       onError={handleLogoError}
                     />
                   </div>
-                )}
+                </div>
+                <h1 className="text-xl font-bold text-[#002147]">{accessPointData.organizationName}</h1>
               </div>
 
               {/* Pass Types */}
