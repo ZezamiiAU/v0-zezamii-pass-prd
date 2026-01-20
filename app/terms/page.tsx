@@ -89,11 +89,20 @@ export default function TermsPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">8. Liability</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">8. Risk & Liability</h2>
+            <p className="mb-2">
+              Entry to and use of Griffith Boat Club facilities is at the visitor's own risk.
+              To the extent permitted by law, Griffith Boat Club is not liable for any loss,
+              damage, injury, or death arising from the use of the facilities.
+            </p>
+            <p className="mb-2">
+              This includes, but is not limited to, risks associated with vehicle movement,
+              water and boating activities, environmental conditions, camping activities,
+              and the use of shared facilities.
+            </p>
             <p>
-              Entry and use of Griffith Boat Club facilities is at the visitor's own risk.
-              To the extent permitted by law, Griffith Boat Club accepts no responsibility
-              for loss, damage, or injury incurred during the use of the facilities.
+              Visitors are responsible for their own safety and the safety of any accompanying
+              guests, vehicles, vessels, and personal equipment while on site.
             </p>
           </div>
 
@@ -109,7 +118,37 @@ export default function TermsPage() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">10. Amendments</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">10. Access Technology Provider (Zezamii)</h2>
+            <p className="mb-2">
+              Access control, PIN code issuance, and pass management services for Griffith
+              Boat Club are provided using technology supplied by Zezamii.
+            </p>
+            <p className="mb-2">
+              Zezamii provides access management technology only and does not own, operate,
+              manage, or supervise Griffith Boat Club facilities or activities.
+            </p>
+            <p className="mb-2">
+              Zezamii does not control on-site conditions, safety, conduct, compliance, or
+              the operation of the premises.
+            </p>
+            <p className="mb-2">
+              Access services may be affected by power outages, network connectivity,
+              hardware faults, environmental conditions, or third-party service disruptions.
+              Zezamii does not guarantee uninterrupted or error-free access operation.
+            </p>
+            <p className="mb-2">
+              To the extent permitted by law, Zezamii is not liable for any loss, damage,
+              delay, cost, or inconvenience arising from the use of, or inability to use,
+              access credentials or access systems.
+            </p>
+            <p>
+              Access interactions and system activity may be logged for security,
+              operational, and audit purposes in accordance with applicable privacy laws.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">11. Amendments</h2>
             <p>
               Griffith Boat Club reserves the right to amend these Terms and Conditions at
               any time. Updated terms will be published on the Club's website.

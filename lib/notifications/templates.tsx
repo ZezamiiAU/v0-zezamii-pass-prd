@@ -25,7 +25,11 @@ ${isCamping
   ? `Camping Pass: Multi-use entry PIN valid until 10:00 AM on departure day. Keep this email as proof of camping entitlement.`
   : `Day Pass: Single-use entry. Once used, the PIN becomes invalid.`}
 PIN codes must not be shared. Misuse may result in access being revoked.
-Entry is at visitor's own risk.
+
+RISK & LIABILITY: Entry to and use of Griffith Boat Club facilities is at the visitor's own risk. To the extent permitted by law, Griffith Boat Club is not liable for any loss, damage, injury, or death. This includes risks from vehicle movement, water/boating activities, environmental conditions, camping, and shared facilities. Visitors are responsible for their own safety and accompanying guests, vehicles, vessels, and equipment.
+
+ACCESS TECHNOLOGY: Access services are provided by Zezamii, who provides technology only and does not operate the facilities. Zezamii is not liable for access system issues.
+
 Contact: (02) 6963 4847 or griffithboatclub@gmail.com
 Full terms: https://zezamiipassprd1.vercel.app/terms` : ""
 
@@ -82,7 +86,8 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
       <p style="margin: 0 0 8px 0;"><strong>Day Pass:</strong> Single-use entry through the Boat Club gate. Once used, the PIN becomes invalid.</p>
       `}
       <p style="margin: 0 0 8px 0;">PIN codes must not be shared. Misuse may result in access being revoked without refund.</p>
-      <p style="margin: 0 0 8px 0;">Entry is at visitor's own risk. Griffith Boat Club accepts no responsibility for loss, damage, or injury.</p>
+      <p style="margin: 0 0 8px 0;"><strong>Risk & Liability:</strong> Entry to and use of Griffith Boat Club facilities is at the visitor's own risk. To the extent permitted by law, Griffith Boat Club is not liable for any loss, damage, injury, or death. This includes risks associated with vehicle movement, water and boating activities, environmental conditions, camping activities, and shared facilities. Visitors are responsible for their own safety and the safety of any accompanying guests, vehicles, vessels, and personal equipment.</p>
+      <p style="margin: 0 0 8px 0;"><strong>Access Technology:</strong> Access services are provided by Zezamii. Zezamii provides technology only and does not operate the facilities. Access may be affected by outages or disruptions. To the extent permitted by law, Zezamii is not liable for any loss arising from access system issues.</p>
       <p style="margin: 0;"><strong>Contact:</strong> (02) 6963 4847 or <a href="mailto:griffithboatclub@gmail.com" style="color: #2563eb;">griffithboatclub@gmail.com</a></p>
       <p style="margin: 8px 0 0 0;"><a href="https://zezamiipassprd1.vercel.app/terms" style="color: #2563eb;">View full Terms and Conditions</a></p>
     </div>
