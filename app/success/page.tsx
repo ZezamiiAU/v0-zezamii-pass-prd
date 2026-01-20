@@ -426,8 +426,8 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               <CheckCircle2 className="w-6 h-6 text-[#22c55e]" />
             </div>
           ) : (
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#f8fafc] mb-2">
-              <img src="/zezamii-logo.png" alt="Zezamii" className="w-10 h-10 rounded" />
+            <div className="inline-flex items-center justify-center w-14 h-14 mb-2">
+              <img src="/zezamii-icon-dark.png" alt="Zezamii" className="w-14 h-14 rounded-xl" />
             </div>
           )}
           <h1 className="text-xl font-bold text-[#020617] tracking-tight">
