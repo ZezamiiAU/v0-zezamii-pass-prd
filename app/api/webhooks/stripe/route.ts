@@ -90,7 +90,7 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
   const core = createSchemaServiceClient("core")
   const { data: org, error: orgErr } = await core
     .from("organisations")
-    .select("id")
+    .select("id, name, slug")
     .eq("slug", meta.data.org_slug)
     .single()
 
@@ -282,7 +282,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
   const core = createSchemaServiceClient("core")
   const { data: org, error: orgErr } = await core
     .from("organisations")
-    .select("id")
+    .select("id, name, slug")
     .eq("slug", meta.data.org_slug)
     .single()
 
