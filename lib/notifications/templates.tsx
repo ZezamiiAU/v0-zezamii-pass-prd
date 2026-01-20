@@ -72,14 +72,6 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
   // Organization-specific branding
   const isGriffithBoatClub = data.orgSlug === "griffith-boat-club"
   
-  const headerImage = isGriffithBoatClub 
-    ? `<img src="https://zezamiipassprd1.vercel.app/images/image.png" alt="${orgName}" style="width: 100%; height: 160px; object-fit: cover; display: block;" />`
-    : ""
-  
-  const logoImage = data.orgLogo
-    ? `<div style="text-align: center; padding: 20px 0;"><img src="${data.orgLogo}" alt="${orgName}" style="max-height: 80px; width: auto;" /></div>`
-    : ""
-  
   // Griffith Boat Club specific terms and conditions
   const gbcTerms = isGriffithBoatClub ? `
     <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 12px; color: #6b7280; line-height: 1.6;">
@@ -257,7 +249,6 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
 </head>
 <body>
   <div class="wrapper">
-    ${headerImage}
     <div class="header">
       <h1>${orgName}</h1>
       ${data.siteName ? `<p>${data.siteName}</p>` : ""}
@@ -292,7 +283,6 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
       ${data.mapLink ? `<p style="text-align: center;"><a href="${data.mapLink}" class="button">View on Map</a></p>` : ""}
       ${gbcTerms}
     </div>
-    ${logoImage}
     <div class="footer">
       <p>This email was sent by Zezamii Pass on behalf of ${orgName}.</p>
       ${isGriffithBoatClub 

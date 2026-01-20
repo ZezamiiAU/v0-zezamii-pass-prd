@@ -11,7 +11,7 @@ export function formatInTimezone(date: Date | string, timezone: string, _format 
   }
 }
 
-export function formatLocalizedDateTime(date: Date | string, _timezone?: string): string {
+export function formatLocalizedDateTime(date: Date | string, timezone?: string): string {
   try {
     const d = typeof date === "string" ? new Date(date) : date
     const options: Intl.DateTimeFormatOptions = {
@@ -21,10 +21,11 @@ export function formatLocalizedDateTime(date: Date | string, _timezone?: string)
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: timezone || "Australia/Sydney",
     }
     return d.toLocaleString("en-AU", options)
   } catch (error) {
-    logger.warn({ error: error instanceof Error ? error.message : error }, "[Timezone] Formatting error")
+    logger.warn({ timezone, error: error instanceof Error ? error.message : error }, "[Timezone] Formatting error")
     return new Date(date as string).toLocaleString()
   }
 }
