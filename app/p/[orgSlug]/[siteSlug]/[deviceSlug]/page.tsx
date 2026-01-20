@@ -6,7 +6,6 @@ import { notFound } from "next/navigation"
 import { PassPurchaseForm } from "@/components/pass-purchase-form"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
 
 interface PassType {
   id: string
@@ -60,12 +59,17 @@ export default function DevicePassPage() {
     fetchAccessPoint()
   }, [])
 
-  const formatPrice = (priceCents: number, currency = "AUD"): string => {
+  const formatPrice = (priceCents: number, currency?: string): string => {
     const price = priceCents / 100
-    return new Intl.NumberFormat("en-AU", {
-      style: "currency",
-      currency: currency,
-    }).format(price)
+    const validCurrency = currency && currency.length === 3 ? currency.toUpperCase() : "AUD"
+    try {
+      return new Intl.NumberFormat("en-AU", {
+        style: "currency",
+        currency: validCurrency,
+      }).format(price)
+    } catch {
+      return `$${price.toFixed(2)} ${validCurrency}`
+    }
   }
 
   if (loading) {
@@ -102,14 +106,10 @@ export default function DevicePassPage() {
       <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            <div className="w-full h-40 relative">
-              <Image src="/images/image.png" alt="Lake Wyangan" fill className="object-cover" priority />
-            </div>
-
             <div className="p-6 pb-6 space-y-4">
               <div className="text-center space-y-1">
-                <h1 className="text-2xl font-bold text-[#002147]">Griffith Boat Club</h1>
-                <p className="text-base text-gray-600">Lake Wyangan</p>
+                <h1 className="text-2xl font-bold text-[#002147]">{accessPointData.organizationName}</h1>
+                <p className="text-base text-gray-600">{accessPointData.siteName}</p>
               </div>
 
               {passTypes.length > 0 ? (
@@ -134,13 +134,19 @@ export default function DevicePassPage() {
                 </div>
               ) : (
                 <div className="text-center">
-                  <p className="text-xl font-semibold text-[#002147]">Day Pass — $25</p>
+                  <p className="text-xl font-semibold text-[#002147]">Day Pass</p>
                 </div>
               )}
 
-              <div className="flex justify-center py-2">
-                <img src="/images/griffith-boat-club-logo.jpg" alt="Griffith Boat Club" className="h-28 w-auto" />
-              </div>
+              {accessPointData.organizationLogo && (
+                <div className="flex justify-center py-2">
+                  <img
+                    src={accessPointData.organizationLogo}
+                    alt={accessPointData.organizationName}
+                    className="h-28 w-auto"
+                  />
+                </div>
+              )}
 
               <div className="pt-2">
                 <Button

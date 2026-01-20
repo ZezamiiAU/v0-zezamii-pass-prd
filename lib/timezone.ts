@@ -1,33 +1,34 @@
-import * as luxon from "luxon"
 import logger from "@/lib/logger"
 
-const { DateTime } = luxon
-
-export function formatInTimezone(date: Date | string, timezone: string, format = "yyyy-MM-dd HH:mm:ss"): string {
+export function formatInTimezone(date: Date | string, timezone: string, _format = "yyyy-MM-dd HH:mm:ss"): string {
   try {
-    const dt = typeof date === "string" ? DateTime.fromISO(date) : DateTime.fromJSDate(date)
-    return dt.setZone(timezone).toFormat(format)
+    const d = typeof date === "string" ? new Date(date) : date
+    const options: Intl.DateTimeFormatOptions = { timeZone: timezone }
+    return d.toLocaleString("en-AU", options)
   } catch (error) {
     logger.warn({ timezone, error: error instanceof Error ? error.message : error }, "[Timezone] Formatting error")
-    return new Date(date as any).toISOString()
+    return new Date(date as string).toISOString()
   }
 }
 
 export function formatLocalizedDateTime(date: Date | string, _timezone?: string): string {
   try {
-    // Parse the date as UTC (since it comes from the database as UTC)
-    const dt =
-      typeof date === "string" ? DateTime.fromISO(date, { zone: "utc" }) : DateTime.fromJSDate(date, { zone: "utc" })
-
-    // Convert to user's local timezone and format
-    return dt.toLocal().toLocaleString(DateTime.DATETIME_MED)
+    const d = typeof date === "string" ? new Date(date) : date
+    const options: Intl.DateTimeFormatOptions = {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }
+    return d.toLocaleString("en-AU", options)
   } catch (error) {
     logger.warn({ error: error instanceof Error ? error.message : error }, "[Timezone] Formatting error")
-    return new Date(date as any).toLocaleString()
+    return new Date(date as string).toLocaleString()
   }
 }
 
-export function addMinutes(date: Date, minutes: number, timezone: string): Date {
-  const dt = DateTime.fromJSDate(date).setZone(timezone).plus({ minutes })
-  return dt.toJSDate()
+export function addMinutes(date: Date, minutes: number, _timezone: string): Date {
+  return new Date(date.getTime() + minutes * 60 * 1000)
 }

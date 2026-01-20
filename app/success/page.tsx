@@ -493,12 +493,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <div className="flex justify-between py-0.5 border-b">
                   <span className="text-muted-foreground">Valid Until:</span>
                   <span className="font-medium">
-                    {new Date(passDetails.valid_to).toLocaleDateString("en-AU", { 
-                      timeZone: passDetails.timezone, 
-                      day: "numeric", 
-                      month: "short", 
-                      year: "numeric" 
-                    })}, {passDetails.passType?.toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"}
+                    {formatDateTime(passDetails.valid_to, passDetails.timezone)}
                   </span>
                 </div>
                 {passDetails.vehiclePlate && (
@@ -513,7 +508,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <AlertDescription className="text-xs leading-tight">
                   <strong>Instructions:</strong>{" "}
                   {displayedCode
-                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${passDetails.passType?.toLowerCase().includes("camping") ? "10:00 AM" : "11:59 PM"} on ${new Date(passDetails.valid_to).toLocaleDateString("en-AU", { timeZone: passDetails.timezone, day: "numeric", month: "short", year: "numeric" })}.`
+                    ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${formatDateTime(passDetails.valid_to, passDetails.timezone)}.`
                     : isWaitingForRooms
                       ? "Retrieving your PIN..."
                       : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}
