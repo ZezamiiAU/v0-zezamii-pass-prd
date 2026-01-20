@@ -281,6 +281,7 @@ export async function POST(request: NextRequest) {
           org_timezone: orgTimezone,
           product: "pass",
           variant: passType.code || "standard",
+          pass_type_name: passType.name || (isCampingPass ? "Camping Pass" : "Day Pass"),
           pass_id: pass.id,
           access_point_id: accessPointId,
           site_id: siteId,

@@ -15,8 +15,10 @@ const stripe = new Stripe(STRIPE_SECRET_KEY)
 const Meta = z.object({
   org_slug: z.string().min(1),
   org_id: z.string().uuid().optional(),
+  org_timezone: z.string().optional(),
   product: z.enum(["pass", "room"]),
   variant: z.string().optional(),
+  pass_type_name: z.string().optional(),
   access_point_id: z.string().uuid().optional(),
   site_id: z.string().uuid().optional(),
   site_slug: z.string().optional(),
@@ -374,8 +376,41 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
 
   // ALWAYS send email notification (even without pincode - customer can contact support)
   if (meta.data.customer_email) {
-      // Fetch access point name for the email
+      // Fetch access point name and organization details for the email
       let accessPointName = "Access Point"
+      let orgName = meta.data.org_slug
+      let orgLogo: string | undefined
+      let siteName: string | undefined
+      
+      // Fetch org details for branding
+      const { data: orgDetails } = await core
+        .from("organisations")
+        .select("name, brand_settings")
+        .eq("id", org.id)
+        .single()
+      
+      if (orgDetails) {
+        orgName = orgDetails.name
+        // Parse brand_settings if it's a string
+        let brandSettings = orgDetails.brand_settings
+        if (typeof brandSettings === "string") {
+          try { brandSettings = JSON.parse(brandSettings) } catch { brandSettings = null }
+        }
+        orgLogo = brandSettings?.logo_url
+      }
+      
+      // Fetch site name
+      if (siteId) {
+        const { data: siteDetails } = await core
+          .from("sites")
+          .select("name")
+          .eq("id", siteId)
+          .single()
+        if (siteDetails) {
+          siteName = siteDetails.name
+        }
+      }
+      
       if (accessPointId) {
         const { data: accessPoint } = await core
           .from("qr_ready_devices")
@@ -387,8 +422,13 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
         }
       }
 
-      // Determine timezone - default to Australia/Sydney
-      const timezone = "Australia/Sydney"
+      // Determine timezone from metadata or default to Australia/Sydney
+      const timezone = meta.data.org_timezone || "Australia/Sydney"
+      
+      // Determine pass type
+      const passType = meta.data.variant || "day"
+      const passTypeName = meta.data.pass_type_name || (passType.toLowerCase().includes("camping") ? "Camping Pass" : "Day Pass")
+      const numberOfDays = Number.parseInt(meta.data.number_of_days || "1", 10)
 
       try {
         await sendPassNotifications(
@@ -400,6 +440,13 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
             validFrom: startsAt,
             validTo: endsAt,
             vehiclePlate: meta.data.customer_plate,
+            orgName,
+            orgSlug: meta.data.org_slug,
+            orgLogo,
+            siteName,
+            passType,
+            passTypeName,
+            numberOfDays,
           },
           timezone,
         )

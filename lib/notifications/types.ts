@@ -16,4 +16,13 @@ export interface PassNotificationData {
   validTo: string
   vehiclePlate?: string
   mapLink?: string
+  // Organization branding
+  orgName?: string
+  orgSlug?: string
+  orgLogo?: string
+  siteName?: string
+  // Pass type info
+  passType?: string // e.g., "day", "camping"
+  passTypeName?: string // e.g., "Day Pass", "Camping Pass"
+  numberOfDays?: number
 }
