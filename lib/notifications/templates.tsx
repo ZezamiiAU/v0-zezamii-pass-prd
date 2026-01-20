@@ -43,7 +43,7 @@ RISK & LIABILITY: Entry to and use of Griffith Boat Club facilities is at the vi
 ACCESS TECHNOLOGY (ZEZAMII): Access services are provided by Zezamii, who provides technology only and does not own, operate, or supervise the facilities. Access may be affected by outages or disruptions. Zezamii is not liable for any loss arising from access system issues.
 
 CONTACT: (02) 6963 4847 or griffithboatclub@gmail.com
-FULL TERMS: https://zezamiipassprd1.vercel.app/terms` : ""
+FULL TERMS: https://griffithboatclub.com/terms/` : ""
 
   if (!data.pin) {
     return `${orgName} - ${passTypeName}
@@ -117,7 +117,7 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
       <p style="margin: 0 0 10px 0;"><strong>Access Technology (Zezamii):</strong> Access services are provided by Zezamii, who provides technology only and does not own, operate, or supervise the facilities. Access may be affected by outages or disruptions. Zezamii is not liable for any loss arising from access system issues.</p>
       
       <p style="margin: 0 0 4px 0;"><strong>Contact:</strong> (02) 6963 4847 or <a href="mailto:griffithboatclub@gmail.com" style="color: #2563eb;">griffithboatclub@gmail.com</a></p>
-      <p style="margin: 8px 0 0 0;"><a href="https://zezamiipassprd1.vercel.app/terms" style="color: #2563eb;">View full Terms and Conditions</a></p>
+      <p style="margin: 8px 0 0 0;"><a href="https://griffithboatclub.com/terms/" style="color: #2563eb;">View full Terms and Conditions</a></p>
     </div>
   ` : ""
 

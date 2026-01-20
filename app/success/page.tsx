@@ -6,7 +6,7 @@ import { sessionQuerySchema } from "@/lib/schemas/api.schema"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, CheckCircle2, ShieldCheck } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, CheckCircle2 } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS) || 20
@@ -409,12 +409,6 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
         <div className="flex items-center gap-2">
           <img src="/images/griffith-boat-club-logo.png" alt="Griffith Boat Club" className="w-6 h-6 rounded-full bg-white border border-white/20" />
           <span className="font-medium text-white text-xs">Griffith Boat Club</span>
-          {displayedCode && (
-            <div className="flex items-center gap-1 text-white ml-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-medium">Verified</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -484,13 +478,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
             <div>
               <div className="member-card rounded-xl p-4 mb-4">
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-medium text-white/60 uppercase tracking-wider">Access PIN</p>
-                    <div className="flex items-center gap-1 text-white">
-                      <ShieldCheck className="w-4 h-4" />
-                      <span className="text-xs font-medium">Verified</span>
-                    </div>
-                  </div>
+                  <p className="text-xs font-medium text-white/60 uppercase tracking-wider mb-3">Access PIN</p>
                   <p className="pin-display text-5xl text-white inline-block">
                     {displayedCode}
                   </p>
