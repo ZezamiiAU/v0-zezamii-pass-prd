@@ -112,9 +112,9 @@ export default function DevicePassPage() {
       <main className="min-h-screen bg-gradient-to-b from-[#001a3a] via-[#002147] to-[#1e3a5f] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           {/* Glassmorphism Header Bar */}
-          <div className="flex items-center justify-center gap-2.5 mb-4 py-2.5 px-5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mx-auto w-fit">
-            <img src="/zezamii-logo.png" alt="Access" className="w-6 h-6 rounded" />
-            <span className="text-white/90 font-semibold text-[11px] uppercase tracking-[0.15em]">Access Pass</span>
+          <div className="flex items-center justify-center gap-4 mb-10 py-4 px-6 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 w-full">
+            <img src="/zezamii-logo.png" alt="Access" className="w-10 h-10 rounded-lg" />
+            <span className="text-white font-semibold text-2xl uppercase tracking-[0.15em]">Access Pass</span>
           </div>
 
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
