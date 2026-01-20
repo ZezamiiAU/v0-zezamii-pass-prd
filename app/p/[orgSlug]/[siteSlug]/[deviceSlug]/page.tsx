@@ -110,16 +110,16 @@ export default function DevicePassPage() {
 
     return (
       <main className="min-h-screen bg-gradient-to-b from-[#020617] via-[#0f172a] to-[#1e293b]">
-        {/* Prominent Top Header - 64px for Landing Page */}
-        <div className="fixed top-0 left-0 right-0 h-16 bg-[#020617] flex items-center justify-center px-4 z-50 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <img src="/zezamii-logo.png" alt="Zezamii" className="w-8 h-8 rounded" />
-            <span className="text-white font-bold text-lg uppercase tracking-[0.1em]">Zezamii Pass</span>
+        {/* Prominent Top Header - 80px for Landing Page */}
+        <div className="fixed top-0 left-0 right-0 h-20 bg-[#020617] flex items-center justify-center px-4 z-50 border-b border-white/10">
+          <div className="flex items-center gap-4">
+            <img src="/zezamii-logo.png" alt="Zezamii" className="w-12 h-12 rounded-lg" />
+            <span className="text-white font-bold text-2xl uppercase tracking-[0.15em]">Zezamii Pass</span>
           </div>
         </div>
 
-        {/* Content with top padding for 64px header + 24px gap */}
-        <div className="pt-[88px] px-4 pb-8 flex items-center justify-center min-h-screen">
+        {/* Content with top padding for 80px header + 24px gap */}
+        <div className="pt-[104px] px-4 pb-8 flex items-center justify-center min-h-screen">
         <div className="w-full max-w-md">
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
