@@ -49,9 +49,9 @@ export function PassPurchaseForm({
   const [phone, setPhone] = useState("")
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [clientSecret, setClientSecret] = useState(null)
-  const [error, setError] = useState(null)
-  const [step, setStep] = useState("selection")
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [step, setStep] = useState<"selection" | "details" | "payment">("selection")
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -84,7 +84,7 @@ export function PassPurchaseForm({
   const isMultiDayPass = selectedPassType?.name?.toLowerCase().includes("camping")
   const totalPriceCents = selectedPassType ? selectedPassType.price_cents * (isMultiDayPass ? numberOfDays : 1) : 0
   const currency = selectedPassType?.currency?.toUpperCase() || "AUD"
-  const formatPrice = (cents) => `$${(cents / 100).toFixed(2)}`
+  const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
   useEffect(() => {
     if (!isMultiDayPass) {
@@ -100,7 +100,7 @@ export function PassPurchaseForm({
     setStep("details")
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email?.trim()) {
       alert("Please enter your email address")
