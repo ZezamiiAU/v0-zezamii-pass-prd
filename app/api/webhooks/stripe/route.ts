@@ -357,7 +357,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     }
   }
 
-  console.log("[v0] pinCode exists:", pinCode)
+  // Store lock code if we have a pincode
   if (pinCode) {
     const { error: lockCodeError } = await passDb.from("lock_codes").insert({
       pass_id: meta.data.pass_id!,
@@ -370,10 +370,10 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     if (lockCodeError) {
       logger.error({ passId: meta.data.pass_id, lockCodeError }, "Failed to store pincode")
     }
+  }
 
-    // Send email notification with pincode
-    console.log("[v0] customer_email:", meta.data.customer_email)
-    if (meta.data.customer_email) {
+  // ALWAYS send email notification (even without pincode - customer can contact support)
+  if (meta.data.customer_email) {
       // Fetch access point name for the email
       let accessPointName = "Access Point"
       if (accessPointId) {
@@ -391,14 +391,6 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
       const timezone = "Australia/Sydney"
 
       try {
-        console.log("[v0] About to call sendPassNotifications with:", {
-          email: meta.data.customer_email,
-          phone: meta.data.customer_phone,
-          accessPointName,
-          pin: pinCode,
-          validFrom: startsAt,
-          validTo: endsAt,
-        })
         await sendPassNotifications(
           meta.data.customer_email,
           meta.data.customer_phone || null,
@@ -411,13 +403,11 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
           },
           timezone,
         )
-        console.log("[v0] sendPassNotifications completed successfully")
         logger.info(
-          { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider },
+          { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider, hasPin: !!pinCode },
           "Pass notification email sent successfully",
         )
       } catch (emailError) {
-        console.log("[v0] sendPassNotifications threw error:", emailError)
         logger.error(
           { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
           "Failed to send pass notification email",
@@ -425,36 +415,35 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
       }
     }
 
-    const customerIdentifier =
-      meta.data.customer_email || meta.data.customer_phone || meta.data.customer_plate || "unknown"
+  const customerIdentifier =
+    meta.data.customer_email || meta.data.customer_phone || meta.data.customer_plate || "unknown"
 
-    const events = createSchemaServiceClient("events")
-    await events.from("outbox").insert({
-      topic: "pass.pass_paid.v1",
-      payload: {
-        org_id: org.id,
-        product: meta.data.product,
-        variant: meta.data.variant,
-        pass_id: meta.data.pass_id,
-        access_point_id: accessPointId,
-        gate_id: meta.data.gate_id,
-        pin_code: pinCode,
-        pin_provider: pinProvider,
-        starts_at: startsAt,
-        ends_at: endsAt,
-        customer_identifier: customerIdentifier,
-        customer_email: meta.data.customer_email || null,
-        customer_phone: meta.data.customer_phone || null,
-        customer_plate: meta.data.customer_plate || null,
-        provider: "stripe",
-        provider_intent_id: intentId,
-        amount_cents: amount,
-        currency,
-        number_of_days: Number.parseInt(meta.data.number_of_days || "1", 10),
-        occurred_at: new Date().toISOString(),
-      },
-    })
-  }
+  const events = createSchemaServiceClient("events")
+  await events.from("outbox").insert({
+    topic: "pass.pass_paid.v1",
+    payload: {
+      org_id: org.id,
+      product: meta.data.product,
+      variant: meta.data.variant,
+      pass_id: meta.data.pass_id,
+      access_point_id: accessPointId,
+      gate_id: meta.data.gate_id,
+      pin_code: pinCode,
+      pin_provider: pinProvider,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      customer_identifier: customerIdentifier,
+      customer_email: meta.data.customer_email || null,
+      customer_phone: meta.data.customer_phone || null,
+      customer_plate: meta.data.customer_plate || null,
+      provider: "stripe",
+      provider_intent_id: intentId,
+      amount_cents: amount,
+      currency,
+      number_of_days: Number.parseInt(meta.data.number_of_days || "1", 10),
+      occurred_at: new Date().toISOString(),
+    },
+  })
 
   logger.info({ passId: meta.data.pass_id, eventId: event.id, pinProvider }, "Payment intent succeeded")
   return NextResponse.json({ received: true })

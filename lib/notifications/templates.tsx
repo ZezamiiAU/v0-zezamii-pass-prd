@@ -5,6 +5,17 @@ export function generatePassNotificationText(data: PassNotificationData, timezon
   const validFromFormatted = formatLocalizedDateTime(data.validFrom, timezone)
   const validToFormatted = formatLocalizedDateTime(data.validTo, timezone)
 
+  if (!data.pin) {
+    return `Your Access Pass has been purchased!
+
+Access Point: ${data.accessPointName}
+Valid: ${validFromFormatted} - ${validToFormatted}
+${data.vehiclePlate ? `Vehicle: ${data.vehiclePlate}` : ""}
+
+Your PIN is being generated. Please contact support@zezamii.com if you don't receive it within 5 minutes.
+${data.mapLink ? `\nMap: ${data.mapLink}` : ""}`
+  }
+
   return `Your Access Pass is ready!
 
 Access Point: ${data.accessPointName}
@@ -19,6 +30,19 @@ ${data.mapLink ? `\nMap: ${data.mapLink}` : ""}`
 export function generatePassNotificationHTML(data: PassNotificationData, timezone: string): string {
   const validFromFormatted = formatLocalizedDateTime(data.validFrom, timezone)
   const validToFormatted = formatLocalizedDateTime(data.validTo, timezone)
+
+  const pinSection = data.pin 
+    ? `<div class="pin-box">
+      <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">Your Access PIN</p>
+      <div class="pin">${data.pin}</div>
+    </div>`
+    : `<div class="pin-box" style="background: #fef3c7; border-color: #f59e0b;">
+      <p style="margin: 0; color: #92400e; font-size: 14px;">Your PIN is being generated. Please contact <a href="mailto:support@zezamii.com">support@zezamii.com</a> if you don't receive it within 5 minutes.</p>
+    </div>`
+
+  const instructions = data.pin 
+    ? `<p><strong>Instructions:</strong> Enter this PIN at the keypad at ${data.accessPointName} to gain access.</p>`
+    : `<p><strong>Note:</strong> Your pass is active. You will receive your PIN code shortly.</p>`
 
   return `
 <!DOCTYPE html>
@@ -40,12 +64,9 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
 <body>
   <div class="container">
     <div class="header">
-      <h1>Your Access Pass is Ready!</h1>
+      <h1>${data.pin ? "Your Access Pass is Ready!" : "Your Access Pass has been Purchased!"}</h1>
     </div>
-    <div class="pin-box">
-      <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">Your Access PIN</p>
-      <div class="pin">${data.pin}</div>
-    </div>
+    ${pinSection}
     <div class="details">
       <div class="detail-row">
         <span class="label">Access Point:</span>
@@ -70,7 +91,7 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
           : ""
       }
     </div>
-    <p><strong>Instructions:</strong> Enter this PIN at the keypad at ${data.accessPointName} to gain access.</p>
+${instructions}
     ${data.mapLink ? `<a href="${data.mapLink}" class="button">View on Map</a>` : ""}
   </div>
 </body>

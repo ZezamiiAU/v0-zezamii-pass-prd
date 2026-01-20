@@ -23,6 +23,7 @@ export async function getBackupPincode(
   const supabase = createSchemaServiceClient("pass")
   const now = new Date().toISOString()
 
+  // First try: exact match on org_id, site_id, device_id
   const { data, error } = await supabase
     .from("backup_pincodes")
     .select("pincode, fortnight_number, period_start, period_end")
@@ -33,16 +34,35 @@ export async function getBackupPincode(
     .gte("period_end", now)
     .maybeSingle()
 
-  if (error || !data) {
-    console.error("[BackupPincodes] Failed to get backup pincode:", error ? JSON.stringify(error) : "No data found")
-
-    return null
+  if (data) {
+    return {
+      pincode: data.pincode,
+      fortnight_number: data.fortnight_number,
+    }
   }
 
-  return {
-    pincode: data.pincode,
-    fortnight_number: data.fortnight_number,
+  // Second try: just by device_id (fallback for cases where org/site might not match)
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("backup_pincodes")
+    .select("pincode, fortnight_number, period_start, period_end")
+    .eq("device_id", deviceId)
+    .lte("period_start", now)
+    .gte("period_end", now)
+    .maybeSingle()
+
+  if (fallbackData) {
+    return {
+      pincode: fallbackData.pincode,
+      fortnight_number: fallbackData.fortnight_number,
+    }
   }
+
+  console.error("[BackupPincodes] Failed to get backup pincode:", 
+    error ? JSON.stringify(error) : fallbackError ? JSON.stringify(fallbackError) : "No data found",
+    { orgId, siteId, deviceId, now }
+  )
+
+  return null
 }
 
 /**

@@ -181,22 +181,26 @@ export async function POST(request: NextRequest) {
     let backupPincode = ""
     let backupFortnightNumber = ""
     try {
+      logger.info(
+        { orgId: passType.org_id, siteId, accessPointId, passTypeName: passType.name },
+        "Attempting to fetch backup pincode",
+      )
       const backupPin = await getBackupPincode(passType.org_id, siteId, accessPointId)
       if (backupPin) {
         backupPincode = backupPin.pincode
         backupFortnightNumber = String(backupPin.fortnight_number)
         logger.info(
-          { backupPincode: backupPin.pincode, fortnight: backupPin.fortnight_number },
+          { backupPincode: backupPin.pincode, fortnight: backupPin.fortnight_number, passTypeName: passType.name },
           "Backup pincode cached for payment",
         )
       } else {
         logger.warn(
-          { orgId: passType.org_id, siteId, accessPointId },
-          "No backup pincode available - will rely on Rooms",
+          { orgId: passType.org_id, siteId, accessPointId, passTypeName: passType.name },
+          "No backup pincode available - will rely on Rooms API only",
         )
       }
     } catch (backupError) {
-      logger.warn({ error: backupError }, "Failed to fetch backup pincode - will rely on Rooms")
+      logger.warn({ error: backupError, passTypeName: passType.name }, "Failed to fetch backup pincode - will rely on Rooms")
     }
 
     const currency = passType.currency?.toLowerCase() || "aud"
