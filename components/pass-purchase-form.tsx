@@ -18,6 +18,18 @@ if (!publishableKey) {
 }
 const stripePromise = loadStripe(publishableKey)
 
+interface PassPurchaseFormProps {
+  organizationId: string
+  organizationName: string
+  organizationLogo: string | null
+  siteId: string
+  siteName: string
+  deviceId: string
+  deviceName: string
+  deviceDescription: string | null
+  preSelectedPassTypeId?: string
+}
+
 export function PassPurchaseForm({
   organizationId,
   organizationName,
@@ -28,7 +40,7 @@ export function PassPurchaseForm({
   deviceName,
   deviceDescription,
   preSelectedPassTypeId,
-}) {
+}: PassPurchaseFormProps) {
   const [passTypes, setPassTypes] = useState([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
   const [numberOfDays, setNumberOfDays] = useState(0)
