@@ -42,7 +42,7 @@ function extractErrorMessage(errorData: any): string {
 function CircularLoader() {
   return (
     <div className="circular-loader mx-auto">
-      <svg viewBox="0 0 50 50" className="w-12 h-12">
+      <svg viewBox="0 0 50 50" className="w-14 h-14">
         <circle
           cx="25"
           cy="25"
@@ -401,11 +401,11 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
   return (
     <div className="min-h-screen bg-premium-gradient overflow-y-auto">
       {/* Compact Navy Banner */}
-      <div className="bg-navy-banner px-4 py-2.5">
+      <div className="bg-navy-banner px-4 py-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/images/griffith-boat-club-logo.png" alt="Griffith Boat Club" className="w-7 h-7 rounded-full bg-white border border-white/20" />
-            <span className="font-semibold text-white text-sm">Access Pass</span>
+            <img src="/images/griffith-boat-club-logo.png" alt="Griffith Boat Club" className="w-8 h-8 rounded-full bg-white border border-white/20" />
+            <span className="font-semibold text-white text-sm">Griffith Boat Club</span>
           </div>
           {displayedCode && (
             <div className="flex items-center gap-1 text-white">
@@ -416,43 +416,43 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
         </div>
       </div>
 
-      <div className="px-4 py-3">
+      <div className="px-4 py-4">
         {/* Status Header */}
-        <div className="text-center mb-3">
+        <div className="text-center mb-4">
           {displayedCode ? (
-            <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#f0fdf4] mb-1.5">
-              <CheckCircle2 className="w-5 h-5 text-[#22c55e]" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#f0fdf4] mb-2">
+              <CheckCircle2 className="w-6 h-6 text-[#22c55e]" />
             </div>
           ) : (
-            <div className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-[#f8fafc] mb-1.5">
-              <img src="/zezamii-logo.png" alt="Zezamii" className="w-7 h-7 rounded" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#f8fafc] mb-2">
+              <img src="/zezamii-logo.png" alt="Zezamii" className="w-10 h-10 rounded" />
             </div>
           )}
-          <h1 className="text-base font-bold text-[#001F3F] tracking-tight">
+          <h1 className="text-xl font-bold text-[#001F3F] tracking-tight">
             {isValid ? (displayedCode ? "Payment Successful" : "Processing...") : "Invalid Payment"}
           </h1>
-          <p className="text-[#64748b] text-xs">
+          <p className="text-[#64748b] text-sm">
             {displayedCode ? "Your digital pass is ready" : "Creating your access pass"}
           </p>
         </div>
 
         {/* Main Card */}
-        <div className="premium-card rounded-xl p-3 max-w-md mx-auto">
+        <div className="premium-card rounded-2xl p-4 max-w-md mx-auto">
           
           {/* Loading State with Circular Loader */}
           {isWaitingForRooms && countdown > 0 && !displayedCode && (
-            <div className="text-center py-2">
-              <div className="relative w-12 h-12 mx-auto mb-2">
+            <div className="text-center py-3">
+              <div className="relative w-14 h-14 mx-auto mb-3">
                 <CircularLoader />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-base font-bold text-[#001F3F]">{countdown}</span>
+                  <span className="text-lg font-bold text-[#001F3F]">{countdown}</span>
                 </div>
               </div>
-              <p className="text-sm font-semibold text-[#001F3F]">Generating your PIN...</p>
-              <p className="text-xs text-[#64748b]">Connecting to access system</p>
+              <p className="text-base font-semibold text-[#001F3F]">Generating your PIN...</p>
+              <p className="text-sm text-[#64748b]">Connecting to access system</p>
               
               {/* Progress bar */}
-              <div className="mt-2 h-1 bg-[#e2e8f0] rounded-full overflow-hidden">
+              <div className="mt-3 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-[#001F3F] rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${countdownProgress}%` }}
@@ -463,44 +463,44 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
 
           {/* Fallback Loading */}
           {isLoading && !displayedCode && (!isWaitingForRooms || countdown <= 0) && (
-            <div className="text-center py-2">
+            <div className="text-center py-3">
               <CircularLoader />
-              <p className="mt-2 text-xs text-[#64748b]">Loading your pass...</p>
+              <p className="mt-2 text-sm text-[#64748b]">Loading your pass...</p>
             </div>
           )}
 
           {/* Error State */}
           {error && !displayedCode && (
-            <Alert variant="destructive" className="rounded-lg border-red-200 bg-red-50">
-              <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-              <AlertDescription className="text-red-700 text-xs">{error}</AlertDescription>
+            <Alert variant="destructive" className="rounded-xl border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-red-700 text-sm">{error}</AlertDescription>
             </Alert>
           )}
 
           {/* PIN Display - Digital Member Card */}
           {displayedCode && (
             <div>
-              <div className="member-card rounded-xl p-3 mb-3">
+              <div className="member-card rounded-xl p-4 mb-4">
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-medium text-white/60 uppercase tracking-wider">Access PIN</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-medium text-white/60 uppercase tracking-wider">Access PIN</p>
                     <div className="flex items-center gap-1 text-white">
-                      <ShieldCheck className="w-3 h-3" />
-                      <span className="text-[10px] font-medium">Verified</span>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span className="text-xs font-medium">Verified</span>
                     </div>
                   </div>
-                  <p className="pin-display text-4xl text-white inline-block">
+                  <p className="pin-display text-5xl text-white inline-block">
                     {displayedCode}
                   </p>
                   {pinSource === "backup" && (
-                    <p className="text-[10px] text-white/80 mt-1 font-medium">Backup Code</p>
+                    <p className="text-xs text-white/80 mt-2 font-medium">Backup Code</p>
                   )}
                 </div>
               </div>
               
-              <div className="bg-[#fef9c3] border border-[#fde047] rounded-lg px-2.5 py-1.5 mb-3">
-                <p className="text-[11px] font-semibold text-[#001F3F] text-center">
-                  Enter PIN followed by <span className="text-sm font-bold">#</span> at keypad
+              <div className="bg-[#fef9c3] border border-[#fde047] rounded-xl px-3 py-2 mb-4">
+                <p className="text-sm font-semibold text-[#001F3F] text-center">
+                  Enter PIN followed by <span className="text-base font-bold">#</span> at keypad
                 </p>
               </div>
             </div>
@@ -508,53 +508,53 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           
           {/* Pass Details */}
           {passDetails && (
-            <div className="space-y-2.5">
+            <div className="space-y-4">
               {codeWarning && !displayedCode && (
-                <Alert className="border-orange-300 bg-orange-50 rounded-lg">
-                  <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-                  <AlertDescription className="text-orange-700 text-[11px]">
+                <Alert className="border-orange-300 bg-orange-50 rounded-xl">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  <AlertDescription className="text-orange-700 text-sm">
                     Your pass is active but we couldn&apos;t retrieve your PIN. Contact {supportEmail}.
                   </AlertDescription>
                 </Alert>
               )}
 
-              {/* Pass Info Grid - Compact */}
-              <div className="bg-[#f8fafc] rounded-lg p-2.5">
-                <div className="grid grid-cols-2 gap-y-1.5 gap-x-3">
+              {/* Pass Info Grid */}
+              <div className="bg-[#f8fafc] rounded-xl p-4">
+                <div className="grid grid-cols-2 gap-y-3 gap-x-4">
                   <div>
-                    <p className="text-[10px] text-[#64748b]">Access Point</p>
-                    <p className="text-xs font-semibold text-[#001F3F]">{passDetails.accessPointName}</p>
+                    <p className="text-xs text-[#64748b]">Access Point</p>
+                    <p className="text-sm font-semibold text-[#001F3F]">{passDetails.accessPointName}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#64748b]">Pass Type</p>
-                    <p className="text-xs font-semibold text-[#001F3F]">{passDetails.passType}</p>
+                    <p className="text-xs text-[#64748b]">Pass Type</p>
+                    <p className="text-sm font-semibold text-[#001F3F]">{passDetails.passType}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#64748b]">Valid From</p>
-                    <p className="text-xs font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</p>
+                    <p className="text-xs text-[#64748b]">Valid From</p>
+                    <p className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#64748b]">Valid Until</p>
-                    <p className="text-xs font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</p>
+                    <p className="text-xs text-[#64748b]">Valid Until</p>
+                    <p className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</p>
                   </div>
                   {passDetails.vehiclePlate && (
                     <div className="col-span-2">
-                      <p className="text-[10px] text-[#64748b]">Vehicle</p>
-                      <p className="text-xs font-medium text-[#001F3F]">{passDetails.vehiclePlate}</p>
+                      <p className="text-xs text-[#64748b]">Vehicle</p>
+                      <p className="text-sm font-medium text-[#001F3F]">{passDetails.vehiclePlate}</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Action Buttons - Compact */}
-              <div className="flex gap-2">
+              {/* Action Buttons */}
+              <div className="flex gap-3">
                 {displayedCode && (
                   <Button 
                     variant="outline" 
                     onClick={handleShareSMS} 
-                    className="flex-1 h-9 rounded-lg text-xs border-[#e2e8f0] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent btn-premium"
+                    className="flex-1 h-11 rounded-xl text-sm border-[#e2e8f0] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent btn-premium"
                   >
-                    <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                    <MessageSquare className="mr-2 h-4 w-4" />
                     Share
                   </Button>
                 )}
@@ -563,9 +563,9 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                   <a href={googleWalletUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
                     <Button 
                       variant="outline" 
-                      className="w-full h-9 rounded-lg text-xs border-[#e2e8f0] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent btn-premium"
+                      className="w-full h-11 rounded-xl text-sm border-[#e2e8f0] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent btn-premium"
                     >
-                      <img src="/add-to-google-wallet.svg" alt="" className="h-3.5 mr-1.5" />
+                      <img src="/add-to-google-wallet.svg" alt="" className="h-4 mr-2" />
                       Wallet
                     </Button>
                   </a>
@@ -573,23 +573,23 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               </div>
 
               {/* Confirmation Info */}
-              <div className="bg-[#f8fafc] rounded-lg p-2.5 space-y-1.5">
-                <div className="flex items-start gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#22c55e] mt-0.5 shrink-0" />
-                  <p className="text-[11px] text-[#64748b]">Your access details have been sent to your email/SMS.</p>
+              <div className="bg-[#f8fafc] rounded-xl p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#22c55e] mt-0.5 shrink-0" />
+                  <p className="text-sm text-[#64748b]">Your access details have been sent to your email/SMS.</p>
                 </div>
-                <div className="flex items-start gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#22c55e] mt-0.5 shrink-0" />
-                  <p className="text-[11px] text-[#64748b]">A payment receipt has been emailed to you.</p>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#22c55e] mt-0.5 shrink-0" />
+                  <p className="text-sm text-[#64748b]">A payment receipt has been emailed to you.</p>
                 </div>
-                <div className="pt-1.5 border-t border-[#e2e8f0]">
-                  <p className="text-[11px] font-semibold text-[#001F3F]">Need a GST tax invoice?</p>
-                  <p className="text-[11px] text-[#64748b]">Contact <a href="mailto:support@zezamii.com" className="text-[#001F3F] underline">support@zezamii.com</a> and we&apos;ll send it to you.</p>
+                <div className="pt-2 border-t border-[#e2e8f0]">
+                  <p className="text-sm font-semibold text-[#001F3F]">Need a GST tax invoice?</p>
+                  <p className="text-sm text-[#64748b]">Contact <a href="mailto:support@zezamii.com" className="text-[#001F3F] underline">support@zezamii.com</a> and we&apos;ll send it to you.</p>
                 </div>
               </div>
 
               <Button
-                className="w-full h-9 rounded-lg text-sm font-semibold bg-[#001F3F] text-white btn-premium"
+                className="w-full h-12 rounded-xl text-base font-semibold bg-[#001F3F] text-white btn-premium"
                 onClick={() => {
                   const url = passDetails?.returnUrl || "/"
                   window.location.replace(`${url}?t=${Date.now()}`)
