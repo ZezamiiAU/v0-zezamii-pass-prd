@@ -21,12 +21,12 @@ const stripePromise = loadStripe(publishableKey)
 interface PassPurchaseFormProps {
   organizationId: string
   organizationName: string
-  organizationLogo: string | null
+  organizationLogo?: string | null
   siteId: string
   siteName: string
   deviceId: string
   deviceName: string
-  deviceDescription: string | null
+  deviceDescription?: string | null
   preSelectedPassTypeId?: string
 }
 
