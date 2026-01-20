@@ -60,7 +60,7 @@ export function PassPurchaseForm({
         const url = `/api/pass-types${organizationId ? `?orgId=${organizationId}` : ""}`
         const res = await fetch(url, { signal: abortController.signal })
         if (res.ok) {
-          const data = await res.json()
+          const data: PassType[] = await res.json()
           setPassTypes(data)
           if (!selectedPassTypeId && data.length > 0 && preSelectedPassTypeId) {
             if (data.some((pt) => pt.id === preSelectedPassTypeId)) {
@@ -68,8 +68,8 @@ export function PassPurchaseForm({
             }
           }
         }
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") return
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return
       }
     }
     loadPassTypes()
