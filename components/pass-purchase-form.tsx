@@ -176,56 +176,18 @@ export function PassPurchaseForm({
         </CardHeader>
         <CardContent className="space-y-2 pb-2 px-3 overflow-y-auto flex-1">
           {selectedPassType && (
-            <Card className="bg-muted/50">
-              <CardHeader className="pb-1 pt-1.5 px-2">
-                <CardTitle className="text-base">Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-0.5 pb-1.5 px-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pass Type:</span>
-                  <span className="font-medium">{selectedPassType.name}</span>
-                </div>
-                {isMultiDayPass && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Number of Days:</span>
-                    <span className="font-medium">
-                      {numberOfDays} {numberOfDays === 1 ? "day" : "days"}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Duration:</span>
-                  <span className="font-medium">
-                    {isMultiDayPass
-                      ? `${numberOfDays} ${numberOfDays === 1 ? "day" : "days"}`
-                      : selectedPassType.duration_minutes >= 60
-                        ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
-                        : `${selectedPassType.duration_minutes} minutes`}
-                  </span>
-                </div>
-                {selectedPassType.description && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Details:</span>
-                    <span className="font-medium text-xs">{selectedPassType.description}</span>
-                  </div>
-                )}
-                {isMultiDayPass && numberOfDays > 1 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Price:</span>
-                    <span className="font-medium">
-                      {formatPrice(selectedPassType.price_cents)} × {numberOfDays} days
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-0.5 border-t text-sm">
-                  <span className="font-semibold">Total:</span>
-                  <span className="font-semibold">
-                    {formatPrice(totalPriceCents)}
-                    <span className="text-xs text-muted-foreground ml-1">(incl GST and fees)</span>
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-muted/50 rounded-md p-2 border">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">
+                  {selectedPassType.name}
+                  {isMultiDayPass && ` (${numberOfDays} ${numberOfDays === 1 ? "day" : "days"})`}
+                </span>
+                <span className="font-semibold">
+                  {formatPrice(totalPriceCents)}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground text-right">incl GST and fees</div>
+            </div>
           )}
 
           <Elements stripe={stripePromise} options={{ clientSecret }}>
@@ -270,14 +232,15 @@ export function PassPurchaseForm({
 
           {isMultiDayPass && (
             <div className="space-y-0.5">
-              <Label htmlFor="numberOfDays" className="text-sm">
-                Number of Days
+              <Label htmlFor="numberOfDays" className="text-sm font-medium">
+                Number of Days <span className="text-red-500 font-bold">*</span>
+                <span className="text-red-500 text-xs ml-1">(required)</span>
               </Label>
               <Select
-                value={numberOfDays === 0 ? "" : numberOfDays.toString()} // Use empty string when numberOfDays is 0 to show placeholder
+                value={numberOfDays === 0 ? "" : numberOfDays.toString()}
                 onValueChange={(val) => setNumberOfDays(Number.parseInt(val, 10))}
               >
-                <SelectTrigger id="numberOfDays" className="h-7 text-sm">
+                <SelectTrigger id="numberOfDays" className={`h-7 text-sm ${numberOfDays === 0 ? "border-red-200" : ""}`}>
                   <SelectValue placeholder="Select number of days" />
                 </SelectTrigger>
                 <SelectContent>
@@ -295,8 +258,9 @@ export function PassPurchaseForm({
           )}
 
           <div className="space-y-0.5">
-            <Label htmlFor="email" className="text-sm">
-              Email <span className="text-destructive">*</span>
+            <Label htmlFor="email" className="text-sm font-medium">
+              Email <span className="text-red-500 font-bold">*</span>
+              <span className="text-red-500 text-xs ml-1">(required)</span>
             </Label>
             <Input
               id="email"
@@ -304,14 +268,14 @@ export function PassPurchaseForm({
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-7 text-sm"
+              className="h-7 text-sm border-red-200 focus:border-red-400 focus:ring-red-400"
               required
             />
           </div>
 
           <div className="space-y-0.5">
             <Label htmlFor="phone" className="text-sm">
-              Mobile Number <span className="text-muted-foreground text-xs">(optional)</span>
+              Mobile <span className="text-muted-foreground text-xs">(optional)</span>
             </Label>
             <Input
               id="phone"
@@ -324,61 +288,28 @@ export function PassPurchaseForm({
           </div>
 
           {selectedPassType && (
-            <Card className="bg-muted/50 mt-1">
-              <CardHeader className="pb-1 pt-1.5 px-2">
-                <CardTitle className="text-base">Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-0.5 pb-1.5 px-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pass Type:</span>
-                  <span className="font-medium">{selectedPassType.name}</span>
+            <div className="bg-muted/50 rounded-md p-2 mt-1 border">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">
+                  {selectedPassType.name}
+                  {isMultiDayPass && numberOfDays > 0 && ` (${numberOfDays} ${numberOfDays === 1 ? "day" : "days"})`}
+                </span>
+                <span className="font-semibold">
+                  {formatPrice(totalPriceCents)}
+                </span>
+              </div>
+              {isMultiDayPass && numberOfDays > 1 && (
+                <div className="text-xs text-muted-foreground text-right">
+                  {formatPrice(selectedPassType.price_cents)} × {numberOfDays} days
                 </div>
-                {isMultiDayPass && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Number of Days:</span>
-                    <span className="font-medium">
-                      {numberOfDays} {numberOfDays === 1 ? "day" : "days"}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Duration:</span>
-                  <span className="font-medium">
-                    {isMultiDayPass
-                      ? `${numberOfDays} ${numberOfDays === 1 ? "day" : "days"}`
-                      : selectedPassType.duration_minutes >= 60
-                        ? `${Math.floor(selectedPassType.duration_minutes / 60)} hours`
-                        : `${selectedPassType.duration_minutes} minutes`}
-                  </span>
-                </div>
-                {selectedPassType.description && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Details:</span>
-                    <span className="font-medium text-xs">{selectedPassType.description}</span>
-                  </div>
-                )}
-                {isMultiDayPass && numberOfDays > 1 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Price:</span>
-                    <span className="font-medium">
-                      {formatPrice(selectedPassType.price_cents)} × {numberOfDays} days
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-0.5 border-t text-sm">
-                  <span className="font-semibold">Total:</span>
-                  <span className="font-semibold">
-                    {formatPrice(totalPriceCents)}
-                    <span className="text-xs text-muted-foreground block">incl GST and fees</span>
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+              )}
+              <div className="text-xs text-muted-foreground text-right">incl GST and fees</div>
+            </div>
           )}
 
           <label
             htmlFor="terms"
-            className={`flex items-center gap-3 p-3 mt-2 rounded-lg border-2 cursor-pointer transition-all ${
+            className={`flex items-center gap-2 p-2 mt-1 rounded border cursor-pointer transition-all ${
               termsAccepted 
                 ? "border-green-500 bg-green-50" 
                 : "border-gray-300 bg-gray-50 hover:border-gray-400"
@@ -389,9 +320,9 @@ export function PassPurchaseForm({
               id="terms"
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
-              className="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
             />
-            <span className="text-sm leading-tight">
+            <span className="text-xs leading-tight">
               I accept the{" "}
               <a
                 href="/terms"
@@ -401,8 +332,7 @@ export function PassPurchaseForm({
                 onClick={(e) => e.stopPropagation()}
               >
                 terms and conditions
-              </a>{" "}
-              for pass usage
+              </a>
             </span>
           </label>
 
