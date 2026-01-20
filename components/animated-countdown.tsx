@@ -20,7 +20,6 @@ export function AnimatedCountdown({
   const [prevSeconds, setPrevSeconds] = useState(seconds)
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Trigger number change animation
   useEffect(() => {
     if (seconds !== prevSeconds) {
       setIsAnimating(true)
@@ -33,63 +32,52 @@ export function AnimatedCountdown({
   }, [seconds, prevSeconds])
 
   const progress = seconds / totalSeconds
-  const circumference = 2 * Math.PI * 52 // radius = 52
+  const circumference = 2 * Math.PI * 44
   const strokeDashoffset = circumference * (1 - progress)
 
   return (
     <div className="flex flex-col items-center py-4">
       {/* Label */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-sm font-medium text-blue-600">{label}</span>
+        <span className="text-base font-semibold text-[#001F3F]">{label}</span>
       </div>
 
       {/* Main countdown ring */}
-      <div className="relative w-32 h-32">
+      <div className="relative w-28 h-28">
         {/* Background glow */}
         <div
           className="absolute inset-2 rounded-full transition-opacity duration-500"
           style={{
-            background: `radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(0, 31, 63, 0.08) 0%, transparent 70%)`,
             opacity: progress,
           }}
         />
 
         {/* SVG rings */}
-        <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 128 128">
-          {/* Outer glow ring */}
-          <circle
-            cx="64"
-            cy="64"
-            r="56"
-            stroke="rgba(59, 130, 246, 0.1)"
-            strokeWidth="2"
-            fill="none"
-          />
-
+        <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
           {/* Background track */}
           <circle
-            cx="64"
-            cy="64"
-            r="52"
-            stroke="currentColor"
+            cx="50"
+            cy="50"
+            r="44"
+            stroke="#e2e8f0"
             strokeWidth="6"
             fill="none"
-            className="text-gray-200"
           />
 
-          {/* Progress ring with gradient */}
+          {/* Progress ring - nautical navy */}
           <defs>
-            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3b82f6" />
-              <stop offset="50%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#8b5cf6" />
+            <linearGradient id="nauticalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#001F3F" />
+              <stop offset="50%" stopColor="#0d4f5c" />
+              <stop offset="100%" stopColor="#7dd3fc" />
             </linearGradient>
           </defs>
           <circle
-            cx="64"
-            cy="64"
-            r="52"
-            stroke="url(#progressGradient)"
+            cx="50"
+            cy="50"
+            r="44"
+            stroke="url(#nauticalGradient)"
             strokeWidth="6"
             fill="none"
             strokeDasharray={circumference}
@@ -97,62 +85,49 @@ export function AnimatedCountdown({
             strokeLinecap="round"
             className="transition-all duration-1000 ease-out"
             style={{
-              filter: "drop-shadow(0 0 6px rgba(59, 130, 246, 0.5))",
+              filter: "drop-shadow(0 0 4px rgba(0, 31, 63, 0.3))",
             }}
           />
-
-
         </svg>
 
         {/* Center number */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative">
-            {/* Outgoing number (animates out) */}
             <span
-              className={`absolute inset-0 flex items-center justify-center text-4xl font-bold text-blue-600 transition-all duration-150 ${
+              className={`absolute inset-0 flex items-center justify-center text-3xl font-bold text-[#001F3F] transition-all duration-150 ${
                 isAnimating ? "opacity-0 scale-150" : "opacity-0 scale-100"
               }`}
             >
               {prevSeconds}
             </span>
-            {/* Current number (animates in) */}
             <span
-              className={`text-4xl font-bold transition-all duration-150 ${
+              className={`text-3xl font-bold transition-all duration-150 ${
                 isAnimating
-                  ? "text-blue-400 opacity-50 scale-75"
-                  : "text-blue-600 opacity-100 scale-100"
+                  ? "text-[#0d4f5c] opacity-50 scale-75"
+                  : "text-[#001F3F] opacity-100 scale-100"
               }`}
-              style={{
-                textShadow: "0 0 20px rgba(59, 130, 246, 0.3)",
-              }}
             >
               {seconds}
             </span>
           </div>
         </div>
-
-        {/* Inner pulse ring */}
-        <div
-          className="absolute inset-6 rounded-full border-2 border-blue-500/20 animate-pulse"
-          style={{ animationDuration: "2s" }}
-        />
       </div>
 
       {/* Sublabel */}
-      <p className="text-xs text-muted-foreground mt-4">{sublabel}</p>
+      <p className="text-sm text-muted-foreground mt-4">{sublabel}</p>
 
-      {/* Progress percentage */}
-      <div className="flex items-center gap-2 mt-2">
-        <div className="h-1 w-20 bg-gray-200 rounded-full overflow-hidden">
+      {/* Progress bar */}
+      <div className="flex items-center gap-3 mt-3 w-full max-w-[180px]">
+        <div className="flex-1 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-1000 ease-out"
             style={{
-              width: `${progress * 100}%`,
-              background: "linear-gradient(90deg, #3b82f6, #6366f1, #8b5cf6)",
+              width: `${(1 - progress) * 100}%`,
+              background: "linear-gradient(90deg, #001F3F, #0d4f5c, #7dd3fc)",
             }}
           />
         </div>
-        <span className="text-xs text-muted-foreground">{Math.round(progress * 100)}%</span>
+        <span className="text-xs font-medium text-muted-foreground">{Math.round((1 - progress) * 100)}%</span>
       </div>
     </div>
   )

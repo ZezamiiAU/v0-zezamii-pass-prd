@@ -3,15 +3,12 @@
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { sessionQuerySchema } from "@/lib/schemas/api.schema"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, Anchor, CheckCircle2 } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { AnimatedCountdown } from "@/components/animated-countdown"
 
-// Use environment variable or default to 20 seconds (matches ROOMS_API_TIMEOUT_MS=20000)
 const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS) || 20
 
 interface PassDetails {
@@ -41,6 +38,25 @@ function extractErrorMessage(errorData: any): string {
   return String(errorData)
 }
 
+// Sophisticated Circular Loader Component
+function CircularLoader() {
+  return (
+    <div className="circular-loader mx-auto">
+      <svg viewBox="0 0 50 50" className="w-20 h-20">
+        <circle
+          cx="25"
+          cy="25"
+          r="20"
+          fill="none"
+          strokeWidth="4"
+          stroke="#001F3F"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  )
+}
+
 export default function SuccessPage() {
   const searchParams = useSearchParams()
 
@@ -54,22 +70,19 @@ export default function SuccessPage() {
   const [copiedToClipboard, setCopiedToClipboard] = useState(false)
   const [isTechnicalDetailsOpen, setIsTechnicalDetailsOpen] = useState(false)
   
-  // Countdown timer for waiting for Rooms pincode - starts immediately
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS)
-  const [isWaitingForRooms, setIsWaitingForRooms] = useState(true) // Start waiting immediately
+  const [isWaitingForRooms, setIsWaitingForRooms] = useState(true)
   const [roomsPinReceived, setRoomsPinReceived] = useState(false)
   const [displayedCode, setDisplayedCode] = useState<string | null>(null)
   const [pinSource, setPinSource] = useState<"rooms" | "backup" | null>(null)
   const [backupCodeCached, setBackupCodeCached] = useState<string | null>(null)
   
-  // Wallet state - controlled by NEXT_PUBLIC_WALLET_ENABLED env var
   const [walletEnabled] = useState(() => process.env.NEXT_PUBLIC_WALLET_ENABLED === "true")
   const [googleWalletUrl, setGoogleWalletUrl] = useState<string | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
 
   const rawParams = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams])
 
-  // Fetch Google Wallet URL when pass details are available and wallet is enabled
   const fetchGoogleWalletUrl = useCallback(async (passId: string) => {
     if (!walletEnabled || !passId) return
     
@@ -83,7 +96,7 @@ export default function SuccessPage() {
         }
       }
     } catch (err) {
-      // Wallet is optional - don't show errors
+      // Wallet is optional
     } finally {
       setWalletLoading(false)
     }
@@ -124,17 +137,14 @@ export default function SuccessPage() {
     return () => clearInterval(timer)
   }, [isWaitingForRooms, roomsPinReceived, countdown])
 
-  // When countdown ends, show whatever code we have (Rooms or backup)
-  // This effect runs whenever backupCodeCached or countdown changes
   useEffect(() => {
     const codeToShow = backupCodeCached || passDetails?.backupCode || passDetails?.code
-    // Show code when: countdown is done AND we have a code AND not already displayed
     if (countdown === 0 && codeToShow && !displayedCode) {
       setDisplayedCode(codeToShow)
       setPinSource(roomsPinReceived ? "rooms" : "backup")
       setIsWaitingForRooms(false)
       setIsLoading(false)
-      setError(null) // Clear any errors since we have a working code
+      setError(null)
     }
   }, [countdown, displayedCode, passDetails?.backupCode, passDetails?.code, backupCodeCached, roomsPinReceived])
 
@@ -210,20 +220,16 @@ export default function SuccessPage() {
 
         if (!response.ok) {
           const errorData = await response.json()
-
-          // Extract backup code and metadata from error response - this is the key fallback
           const backupFromResponse = errorData.backupCode
           
           if (backupFromResponse) {
-            // We have a backup code - cache it and let the countdown effect handle display
             setBackupCodeCached(backupFromResponse)
             
-            // Also set partial passDetails from error response metadata
             if (errorData.accessPointName || errorData.valid_from || errorData.valid_to) {
               setPassDetails({
                 pass_id: errorData.pass_id || "",
                 accessPointName: errorData.accessPointName || "Access Point",
-                timezone: errorData.timezone || "UTC",
+                timezone: errorData.timezone || "Australia/Sydney",
                 code: null,
                 backupCode: backupFromResponse,
                 pinSource: "backup",
@@ -236,11 +242,9 @@ export default function SuccessPage() {
                 returnUrl: errorData.returnUrl || null,
               })
             }
-            // Don't show any errors, don't set isLoading false - let countdown effect handle it
             return
           }
 
-          // Only show errors if we truly have NO backup code
           const errorInfo = {
             timestamp: new Date().toISOString(),
             url: typeof window !== "undefined" ? window.location.href : "",
@@ -260,7 +264,6 @@ export default function SuccessPage() {
             return
           }
 
-          // Call sync-payment on ANY 400 error (pass not active yet) - not just when status is "pending"
           if (response.status === 400 && paymentIntent && !syncAttempted) {
             syncAttempted = true
             try {
@@ -274,14 +277,12 @@ export default function SuccessPage() {
               console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
             }
 
-            // One retry after sync
             if (isMounted) {
               pollInterval = setTimeout(() => fetchPassDetails(), 3000)
               return
             }
           }
 
-          // If we've already tried sync and still getting errors, show error message
           if (errorData.status === "pending" || errorData.paymentStatus === "pending") {
             setError(`Lock not connected. Contact ${supportEmail}`)
             setIsLoading(false)
@@ -296,7 +297,6 @@ export default function SuccessPage() {
 
         if (!isMounted) return
 
-        // Handle pincode display logic - cache any available code
         const codeToCache = data.code || data.backupCode
         if (codeToCache) {
           setBackupCodeCached(codeToCache)
@@ -305,7 +305,6 @@ export default function SuccessPage() {
           }
         }
         
-        // Only show PIN after countdown reaches 0
         if (countdown === 0 && !displayedCode && codeToCache) {
           setDisplayedCode(codeToCache)
           setPinSource(data.pinSource || "backup")
@@ -316,13 +315,12 @@ export default function SuccessPage() {
           setCodeWarning(true)
         }
 
-setPassDetails(data)
-  setIsLoading(false)
-  
-  // Fetch wallet URL when pass details loaded
-  if (data.pass_id && walletEnabled) {
-    fetchGoogleWalletUrl(data.pass_id)
-  }
+        setPassDetails(data)
+        setIsLoading(false)
+        
+        if (data.pass_id && walletEnabled) {
+          fetchGoogleWalletUrl(data.pass_id)
+        }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
           return
@@ -359,7 +357,7 @@ setPassDetails(data)
         clearTimeout(pollInterval)
       }
     }
-  }, [isValid, sessionId, paymentIntent, isOffline, supportEmail, rawParams, paramsValidation.error])
+  }, [isValid, sessionId, paymentIntent, isOffline, supportEmail, rawParams, paramsValidation.error, countdown, displayedCode, walletEnabled, fetchGoogleWalletUrl])
 
   const formatDateTime = (dateString: string, timezone: string) => {
     return formatLocalizedDateTime(dateString, timezone)
@@ -397,161 +395,174 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
     }
   }
 
+  // Calculate countdown progress
+  const countdownProgress = ((COUNTDOWN_SECONDS - countdown) / COUNTDOWN_SECONDS) * 100
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-3 bg-[#1a2744]">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center pb-2 pt-4">
-          {isValid ? (
-            <>
-              <CardTitle className="text-2xl">Payment Successful!</CardTitle>
-              <CardDescription className="text-base">
-                {displayedCode ? "Your pass is ready" : "Your pass is being created"}
-              </CardDescription>
-            </>
+    <div className="min-h-screen bg-nautical-gradient">
+      <div className="px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-6">
+          {displayedCode ? (
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#22c55e] mb-4 animate-spring-in">
+              <CheckCircle2 className="w-8 h-8 text-white" />
+            </div>
           ) : (
-            <CardTitle className="text-2xl">Invalid Payment Details</CardTitle>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/10 backdrop-blur mb-4">
+              <Anchor className="w-8 h-8 text-white" />
+            </div>
           )}
-        </CardHeader>
-        <CardContent className="space-y-3 pb-4">
-          {/* Show animated countdown timer while waiting for Rooms PIN - independent of loading state */}
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            {isValid ? (displayedCode ? "Payment Successful!" : "Processing...") : "Invalid Payment"}
+          </h1>
+          <p className="text-sky-200 text-sm mt-1">
+            {displayedCode ? "Your pass is ready" : "Your pass is being created"}
+          </p>
+        </div>
+
+        {/* Main Glass Card */}
+        <div className="glass-card rounded-3xl p-6 max-w-md mx-auto animate-spring-in">
+          
+          {/* Loading State with Circular Loader */}
           {isWaitingForRooms && countdown > 0 && !displayedCode && (
-            <div className="text-center">
-              <AnimatedCountdown
-                seconds={countdown}
-                totalSeconds={COUNTDOWN_SECONDS}
-                label="Generating your PIN..."
-                sublabel="Connecting to access system..."
-              />
+            <div className="text-center py-8">
+              <div className="relative inline-block mb-6">
+                <CircularLoader />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-[#001F3F]">{countdown}</span>
+                </div>
+              </div>
+              <p className="text-lg font-semibold text-[#001F3F]">Generating your PIN...</p>
+              <p className="text-sm text-muted-foreground mt-1">Connecting to access system</p>
+              
+              {/* Progress bar */}
+              <div className="mt-6 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#001F3F] rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${countdownProgress}%` }}
+                />
+              </div>
             </div>
           )}
 
-          {/* Show loading spinner only when loading AND countdown is done AND no code yet */}
+          {/* Fallback Loading */}
           {isLoading && !displayedCode && (!isWaitingForRooms || countdown <= 0) && (
-            <div className="text-center py-6">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
-              <p className="mt-3 text-base text-muted-foreground">Loading your pass...</p>
+            <div className="text-center py-8">
+              <CircularLoader />
+              <p className="mt-4 text-muted-foreground">Loading your pass...</p>
             </div>
           )}
 
+          {/* Error State */}
           {error && !displayedCode && (
-            <Alert variant="destructive" className="py-2">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-base">{error}</AlertDescription>
+            <Alert variant="destructive" className="rounded-2xl border-red-200 bg-red-50">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <AlertDescription className="text-red-700">{error}</AlertDescription>
             </Alert>
           )}
 
-          {/* Show PIN immediately when available, even without full passDetails */}
+          {/* PIN Display - Ticket Style */}
           {displayedCode && (
-            <div className="space-y-3">
-              <div className="bg-primary/10 p-4 rounded-lg text-center border-2 border-primary/20">
-                <p className="text-sm text-muted-foreground mb-2 font-medium">Your Access PIN</p>
-                <p className="text-5xl font-bold tracking-widest text-primary">{displayedCode}</p>
-                {pinSource === "backup" && (
-                  <p className="text-sm text-orange-600 mt-2 font-medium">Backup Code</p>
-                )}
-                <p className="text-base font-semibold text-primary mt-3 bg-yellow-100 border border-yellow-400 rounded px-3 py-2">
-                  Enter PIN followed by <span className="text-xl">#</span>
-                </p>
+            <div className="animate-spring-in">
+              <div className="ticket-container rounded-3xl p-6 mb-6">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Your Access PIN</p>
+                  <p className="pin-display text-6xl font-bold text-[#001F3F] animate-pulse-glow inline-block px-4 py-2 rounded-2xl bg-[#f8fafc]">
+                    {displayedCode}
+                  </p>
+                  {pinSource === "backup" && (
+                    <p className="text-sm text-orange-600 mt-3 font-medium">Backup Code</p>
+                  )}
+                </div>
+                
+                <div className="ticket-divider" />
+                
+                <div className="text-center">
+                  <p className="text-base font-semibold text-[#001F3F] bg-[#fef9c3] border border-[#fde047] rounded-2xl px-4 py-3">
+                    Enter PIN followed by <span className="text-xl font-bold">#</span>
+                  </p>
+                </div>
               </div>
             </div>
           )}
           
+          {/* Pass Details */}
           {passDetails && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {codeWarning && !displayedCode && (
-                <Alert className="border-orange-500 bg-orange-50 py-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  <AlertDescription className="text-orange-800 text-sm">
+                <Alert className="border-orange-300 bg-orange-50 rounded-2xl">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  <AlertDescription className="text-orange-700 text-sm">
                     Your pass is active but we couldn&apos;t retrieve your PIN. Please contact {supportEmail}.
                   </AlertDescription>
                 </Alert>
               )}
 
-              {/* Show PIN placeholder only when we have passDetails but no code yet and NOT waiting for countdown */}
-              {!displayedCode && !isWaitingForRooms && (
-                <div className="bg-primary/10 p-4 rounded-lg text-center border-2 border-primary/20">
-                  <p className="text-sm text-muted-foreground mb-2 font-medium">Your Access PIN</p>
-                  <p className="text-3xl font-bold tracking-widest text-muted-foreground">----</p>
-                  <p className="text-sm text-muted-foreground mt-2">PIN unavailable</p>
+              {/* Pass Info Grid */}
+              <div className="bg-[#f8fafc] rounded-2xl p-4 space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
+                  <span className="text-sm text-muted-foreground">Access Point</span>
+                  <span className="font-semibold text-[#001F3F]">{passDetails.accessPointName}</span>
                 </div>
-              )}
-
-
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Access Point:</span>
-                  <span className="font-semibold">{passDetails.accessPointName}</span>
+                <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
+                  <span className="text-sm text-muted-foreground">Pass Type</span>
+                  <span className="font-semibold text-[#001F3F]">{passDetails.passType}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Pass Type:</span>
-                  <span className="font-medium">{passDetails.passType}</span>
+                <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
+                  <span className="text-sm text-muted-foreground">Valid From</span>
+                  <span className="font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Valid From:</span>
-                  <span className="font-medium">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Valid Until:</span>
-                  <span className="font-medium">
-                    {formatDateTime(passDetails.valid_to, passDetails.timezone)}
-                  </span>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-muted-foreground">Valid Until</span>
+                  <span className="font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</span>
                 </div>
                 {passDetails.vehiclePlate && (
-                  <div className="flex justify-between py-1.5 border-b">
-                    <span className="text-muted-foreground">Vehicle:</span>
-                    <span className="font-medium">{passDetails.vehiclePlate}</span>
+                  <div className="flex justify-between items-center py-2 border-t border-[#e2e8f0]">
+                    <span className="text-sm text-muted-foreground">Vehicle</span>
+                    <span className="font-medium text-[#001F3F]">{passDetails.vehiclePlate}</span>
                   </div>
                 )}
               </div>
 
-              <Alert className="py-2 bg-blue-50 border-blue-200">
-                <AlertDescription className="text-sm leading-normal">
+              {/* Instructions */}
+              <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-2xl p-4">
+                <p className="text-sm text-[#1e40af] leading-relaxed">
                   <strong>Instructions:</strong>{" "}
                   {displayedCode
                     ? `Enter your PIN followed by # at the keypad at ${passDetails.accessPointName}. Your pass is valid until ${formatDateTime(passDetails.valid_to, passDetails.timezone)}.`
                     : isWaitingForRooms
                       ? "Retrieving your PIN..."
                       : `Your pass is active. Please contact ${supportEmail} to receive your PIN.`}
-                </AlertDescription>
-              </Alert>
+                </p>
+              </div>
 
-              <div className="space-y-2">
+              {/* Action Buttons */}
+              <div className="space-y-3 pt-2">
                 {displayedCode && (
-                  <Button variant="outline" onClick={handleShareSMS} className="w-full bg-transparent text-base h-11">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleShareSMS} 
+                    className="w-full h-12 rounded-3xl text-base border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
+                  >
                     <MessageSquare className="mr-2 h-5 w-5" />
                     Share via SMS
                   </Button>
                 )}
 
-                {/* Wallet Buttons - only shown when NEXT_PUBLIC_WALLET_ENABLED=true */}
-                {walletEnabled && displayedCode && (
-                  <div className="flex gap-2">
-                    {googleWalletUrl ? (
-                      <a
-                        href={googleWalletUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1"
-                      >
-                        <Button variant="outline" className="w-full bg-transparent text-base h-11">
-                          <img
-                            src="/add-to-google-wallet.svg"
-                            alt="Add to Google Wallet"
-                            className="h-5 mr-2"
-                          />
-                          Google Wallet
-                        </Button>
-                      </a>
-                    ) : walletLoading ? (
-                      <Button variant="outline" className="flex-1 bg-transparent text-base h-11" disabled>
-                        Loading...
-                      </Button>
-                    ) : null}
-                  </div>
+                {walletEnabled && displayedCode && googleWalletUrl && (
+                  <a href={googleWalletUrl} target="_blank" rel="noopener noreferrer" className="block">
+                    <Button 
+                      variant="outline" 
+                      className="w-full h-12 rounded-3xl text-base border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
+                    >
+                      <img src="/add-to-google-wallet.svg" alt="" className="h-5 mr-2" />
+                      Add to Google Wallet
+                    </Button>
+                  </a>
                 )}
 
                 <Button
-                  className="w-full h-12 text-base font-semibold bg-[#1a2744] text-white hover:opacity-90"
+                  className="w-full h-14 rounded-3xl text-base font-semibold bg-[#001F3F] text-white hover:bg-[#0a3d62]"
                   onClick={() => {
                     const url = passDetails?.returnUrl || "/"
                     window.location.replace(`${url}?t=${Date.now()}`)
@@ -563,17 +574,18 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
             </div>
           )}
 
+          {/* Technical Details Collapsible */}
           {errorDetails && (
             <Collapsible open={isTechnicalDetailsOpen} onOpenChange={setIsTechnicalDetailsOpen}>
-              <div className="bg-muted rounded-md border">
+              <div className="bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] mt-4">
                 <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between p-2 hover:bg-muted/50 transition-colors">
-                    <p className="font-semibold text-muted-foreground text-xs">Technical Details</p>
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-between p-3 hover:bg-[#f1f5f9] rounded-2xl transition-colors">
+                    <p className="font-medium text-muted-foreground text-xs">Technical Details</p>
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 text-xs px-2"
+                        className="h-7 text-xs px-2"
                         onClick={(e) => {
                           e.stopPropagation()
                           copyErrorDetails()
@@ -583,14 +595,14 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                         {copiedToClipboard ? "Copied!" : "Copy"}
                       </Button>
                       <ChevronDown
-                        className={`h-3 w-3 transition-transform ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
+                        className={`h-4 w-4 transition-transform text-muted-foreground ${isTechnicalDetailsOpen ? "rotate-180" : ""}`}
                       />
                     </div>
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="px-2 pb-2 space-y-1">
-                    <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-background p-1.5 rounded border max-h-24 overflow-y-auto">
+                  <div className="px-3 pb-3 space-y-2">
+                    <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs bg-white p-3 rounded-xl border border-[#e2e8f0] max-h-32 overflow-y-auto">
                       {errorDetails}
                     </pre>
                     <p className="text-muted-foreground text-xs">
@@ -601,8 +613,8 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               </div>
             </Collapsible>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

@@ -8,27 +8,17 @@ import { PoweredByZezamii } from "@/components/powered-by-zezamii"
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
 import { SWUpdateBanner } from "@/components/sw-update-banner"
 
-import {
-  Inter,
-  Inter as V0_Font_Inter,
-  Geist_Mono as V0_Font_Geist_Mono,
-  Source_Serif_4 as V0_Font_Source_Serif_4,
-} from "next/font/google"
+import { Geist, Geist_Mono } from "next/font/google"
 
-const _inter = V0_Font_Inter({
+const geistSans = Geist({
   subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-})
-const _geistMono = V0_Font_Geist_Mono({
-  subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-})
-const _sourceSerif_4 = V0_Font_Source_Serif_4({
-  subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-geist-sans",
 })
 
-const inter = Inter({ subsets: ["latin"] })
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+})
 
 const appTitle = process.env.NEXT_PUBLIC_APP_TITLE || "Access Pass"
 const appDescription = process.env.NEXT_PUBLIC_APP_DESCRIPTION || "Quick and easy day pass purchase"
@@ -68,7 +58,7 @@ export default function RootLayout({
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.jpg" />
       </head>
-      <body className={`${inter.className} h-full overflow-hidden`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans h-full overflow-hidden antialiased`}>
         <div className="h-screen flex flex-col overflow-hidden">
           <main className="flex-1 overflow-hidden">{children}</main>
           <PoweredByZezamii />
