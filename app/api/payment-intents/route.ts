@@ -139,8 +139,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Organisation configuration error" }, { status: 500, headers: corsHeaders })
     }
 
-    // Get timezone from org, default to Australia/Sydney
-    const orgTimezone = org.timezone || "Australia/Sydney"
+    // Normalize timezone - handle invalid formats stored in database
+    function normalizeTimezone(tz: string | null): string {
+      if (!tz) return "Australia/Sydney"
+      
+      // Map of common invalid/shorthand formats to valid IANA timezones
+      const timezoneMap: Record<string, string> = {
+        "Sydney/Brisbane": "Australia/Brisbane",
+        "Brisbane": "Australia/Brisbane",
+        "Sydney": "Australia/Sydney",
+        "Melbourne": "Australia/Melbourne",
+        "Perth": "Australia/Perth",
+        "Adelaide": "Australia/Adelaide",
+        "Darwin": "Australia/Darwin",
+        "Hobart": "Australia/Hobart",
+        "AEST": "Australia/Brisbane",
+        "AEDT": "Australia/Sydney",
+        "AWST": "Australia/Perth",
+        "ACST": "Australia/Adelaide",
+      }
+      
+      // Check if it's in our mapping
+      if (timezoneMap[tz]) {
+        return timezoneMap[tz]
+      }
+      
+      // Check if it's already a valid IANA timezone by trying to use it
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz })
+        return tz
+      } catch {
+        logger.warn({ invalidTimezone: tz }, "Invalid timezone in database, defaulting to Australia/Sydney")
+        return "Australia/Sydney"
+      }
+    }
+
+    const orgTimezone = normalizeTimezone(org.timezone)
 
     const now = new Date()
     const validFrom = now
