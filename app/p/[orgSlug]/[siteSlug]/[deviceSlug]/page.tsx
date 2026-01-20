@@ -109,26 +109,26 @@ export default function DevicePassPage() {
     }
 
     return (
-      <main className="min-h-screen bg-gradient-to-b from-[#001a3a] via-[#002147] to-[#1e3a5f]">
-        {/* Fixed Top Utility Bar - 48px */}
-        <div className="fixed top-0 left-0 right-0 h-12 bg-[#020617] flex items-center px-4 z-50">
-          <div className="flex items-center gap-2">
-            <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
-            <span className="text-white font-semibold text-[11px] uppercase tracking-widest">Zezamii Pass</span>
+      <main className="min-h-screen bg-gradient-to-b from-[#020617] via-[#0f172a] to-[#1e293b]">
+        {/* Prominent Top Header - 64px for Landing Page */}
+        <div className="fixed top-0 left-0 right-0 h-16 bg-[#020617] flex items-center justify-center px-4 z-50 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <img src="/zezamii-logo.png" alt="Zezamii" className="w-8 h-8 rounded" />
+            <span className="text-white font-bold text-lg uppercase tracking-[0.1em]">Zezamii Pass</span>
           </div>
         </div>
 
-        {/* Content with top padding for fixed header + 8px gap */}
-        <div className="pt-14 px-4 pb-8 flex items-center justify-center min-h-screen">
+        {/* Content with top padding for 64px header + 24px gap */}
+        <div className="pt-[88px] px-4 pb-8 flex items-center justify-center min-h-screen">
         <div className="w-full max-w-md">
 
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-            {/* Hero Image */}
-            <div className="w-full h-36 relative">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            {/* Hero Image - 180px compact */}
+            <div className="w-full h-[180px] relative">
               <Image src="/images/image.png" alt={accessPointData.siteName} fill className="object-cover" priority />
             </div>
 
-            <div className="p-6 pb-6 space-y-5">
+            <div className="p-5 space-y-4">
               {/* Organization Logo & Name */}
               <div className="text-center space-y-3">
                 <div className="flex justify-center">
@@ -146,19 +146,19 @@ export default function DevicePassPage() {
 
               {/* Pass Types */}
               {passTypes.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {passTypes.map((passType) => (
                     <button
                       key={passType.id}
                       onClick={() => handlePassClick(passType.id)}
-                      className="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left border-gray-200 hover:border-[#002147] hover:shadow-md cursor-pointer"
+                      className="w-full p-3 rounded-xl border border-slate-200 transition-all duration-200 text-left hover:border-[#020617] hover:shadow-sm hover:shadow-[#020617]/10 cursor-pointer"
                     >
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="font-semibold text-[#002147]">{passType.name}</p>
-                          {passType.description && <p className="text-sm text-gray-500 mt-1">{passType.description}</p>}
+                          <p className="font-bold text-[#020617] tracking-tight">{passType.name}</p>
+                          {passType.description && <p className="text-sm text-slate-500 mt-0.5">{passType.description}</p>}
                         </div>
-                        <p className="text-lg font-bold text-[#002147]">
+                        <p className="text-lg font-bold text-[#020617]">
                           {formatPrice(passType.price_cents, passType.currency)}
                         </p>
                       </div>
@@ -167,15 +167,15 @@ export default function DevicePassPage() {
                 </div>
               ) : (
                 <div className="text-center">
-                  <p className="text-xl font-semibold text-[#002147]">Day Pass</p>
+                  <p className="text-xl font-bold text-[#020617] tracking-tight">Day Pass</p>
                 </div>
               )}
 
               {/* Buy Button */}
-              <div className="pt-3">
+              <div className="pt-2">
                 <Button
                   onClick={() => setShowPurchaseForm(true)}
-                  className="w-full h-12 text-base font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="w-full h-11 text-sm font-bold uppercase bg-[#020617] hover:bg-[#0f172a] text-white shadow-sm transition-all duration-300 rounded-xl"
                   size="lg"
                 >
                   Buy Pass

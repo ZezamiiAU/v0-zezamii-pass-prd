@@ -399,17 +399,18 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
   const countdownProgress = ((COUNTDOWN_SECONDS - countdown) / COUNTDOWN_SECONDS) * 100
 
   return (
-    <div className="min-h-screen bg-premium-gradient overflow-y-auto">
-      {/* Fixed Top Utility Bar - 48px */}
-      <div className="fixed top-0 left-0 right-0 h-12 bg-[#020617] flex items-center justify-between px-4 z-50">
+    <div className="min-h-screen bg-gradient-to-b from-[#020617] via-[#0f172a] to-[#1e293b] overflow-y-auto">
+      {/* Slim Top Utility Bar - 44px for Operational Pages */}
+      <div className="fixed top-0 left-0 right-0 h-11 bg-[#020617] flex items-center justify-between px-4 z-50 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
-          <span className="text-white font-semibold text-[11px] uppercase tracking-widest">Zezamii Pass</span>
+          <img src="/zezamii-logo.png" alt="Zezamii" className="w-5 h-5 rounded" />
+          <span className="text-white font-semibold text-xs uppercase tracking-widest">Zezamii Pass</span>
         </div>
         <div className="flex items-center gap-2">
-          <img src="/images/griffith-boat-club-logo.png" alt="Griffith Boat Club" className="w-7 h-7 rounded-full bg-white border border-white/20" />
+          <img src="/images/griffith-boat-club-logo.png" alt="Griffith Boat Club" className="w-6 h-6 rounded-full bg-white border border-white/20" />
+          <span className="font-medium text-white text-xs">Griffith Boat Club</span>
           {displayedCode && (
-            <div className="flex items-center gap-1 text-white">
+            <div className="flex items-center gap-1 text-white ml-1">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span className="text-[10px] font-medium">Verified</span>
             </div>
@@ -417,7 +418,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
         </div>
       </div>
 
-      <div className="pt-14 px-4 py-2">
+      <div className="pt-[52px] px-4">
         {/* Status Header */}
         <div className="text-center mb-4">
           {displayedCode ? (
@@ -429,16 +430,16 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               <img src="/zezamii-logo.png" alt="Zezamii" className="w-10 h-10 rounded" />
             </div>
           )}
-          <h1 className="text-xl font-bold text-[#001F3F] tracking-tight">
+          <h1 className="text-xl font-bold text-[#020617] tracking-tight">
             {isValid ? (displayedCode ? "Payment Successful" : "Processing...") : "Invalid Payment"}
           </h1>
-          <p className="text-[#64748b] text-sm">
+          <p className="text-slate-500 text-sm">
             {displayedCode ? "Your digital pass is ready" : "Creating your access pass"}
           </p>
         </div>
 
         {/* Main Card */}
-        <div className="premium-card rounded-2xl p-4 max-w-md mx-auto">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 max-w-md mx-auto">
           
           {/* Loading State with Circular Loader */}
           {isWaitingForRooms && countdown > 0 && !displayedCode && (
@@ -446,16 +447,16 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               <div className="relative w-14 h-14 mx-auto mb-3">
                 <CircularLoader />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold text-[#001F3F]">{countdown}</span>
+                  <span className="text-lg font-bold text-[#020617]">{countdown}</span>
                 </div>
               </div>
-              <p className="text-base font-semibold text-[#001F3F]">Generating your PIN...</p>
-              <p className="text-sm text-[#64748b]">Connecting to access system</p>
+              <p className="text-base font-semibold text-[#020617]">Generating your PIN...</p>
+              <p className="text-sm text-slate-500">Connecting to access system</p>
               
               {/* Progress bar */}
-              <div className="mt-3 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+              <div className="mt-3 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-[#001F3F] rounded-full transition-all duration-1000 ease-linear"
+                  className="h-full bg-[#020617] rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${countdownProgress}%` }}
                 />
               </div>
@@ -466,7 +467,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           {isLoading && !displayedCode && (!isWaitingForRooms || countdown <= 0) && (
             <div className="text-center py-3">
               <CircularLoader />
-              <p className="mt-2 text-sm text-[#64748b]">Loading your pass...</p>
+              <p className="mt-2 text-sm text-slate-500">Loading your pass...</p>
             </div>
           )}
 
