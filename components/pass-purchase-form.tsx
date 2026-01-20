@@ -11,6 +11,7 @@ import { PaymentForm } from "@/components/payment-form"
 import { createPaymentIntent } from "@/lib/api/payments"
 import { getOrCreatePaymentAttemptKey, clearPaymentAttempt } from "@/lib/http/idempotency"
 import { Check, Anchor } from "lucide-react"
+import type { PassType } from "@/lib/db/pass-types"
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 if (!publishableKey) {
@@ -41,7 +42,7 @@ export function PassPurchaseForm({
   deviceDescription,
   preSelectedPassTypeId,
 }: PassPurchaseFormProps) {
-  const [passTypes, setPassTypes] = useState([])
+  const [passTypes, setPassTypes] = useState<PassType[]>([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
   const [numberOfDays, setNumberOfDays] = useState(0)
   const [email, setEmail] = useState("")
