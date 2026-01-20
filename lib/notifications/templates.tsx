@@ -15,7 +15,8 @@ export function generatePassNotificationText(data: PassNotificationData, timezon
   const orgName = data.orgName || "Access Pass"
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
   const normalizedSlugText = data.orgSlug?.toLowerCase().trim() || ""
-  const isGriffithBoatClub = normalizedSlugText === "griffith-boat-club"
+  const normalizedOrgNameText = orgName.toLowerCase()
+  const isGriffithBoatClub = normalizedSlugText === "griffith-boat-club" || normalizedOrgNameText.includes("griffith boat club")
 
   // Griffith Boat Club terms summary
   const gbcTermsText = isGriffithBoatClub ? `
@@ -75,10 +76,10 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
   
   // Organization-specific branding - check for griffith-boat-club (case-insensitive)
+  // Also check orgName as fallback in case slug is different
   const normalizedSlug = data.orgSlug?.toLowerCase().trim() || ""
-  const isGriffithBoatClub = normalizedSlug === "griffith-boat-club"
-  
-  console.log("[v0] generatePassNotificationHTML - raw orgSlug:", JSON.stringify(data.orgSlug), "normalized:", normalizedSlug, "isGriffithBoatClub:", isGriffithBoatClub, "orgName:", orgName, "all data keys:", Object.keys(data))
+  const normalizedOrgName = orgName.toLowerCase()
+  const isGriffithBoatClub = normalizedSlug === "griffith-boat-club" || normalizedOrgName.includes("griffith boat club")
   
   // Griffith Boat Club specific terms and conditions
   const gbcTerms = isGriffithBoatClub ? `
