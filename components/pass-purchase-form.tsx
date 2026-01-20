@@ -171,7 +171,10 @@ export function PassPurchaseForm({
                     <p className="font-semibold text-[#001F3F] text-sm">{selectedPassType.name}</p>
                     {isMultiDayPass && <p className="text-xs text-[#64748b]">{numberOfDays} {numberOfDays === 1 ? "day" : "days"}</p>}
                   </div>
-                  <p className="text-xl font-bold text-[#001F3F]">{formatPrice(totalPriceCents)}</p>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-[#001F3F]">{formatPrice(totalPriceCents)}</p>
+                    <p className="text-xs text-[#64748b]">including GST</p>
+                  </div>
                 </div>
               </div>
             )}

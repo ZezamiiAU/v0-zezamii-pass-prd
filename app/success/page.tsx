@@ -576,7 +576,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
               <div className="bg-[#f8fafc] rounded-xl p-4 space-y-2">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#22c55e] mt-0.5 shrink-0" />
-                  <p className="text-sm text-[#64748b]">Your access details have been sent to your email/SMS.</p>
+                  <p className="text-sm text-[#64748b]">Your access details have been sent to your email.</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#22c55e] mt-0.5 shrink-0" />

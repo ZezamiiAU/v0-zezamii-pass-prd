@@ -1,7 +1,7 @@
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm border p-6 md:p-8">
+    <div className="bg-gray-50 py-6 px-4 pb-24">
+      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm border p-5 md:p-8">
         <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-2">
           Day Pass & Camping Pass Terms and Conditions
         </h1>
@@ -161,6 +161,6 @@ export default function TermsPage() {
           <p>Lake Wyangan, NSW</p>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

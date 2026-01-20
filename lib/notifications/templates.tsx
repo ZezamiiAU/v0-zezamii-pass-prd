@@ -22,18 +22,28 @@ export function generatePassNotificationText(data: PassNotificationData, timezon
   const gbcTermsText = isGriffithBoatClub ? `
 
 ---
-TERMS & CONDITIONS SUMMARY
+TERMS & CONDITIONS
+
+GENERAL: By purchasing and using this pass, you agree to comply with these Terms and Conditions, all Griffith Boat Club rules, signage, and staff directions.
+
+PAYMENT & PASS: All passes must be paid for in full prior to entry. Passes are non-transferable and non-refundable unless required by law.
+
 ${isCamping 
-  ? `Camping Pass: Multi-use entry PIN valid until 10:00 AM on departure day. Keep this email as proof of camping entitlement.`
-  : `Day Pass: Single-use entry. Once used, the PIN becomes invalid.`}
-PIN codes must not be shared. Misuse may result in access being revoked.
+  ? `CAMPING PASS: Provides a multi-use entry PIN valid until 10:00 AM on your departure day. Keep this email available as proof of camping entitlement. Access is valid only for the dates specified at purchase.`
+  : `DAY PASS: Provides single-use entry through the Boat Club gate. Once used, the PIN becomes invalid and cannot be reused. Access is valid only for the date of issue.`}
+
+GATE ACCESS: Enter your PIN followed by # at the keypad. PIN codes must not be shared with unauthorised persons. Misuse may result in access being revoked without refund.
+
+MONITORING: All gate access interactions and pass usage may be logged and monitored for security, compliance, and operational purposes.
+
+COMPLIANCE: All visitors must comply with Griffith Boat Club rules, local regulations, and directions from staff. The Club reserves the right to deny or revoke access for misuse, breach of conditions, or inappropriate behaviour.
 
 RISK & LIABILITY: Entry to and use of Griffith Boat Club facilities is at the visitor's own risk. To the extent permitted by law, Griffith Boat Club is not liable for any loss, damage, injury, or death. This includes risks from vehicle movement, water/boating activities, environmental conditions, camping, and shared facilities. Visitors are responsible for their own safety and accompanying guests, vehicles, vessels, and equipment.
 
-ACCESS TECHNOLOGY: Access services are provided by Zezamii, who provides technology only and does not operate the facilities. Zezamii is not liable for access system issues.
+ACCESS TECHNOLOGY (ZEZAMII): Access services are provided by Zezamii, who provides technology only and does not own, operate, or supervise the facilities. Access may be affected by outages or disruptions. Zezamii is not liable for any loss arising from access system issues.
 
-Contact: (02) 6963 4847 or griffithboatclub@gmail.com
-Full terms: https://zezamiipassprd1.vercel.app/terms` : ""
+CONTACT: (02) 6963 4847 or griffithboatclub@gmail.com
+FULL TERMS: https://zezamiipassprd1.vercel.app/terms` : ""
 
   if (!data.pin) {
     return `${orgName} - ${passTypeName}
@@ -84,16 +94,29 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
   // Griffith Boat Club specific terms and conditions
   const gbcTerms = isGriffithBoatClub ? `
     <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 12px; color: #6b7280; line-height: 1.6;">
-      <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #374151;">Terms & Conditions Summary</h3>
+      <h3 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #374151;">Terms & Conditions</h3>
+      
+      <p style="margin: 0 0 10px 0;"><strong>General:</strong> By purchasing and using this pass, you agree to comply with these Terms and Conditions, all Griffith Boat Club rules, signage, and staff directions.</p>
+      
+      <p style="margin: 0 0 10px 0;"><strong>Payment & Pass:</strong> All passes must be paid for in full prior to entry. Passes are non-transferable and non-refundable unless required by law.</p>
+      
       ${isCamping ? `
-      <p style="margin: 0 0 8px 0;"><strong>Camping Pass:</strong> Provides a multi-use entry PIN valid until 10:00 AM on your departure day. Keep this email available as proof of camping entitlement.</p>
+      <p style="margin: 0 0 10px 0;"><strong>Camping Pass:</strong> Provides a multi-use entry PIN valid until 10:00 AM on your departure day. Keep this email available as proof of camping entitlement. Access is valid only for the dates specified at purchase.</p>
       ` : `
-      <p style="margin: 0 0 8px 0;"><strong>Day Pass:</strong> Single-use entry through the Boat Club gate. Once used, the PIN becomes invalid.</p>
+      <p style="margin: 0 0 10px 0;"><strong>Day Pass:</strong> Provides single-use entry through the Boat Club gate. Once used, the PIN becomes invalid and cannot be reused. Access is valid only for the date of issue.</p>
       `}
-      <p style="margin: 0 0 8px 0;">PIN codes must not be shared. Misuse may result in access being revoked without refund.</p>
-      <p style="margin: 0 0 8px 0;"><strong>Risk & Liability:</strong> Entry to and use of Griffith Boat Club facilities is at the visitor's own risk. To the extent permitted by law, Griffith Boat Club is not liable for any loss, damage, injury, or death. This includes risks associated with vehicle movement, water and boating activities, environmental conditions, camping activities, and shared facilities. Visitors are responsible for their own safety and the safety of any accompanying guests, vehicles, vessels, and personal equipment.</p>
-      <p style="margin: 0 0 8px 0;"><strong>Access Technology:</strong> Access services are provided by Zezamii. Zezamii provides technology only and does not operate the facilities. Access may be affected by outages or disruptions. To the extent permitted by law, Zezamii is not liable for any loss arising from access system issues.</p>
-      <p style="margin: 0;"><strong>Contact:</strong> (02) 6963 4847 or <a href="mailto:griffithboatclub@gmail.com" style="color: #2563eb;">griffithboatclub@gmail.com</a></p>
+      
+      <p style="margin: 0 0 10px 0;"><strong>Gate Access:</strong> Enter your PIN followed by # at the keypad. PIN codes must not be shared with unauthorised persons. Misuse may result in access being revoked without refund.</p>
+      
+      <p style="margin: 0 0 10px 0;"><strong>Monitoring:</strong> All gate access interactions and pass usage may be logged and monitored for security, compliance, and operational purposes.</p>
+      
+      <p style="margin: 0 0 10px 0;"><strong>Compliance:</strong> All visitors must comply with Griffith Boat Club rules, local regulations, and directions from staff. The Club reserves the right to deny or revoke access for misuse, breach of conditions, or inappropriate behaviour.</p>
+      
+      <p style="margin: 0 0 10px 0;"><strong>Risk & Liability:</strong> Entry to and use of Griffith Boat Club facilities is at the visitor's own risk. To the extent permitted by law, Griffith Boat Club is not liable for any loss, damage, injury, or death. This includes risks from vehicle movement, water/boating activities, environmental conditions, camping, and shared facilities. Visitors are responsible for their own safety and accompanying guests, vehicles, vessels, and equipment.</p>
+      
+      <p style="margin: 0 0 10px 0;"><strong>Access Technology (Zezamii):</strong> Access services are provided by Zezamii, who provides technology only and does not own, operate, or supervise the facilities. Access may be affected by outages or disruptions. Zezamii is not liable for any loss arising from access system issues.</p>
+      
+      <p style="margin: 0 0 4px 0;"><strong>Contact:</strong> (02) 6963 4847 or <a href="mailto:griffithboatclub@gmail.com" style="color: #2563eb;">griffithboatclub@gmail.com</a></p>
       <p style="margin: 8px 0 0 0;"><a href="https://zezamiipassprd1.vercel.app/terms" style="color: #2563eb;">View full Terms and Conditions</a></p>
     </div>
   ` : ""

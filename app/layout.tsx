@@ -42,8 +42,8 @@ export const viewport: Viewport = {
   themeColor: "#0B1E3D",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
 }
 
 export default function RootLayout({
@@ -52,15 +52,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full overflow-hidden">
+    <html lang="en">
       <head>
         <link rel="icon" type="image/jpeg" sizes="192x192" href="/icon-192.jpg" />
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.jpg" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans h-full overflow-hidden antialiased`}>
-        <div className="h-screen flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-hidden">{children}</main>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+        <div className="min-h-screen flex flex-col">
+          <main className="flex-1">{children}</main>
           <PoweredByZezamii />
         </div>
         <PWAInstallPrompt />
