@@ -584,7 +584,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 </div>
                 <div className="pt-2 border-t border-[#e2e8f0]">
                   <p className="text-xs font-semibold text-[#001F3F] mb-1">Need a GST tax invoice?</p>
-                  <p className="text-xs text-[#64748b]">Click below or contact support and we&apos;ll send it to you.</p>
+                  <p className="text-xs text-[#64748b]">Contact <a href="mailto:support@zezamii.com" className="text-[#001F3F] underline">support@zezamii.com</a> and we&apos;ll send it to you.</p>
                 </div>
               </div>
 

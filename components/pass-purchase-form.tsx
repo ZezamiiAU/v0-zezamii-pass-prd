@@ -52,6 +52,7 @@ export function PassPurchaseForm({
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<"selection" | "details" | "payment">("selection")
+  const [logoError, setLogoError] = useState(false)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -144,8 +145,8 @@ export function PassPurchaseForm({
         {/* Compact Navy Banner */}
         <div className="bg-navy-banner px-4 py-3">
           <div className="max-w-md mx-auto flex items-center gap-2">
-            {organizationLogo ? (
-              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" />
+            {organizationLogo && !logoError ? (
+              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" onError={() => setLogoError(true)} />
             ) : (
               <Anchor className="w-5 h-5 text-white/80" />
             )}
@@ -190,8 +191,8 @@ export function PassPurchaseForm({
         {/* Compact Navy Banner */}
         <div className="bg-navy-banner px-4 py-3">
           <div className="max-w-md mx-auto flex items-center gap-2">
-            {organizationLogo ? (
-              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" />
+            {organizationLogo && !logoError ? (
+              <img src={organizationLogo} alt="" className="w-8 h-8 rounded-full object-cover border border-white/20" onError={() => setLogoError(true)} />
             ) : (
               <Anchor className="w-5 h-5 text-white/80" />
             )}
@@ -297,15 +298,16 @@ export function PassPurchaseForm({
       {/* Medium Hero Header */}
       <div className="bg-nautical-gradient px-4 py-6">
         <div className="max-w-md mx-auto text-center">
-          {organizationLogo ? (
+          {organizationLogo && !logoError ? (
             <img 
               src={organizationLogo} 
               alt={organizationName || "Organization logo"} 
               className="w-16 h-16 rounded-full object-cover mx-auto mb-3 border-2 border-white/20"
+              onError={() => setLogoError(true)}
             />
           ) : (
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 backdrop-blur mb-3">
-              <Anchor className="w-6 h-6 text-white" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/10 backdrop-blur mb-3">
+              <Anchor className="w-7 h-7 text-white" />
             </div>
           )}
           <h1 className="text-2xl font-bold text-white tracking-tight">{organizationName || "Access Pass"}</h1>

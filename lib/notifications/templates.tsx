@@ -261,7 +261,6 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
   <div class="wrapper">
     <div class="header">
       <h1>${orgName}</h1>
-      ${data.siteName ? `<p>${data.siteName}</p>` : ""}
     </div>
     <div class="content">
       ${pinSection}

@@ -3,7 +3,6 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Premium Lifestyle Club Palette */
   --background: #ffffff;
   --foreground: #001F3F;
   --card: #ffffff;
@@ -24,36 +23,19 @@
   --input: #e2e8f0;
   --ring: #d4af37;
   --radius: 0.75rem;
-  
-  /* Premium Brand Colors */
-  --navy: #001F3F;
-  --navy-light: #0a3d62;
-  --navy-deep: #001530;
-  --slate: #64748b;
-  --gold: #d4af37;
-  --champagne: #f5e6c8;
-  
-  /* Brand Gradient */
-  --brand-bg: #001F3F;
-  --brand-bg-2: #0a3d62;
-  --brand-accent: #d4af37;
-  
-  /* Charts (preserved) */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  
-  /* Sidebar (preserved) */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --chart-1: #f97316;
+  --chart-2: #06b6d4;
+  --chart-3: #6366f1;
+  --chart-4: #eab308;
+  --chart-5: #ec4899;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #a3a3a3;
 }
 
 .dark {
@@ -76,23 +58,22 @@
   --border: #404040;
   --input: #404040;
   --ring: #525252;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --chart-1: #3b82f6;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #a855f7;
+  --chart-5: #ef4444;
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --sidebar-ring: #525252;
 }
 
 @theme inline {
-  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -117,10 +98,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -129,25 +106,32 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50; /* Added outline-ring/50 from default */
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
   }
 }
 
-* {
-  border-color: var(--border);
+/* Custom animations */
+@keyframes enter {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
-
-body {
-  background-color: var(--background);
-  color: var(--foreground);
+@keyframes exit {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
 }
+.animate-in { animation: enter 0.2s ease-out; }
+.animate-out { animation: exit 0.2s ease-in; }
 
 /* Premium Subtle Background Gradient */
 .bg-premium-gradient {
@@ -165,19 +149,19 @@ body {
 }
 
 .bg-brand-gradient {
-  background: linear-gradient(135deg, var(--brand-bg) 0%, var(--brand-bg-2) 100%);
+  background: linear-gradient(135deg, #001F3F 0%, #0a3d62 100%);
 }
 
 .bg-brand {
-  background-color: var(--brand-bg);
+  background-color: #001F3F;
 }
 
 .text-brand {
-  color: var(--brand-bg);
+  color: #001F3F;
 }
 
 .border-brand {
-  border-color: var(--brand-bg);
+  border-color: #001F3F;
 }
 
 /* Premium Card */
@@ -187,7 +171,7 @@ body {
   box-shadow: 0 1px 3px rgba(0, 31, 63, 0.04), 0 4px 12px rgba(0, 31, 63, 0.04);
 }
 
-/* Glass Card - for overlay contexts */
+/* Glass Card */
 .glass-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
@@ -209,7 +193,7 @@ body {
 
 .selection-card.selected {
   border-color: #001F3F;
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 0 3px rgba(0, 31, 63, 0.1);
 }
 
 /* Digital Member Card Style */
@@ -227,20 +211,15 @@ body {
   right: -50%;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
   pointer-events: none;
 }
 
-/* Ticket Style PIN Display - simplified */
+/* Ticket Style PIN Display */
 .ticket-container {
   position: relative;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
-}
-
-.ticket-divider {
-  border-top: 1.5px dashed #e2e8f0;
-  margin: 0.75rem -1rem;
 }
 
 .ticket-divider {
@@ -286,7 +265,7 @@ body {
   }
 }
 
-/* Spring Animation for Elements */
+/* Spring Animation */
 @keyframes spring-in {
   0% {
     opacity: 0;
@@ -305,21 +284,7 @@ body {
   animation: spring-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-/* Subtle gold glow for PIN */
-@keyframes gold-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(212, 175, 55, 0);
-  }
-}
-
-.animate-gold-glow {
-  animation: gold-glow 2.5s ease-in-out infinite;
-}
-
-/* Premium PIN styling - Serif for elegance */
+/* Premium PIN styling */
 .pin-display {
   font-family: 'Georgia', 'Times New Roman', serif;
   letter-spacing: 0.15em;
@@ -337,15 +302,4 @@ body {
 
 .btn-premium:active {
   transform: scale(0.95);
-}
-
-/* Gold accent button */
-.btn-gold {
-  background: linear-gradient(135deg, #d4af37 0%, #c9a227 100%);
-  color: #001F3F;
-  font-weight: 600;
-}
-
-.btn-gold:hover {
-  background: linear-gradient(135deg, #c9a227 0%, #b8941f 100%);
 }

@@ -111,18 +111,35 @@ export default function DevicePassPage() {
     return (
       <main className="min-h-screen bg-[#002147] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
+          {/* Access Pass Header */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <img src="/zezamii-logo.png" alt="Zezamii" className="w-8 h-8 rounded-lg" />
+            <span className="text-white font-semibold text-lg">Access Pass</span>
+          </div>
+
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             {/* Hero Image */}
             <div className="w-full h-40 relative">
               <Image src="/images/image.png" alt={accessPointData.siteName} fill className="object-cover" priority />
             </div>
 
-            <div className="p-6 pb-6 space-y-4">
-              <div className="text-center space-y-1">
+            <div className="p-6 pb-6 space-y-5">
+              {/* Organization Name & Logo */}
+              <div className="text-center space-y-4">
                 <h1 className="text-2xl font-bold text-[#002147]">{accessPointData.organizationName}</h1>
-                <p className="text-base text-gray-600">{accessPointData.siteName}</p>
+                {accessPointData.organizationLogo && !logoError && (
+                  <div className="flex justify-center pt-1">
+                    <img
+                      src={accessPointData.organizationLogo}
+                      alt={accessPointData.organizationName}
+                      className="h-24 w-auto"
+                      onError={handleLogoError}
+                    />
+                  </div>
+                )}
               </div>
 
+              {/* Pass Types */}
               {passTypes.length > 0 ? (
                 <div className="space-y-3">
                   {passTypes.map((passType) => (
@@ -149,21 +166,11 @@ export default function DevicePassPage() {
                 </div>
               )}
 
-              {accessPointData.organizationLogo && !logoError && (
-                <div className="flex justify-center py-2">
-                  <img
-                    src={accessPointData.organizationLogo}
-                    alt={accessPointData.organizationName}
-                    className="h-28 w-auto"
-                    onError={handleLogoError}
-                  />
-                </div>
-              )}
-
-              <div className="pt-2">
+              {/* Buy Button */}
+              <div className="pt-3">
                 <Button
                   onClick={() => setShowPurchaseForm(true)}
-                  className="w-full h-14 text-lg font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="w-full h-12 text-base font-bold uppercase bg-[#002147] hover:bg-[#003366] text-white shadow-lg hover:shadow-xl transition-all duration-300"
                   size="lg"
                 >
                   Buy Pass
