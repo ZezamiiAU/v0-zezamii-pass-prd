@@ -139,11 +139,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Organisation configuration error" }, { status: 500, headers: corsHeaders })
     }
 
-    // Normalize timezone - handle invalid formats stored in database
     function normalizeTimezone(tz: string | null): string {
       if (!tz) return "Australia/Sydney"
-      
-      // Map of common invalid/shorthand formats to valid IANA timezones
+
       const timezoneMap: Record<string, string> = {
         "Sydney/Brisbane": "Australia/Brisbane",
         "Brisbane": "Australia/Brisbane",
@@ -158,13 +156,9 @@ export async function POST(request: NextRequest) {
         "AWST": "Australia/Perth",
         "ACST": "Australia/Adelaide",
       }
-      
-      // Check if it's in our mapping
-      if (timezoneMap[tz]) {
-        return timezoneMap[tz]
-      }
-      
-      // Check if it's already a valid IANA timezone by trying to use it
+
+      if (timezoneMap[tz]) return timezoneMap[tz]
+
       try {
         Intl.DateTimeFormat(undefined, { timeZone: tz })
         return tz
@@ -182,9 +176,7 @@ export async function POST(request: NextRequest) {
     const passCode = passType.code?.toLowerCase()
     const isCampingPass = passCode === "camping" || passType.name?.toLowerCase().includes("camping")
 
-    // Helper to create a date at a specific local time in the org's timezone
     function createDateInTimezone(baseDate: Date, hours: number, minutes: number, seconds: number, ms: number): Date {
-      // Format the target date in the org's timezone to get the correct day
       const dateFormatter = new Intl.DateTimeFormat("en-CA", {
         timeZone: orgTimezone,
         year: "numeric",
@@ -192,32 +184,23 @@ export async function POST(request: NextRequest) {
         day: "2-digit",
       })
       const dateParts = dateFormatter.format(baseDate)
-      // Create ISO string for the target time in the org's timezone
       const targetTimeStr = `${dateParts}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(ms).padStart(3, "0")}`
-      
-      // Parse in the org's timezone by creating a date and adjusting
       const targetDate = new Date(targetTimeStr)
-      
-      // Get the offset for the org's timezone at that time
       const localTimeStr = targetDate.toLocaleString("en-US", { timeZone: orgTimezone })
       const localDate = new Date(localTimeStr)
       const utcTimeStr = targetDate.toLocaleString("en-US", { timeZone: "UTC" })
       const utcDate = new Date(utcTimeStr)
       const offsetMs = localDate.getTime() - utcDate.getTime()
-      
-      // Return the UTC time that corresponds to the local time in org's timezone
       return new Date(targetDate.getTime() - offsetMs)
     }
 
     let validTo: Date
     if (isCampingPass) {
-      // Camping pass: ends at 10:00 AM on the LAST day of the booking in org's timezone
       const lastDay = new Date(now)
       lastDay.setDate(lastDay.getDate() + numberOfDays - 1)
-      validTo = createDateInTimezone(lastDay, 10, 0, 0, 0)
+      validTo = createDateInTimezone(lastDay, 10, 0, 0, 0) // 10:00 AM checkout
     } else {
-      // Day pass: ends at 11:59 PM same day in org's timezone
-      validTo = createDateInTimezone(now, 23, 59, 59, 999)
+      validTo = createDateInTimezone(now, 23, 59, 59, 999) // End of day
     }
 
     const pass = await createPass({

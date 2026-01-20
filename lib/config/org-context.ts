@@ -135,17 +135,12 @@ export async function getOrgContextFromSlug(slug: string): Promise<OrgContext | 
   try {
     const { data, error } = await supabase.from("devices").select("*").eq("slug", slug).eq("status", "active").single()
 
-    if (error) {
-      // Check if error is due to missing column (migration not run)
-      if (error.message?.includes("does not exist") || error.code === "42703") {
-        logger.error("[OrgContext] Slug columns do not exist. Please run migration 010_merge_slugs_into_devices.sql")
+    if (error || !data) {
+      if (error?.message?.includes("does not exist") || error?.code === "42703") {
+        logger.error("[OrgContext] Slug columns do not exist - run migration 010_merge_slugs_into_devices.sql")
         return null
       }
-      logger.warn({ slug, error: error.message }, "[OrgContext] Failed to get org context from slug")
-      return null
-    }
-
-    if (!data) {
+      logger.warn({ slug, error: error?.message }, "[OrgContext] Failed to get org context from slug")
       return null
     }
 

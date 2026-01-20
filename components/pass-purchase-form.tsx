@@ -132,7 +132,6 @@ export function PassPurchaseForm({
       }
       setIsLoading(false)
     } catch (error) {
-      console.error("Payment intent error:", error)
       setError(error instanceof Error ? error.message : "Something went wrong. Please try again.")
       setIsLoading(false)
     }
