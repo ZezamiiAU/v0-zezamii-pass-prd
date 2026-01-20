@@ -380,10 +380,19 @@ export function PassPurchaseForm({
             type="button"
             onClick={handleContinueToDetails}
             disabled={!selectedPassTypeId || (isMultiDayPass && numberOfDays === 0)}
-            className="w-full h-11 rounded-xl text-sm font-semibold btn-gold btn-premium disabled:opacity-50"
+            className="w-full h-11 rounded-xl text-sm font-semibold bg-[#001F3F] text-white btn-premium disabled:opacity-50"
           >
-            Continue
+            BUY PASS
           </Button>
+
+          {/* Receipt & Tax Invoice Info */}
+          <div className="mt-4 pt-4 border-t border-[#e2e8f0]">
+            <p className="text-xs font-semibold text-[#001F3F] mb-1">Receipt & tax invoice</p>
+            <p className="text-xs text-[#64748b] leading-relaxed">
+              A payment receipt will be emailed to you after purchase.
+              Need a GST tax invoice? You can request one after checkout.
+            </p>
+          </div>
         </div>
       </div>
     </div>

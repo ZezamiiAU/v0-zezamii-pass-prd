@@ -572,6 +572,22 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 )}
               </div>
 
+              {/* Confirmation Info */}
+              <div className="bg-[#f8fafc] rounded-xl p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#22c55e] mt-0.5 shrink-0" />
+                  <p className="text-xs text-[#64748b]">Your access details have been sent to your email/SMS.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#22c55e] mt-0.5 shrink-0" />
+                  <p className="text-xs text-[#64748b]">A payment receipt has been emailed to you.</p>
+                </div>
+                <div className="pt-2 border-t border-[#e2e8f0]">
+                  <p className="text-xs font-semibold text-[#001F3F] mb-1">Need a GST tax invoice?</p>
+                  <p className="text-xs text-[#64748b]">Click below or contact support and we&apos;ll send it to you.</p>
+                </div>
+              </div>
+
               <Button
                 className="w-full h-10 rounded-xl text-sm font-semibold bg-[#001F3F] text-white btn-premium"
                 onClick={() => {
