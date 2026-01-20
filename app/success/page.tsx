@@ -6,7 +6,7 @@ import { sessionQuerySchema } from "@/lib/schemas/api.schema"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, Anchor, CheckCircle2 } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, Anchor, CheckCircle2, ShieldCheck } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS) || 20
@@ -42,13 +42,13 @@ function extractErrorMessage(errorData: any): string {
 function CircularLoader() {
   return (
     <div className="circular-loader mx-auto">
-      <svg viewBox="0 0 50 50" className="w-16 h-16">
+      <svg viewBox="0 0 50 50" className="w-14 h-14">
         <circle
           cx="25"
           cy="25"
           r="20"
           fill="none"
-          strokeWidth="4"
+          strokeWidth="3"
           stroke="#001F3F"
           strokeLinecap="round"
         />
@@ -399,46 +399,62 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
   const countdownProgress = ((COUNTDOWN_SECONDS - countdown) / COUNTDOWN_SECONDS) * 100
 
   return (
-    <div className="min-h-screen bg-nautical-gradient overflow-y-auto">
-      <div className="px-4 py-4">
-        {/* Header */}
-        <div className="text-center mb-4">
-          {displayedCode ? (
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white mb-3 animate-spring-in">
-              <CheckCircle2 className="w-6 h-6 text-[#001F3F]" />
-            </div>
-          ) : (
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 backdrop-blur mb-3">
-              <Anchor className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-premium-gradient overflow-y-auto">
+      {/* Compact Navy Banner */}
+      <div className="bg-navy-banner px-4 py-3">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Anchor className="w-5 h-5 text-white/80" />
+            <span className="font-semibold text-white text-sm">Access Pass</span>
+          </div>
+          {displayedCode && (
+            <div className="flex items-center gap-1 text-[#d4af37]">
+              <ShieldCheck className="w-4 h-4" />
+              <span className="text-xs font-medium">Verified</span>
             </div>
           )}
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            {isValid ? (displayedCode ? "Payment Successful!" : "Processing...") : "Invalid Payment"}
+        </div>
+      </div>
+
+      <div className="px-4 py-4">
+        {/* Status Header */}
+        <div className="text-center mb-4">
+          {displayedCode ? (
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#f0fdf4] mb-2 animate-spring-in">
+              <CheckCircle2 className="w-5 h-5 text-[#22c55e]" />
+            </div>
+          ) : (
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#f8fafc] mb-2">
+              <Anchor className="w-5 h-5 text-[#001F3F]" />
+            </div>
+          )}
+          <h1 className="text-lg font-bold text-[#001F3F] tracking-tight">
+            {isValid ? (displayedCode ? "Payment Successful" : "Processing...") : "Invalid Payment"}
           </h1>
-          <p className="text-sky-200 text-sm">
-            {displayedCode ? "Your pass is ready" : "Your pass is being created"}
+          <p className="text-[#64748b] text-sm">
+            {displayedCode ? "Your digital pass is ready" : "Creating your access pass"}
           </p>
         </div>
 
-        {/* Main Glass Card */}
-        <div className="glass-card rounded-2xl p-4 max-w-md mx-auto animate-spring-in">
+        {/* Main Card */}
+        <div className="premium-card rounded-xl p-4 max-w-md mx-auto">
           
           {/* Loading State with Circular Loader */}
           {isWaitingForRooms && countdown > 0 && !displayedCode && (
-            <div className="text-center py-4">
-              <div className="relative inline-block mb-4">
+            <div className="text-center py-3">
+              <div className="relative w-14 h-14 mx-auto mb-3">
                 <CircularLoader />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl font-bold text-[#001F3F]">{countdown}</span>
+                  <span className="text-lg font-bold text-[#001F3F]">{countdown}</span>
                 </div>
               </div>
-              <p className="text-base font-semibold text-[#001F3F]">Generating your PIN...</p>
-              <p className="text-sm text-muted-foreground">Connecting to access system</p>
+              <p className="text-sm font-semibold text-[#001F3F]">Generating your PIN...</p>
+              <p className="text-xs text-[#64748b]">Connecting to access system</p>
               
               {/* Progress bar */}
-              <div className="mt-4 h-1 bg-[#e2e8f0] rounded-full overflow-hidden">
+              <div className="mt-3 h-1 bg-[#e2e8f0] rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-[#001F3F] rounded-full transition-all duration-1000 ease-linear"
+                  className="h-full bg-[#d4af37] rounded-full transition-all duration-1000 ease-linear"
                   style={{ width: `${countdownProgress}%` }}
                 />
               </div>
@@ -447,9 +463,9 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
 
           {/* Fallback Loading */}
           {isLoading && !displayedCode && (!isWaitingForRooms || countdown <= 0) && (
-            <div className="text-center py-4">
+            <div className="text-center py-3">
               <CircularLoader />
-              <p className="mt-3 text-muted-foreground">Loading your pass...</p>
+              <p className="mt-2 text-sm text-[#64748b]">Loading your pass...</p>
             </div>
           )}
 
@@ -457,31 +473,35 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
           {error && !displayedCode && (
             <Alert variant="destructive" className="rounded-xl border-red-200 bg-red-50">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <AlertDescription className="text-red-700 text-sm">{error}</AlertDescription>
+              <AlertDescription className="text-red-700 text-xs">{error}</AlertDescription>
             </Alert>
           )}
 
-          {/* PIN Display - Ticket Style */}
+          {/* PIN Display - Digital Member Card */}
           {displayedCode && (
             <div className="animate-spring-in">
-              <div className="ticket-container rounded-2xl p-4 mb-4">
-                <div className="text-center">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Your Access PIN</p>
-                  <p className="pin-display text-5xl font-bold text-[#001F3F] animate-pulse-glow inline-block px-3 py-1 rounded-xl bg-[#f8fafc]">
+              <div className="member-card rounded-xl p-4 mb-4">
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-medium text-white/60 uppercase tracking-wider">Access PIN</p>
+                    <div className="flex items-center gap-1 text-[#d4af37]">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">Verified</span>
+                    </div>
+                  </div>
+                  <p className="pin-display text-5xl text-white animate-gold-glow inline-block">
                     {displayedCode}
                   </p>
                   {pinSource === "backup" && (
-                    <p className="text-xs text-orange-600 mt-2 font-medium">Backup Code</p>
+                    <p className="text-xs text-[#d4af37] mt-2 font-medium">Backup Code</p>
                   )}
                 </div>
-                
-                <div className="ticket-divider" />
-                
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-[#001F3F] bg-[#fef9c3] border border-[#fde047] rounded-xl px-3 py-2">
-                    Enter PIN followed by <span className="text-lg font-bold">#</span>
-                  </p>
-                </div>
+              </div>
+              
+              <div className="bg-[#fef9c3] border border-[#fde047] rounded-xl px-3 py-2 mb-4">
+                <p className="text-xs font-semibold text-[#001F3F] text-center">
+                  Enter PIN followed by <span className="text-base font-bold">#</span> at keypad
+                </p>
               </div>
             </div>
           )}
@@ -493,84 +513,74 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 <Alert className="border-orange-300 bg-orange-50 rounded-xl">
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
                   <AlertDescription className="text-orange-700 text-xs">
-                    Your pass is active but we couldn&apos;t retrieve your PIN. Please contact {supportEmail}.
+                    Your pass is active but we couldn&apos;t retrieve your PIN. Contact {supportEmail}.
                   </AlertDescription>
                 </Alert>
               )}
 
-              {/* Pass Info Grid */}
-              <div className="bg-[#f8fafc] rounded-xl p-3 space-y-0">
-                <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
-                  <span className="text-xs text-muted-foreground">Access Point</span>
-                  <span className="text-sm font-semibold text-[#001F3F]">{passDetails.accessPointName}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
-                  <span className="text-xs text-muted-foreground">Pass Type</span>
-                  <span className="text-sm font-semibold text-[#001F3F]">{passDetails.passType}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-[#e2e8f0]">
-                  <span className="text-xs text-muted-foreground">Valid From</span>
-                  <span className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-xs text-muted-foreground">Valid Until</span>
-                  <span className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</span>
-                </div>
-                {passDetails.vehiclePlate && (
-                  <div className="flex justify-between items-center py-2 border-t border-[#e2e8f0]">
-                    <span className="text-xs text-muted-foreground">Vehicle</span>
-                    <span className="text-sm font-medium text-[#001F3F]">{passDetails.vehiclePlate}</span>
+              {/* Pass Info Grid - Compact */}
+              <div className="bg-[#f8fafc] rounded-xl p-3">
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                  <div>
+                    <p className="text-xs text-[#64748b]">Access Point</p>
+                    <p className="text-sm font-semibold text-[#001F3F]">{passDetails.accessPointName}</p>
                   </div>
-                )}
+                  <div>
+                    <p className="text-xs text-[#64748b]">Pass Type</p>
+                    <p className="text-sm font-semibold text-[#001F3F]">{passDetails.passType}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#64748b]">Valid From</p>
+                    <p className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_from, passDetails.timezone)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#64748b]">Valid Until</p>
+                    <p className="text-sm font-medium text-[#001F3F]">{formatDateTime(passDetails.valid_to, passDetails.timezone)}</p>
+                  </div>
+                  {passDetails.vehiclePlate && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-[#64748b]">Vehicle</p>
+                      <p className="text-sm font-medium text-[#001F3F]">{passDetails.vehiclePlate}</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Instructions */}
-              <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-xl p-3">
-                <p className="text-xs text-[#1e40af] leading-relaxed">
-                  <strong>Instructions:</strong>{" "}
-                  {displayedCode
-                    ? `Enter PIN followed by # at ${passDetails.accessPointName}. Valid until ${formatDateTime(passDetails.valid_to, passDetails.timezone)}.`
-                    : isWaitingForRooms
-                      ? "Retrieving your PIN..."
-                      : `Your pass is active. Contact ${supportEmail} for your PIN.`}
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-2 pt-1">
+              {/* Action Buttons - Compact */}
+              <div className="flex gap-2">
                 {displayedCode && (
                   <Button 
                     variant="outline" 
                     onClick={handleShareSMS} 
-                    className="w-full h-10 rounded-xl text-sm border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
+                    className="flex-1 h-10 rounded-xl text-xs border-[#e2e8f0] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent btn-premium"
                   >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Share via SMS
+                    <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                    Share
                   </Button>
                 )}
 
                 {walletEnabled && displayedCode && googleWalletUrl && (
-                  <a href={googleWalletUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <a href={googleWalletUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
                     <Button 
                       variant="outline" 
-                      className="w-full h-10 rounded-xl text-sm border-[#001F3F] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent"
+                      className="w-full h-10 rounded-xl text-xs border-[#e2e8f0] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent btn-premium"
                     >
-                      <img src="/add-to-google-wallet.svg" alt="" className="h-4 mr-2" />
-                      Add to Google Wallet
+                      <img src="/add-to-google-wallet.svg" alt="" className="h-3.5 mr-1.5" />
+                      Wallet
                     </Button>
                   </a>
                 )}
-
-                <Button
-                  className="w-full h-11 rounded-xl text-sm font-semibold bg-[#001F3F] text-white hover:bg-[#0a3d62]"
-                  onClick={() => {
-                    const url = passDetails?.returnUrl || "/"
-                    window.location.replace(`${url}?t=${Date.now()}`)
-                  }}
-                >
-                  Done
-                </Button>
               </div>
+
+              <Button
+                className="w-full h-10 rounded-xl text-sm font-semibold bg-[#001F3F] text-white btn-premium"
+                onClick={() => {
+                  const url = passDetails?.returnUrl || "/"
+                  window.location.replace(`${url}?t=${Date.now()}`)
+                }}
+              >
+                Done
+              </Button>
             </div>
           )}
 
