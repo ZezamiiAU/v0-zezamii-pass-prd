@@ -138,24 +138,28 @@ export function PassPurchaseForm({
     }
   }
 
-  // Payment Step - Compact Banner
+  // Payment Step - Fixed Utility Bar
   if (clientSecret && step === "payment") {
     return (
       <div className="min-h-screen bg-premium-gradient">
-        {/* Compact Navy Banner */}
-        <div className="bg-navy-banner px-4 py-3">
-          <div className="max-w-md mx-auto flex items-center gap-2">
+        {/* Fixed Top Utility Bar - 48px */}
+        <div className="fixed top-0 left-0 right-0 h-12 bg-[#020617] flex items-center justify-between px-4 z-50">
+          <div className="flex items-center gap-2">
+            <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
+            <span className="text-white font-semibold text-[11px] uppercase tracking-widest">Zezamii Pass</span>
+          </div>
+          <div className="flex items-center gap-2">
             <img 
               src={organizationLogo && !logoError ? organizationLogo : "/images/griffith-boat-club-logo.png"} 
               alt="" 
-              className="w-8 h-8 rounded-full object-cover border border-white/20 bg-white" 
+              className="w-7 h-7 rounded-full object-cover border border-white/20 bg-white" 
               onError={() => setLogoError(true)} 
             />
-            <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
+            <span className="font-medium text-white text-xs">{organizationName}</span>
           </div>
         </div>
 
-        <div className="px-4 py-4">
+        <div className="pt-14 px-4 py-2">
           <div className="premium-card rounded-xl p-4 max-w-md mx-auto">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-6 h-6 rounded-full bg-[#001F3F] flex items-center justify-center">
@@ -188,24 +192,28 @@ export function PassPurchaseForm({
     )
   }
 
-  // Details Step - Compact Banner
+  // Details Step - Fixed Utility Bar
   if (step === "details") {
     return (
       <div className="min-h-screen bg-premium-gradient">
-        {/* Compact Navy Banner */}
-        <div className="bg-navy-banner px-4 py-3">
-          <div className="max-w-md mx-auto flex items-center gap-2">
+        {/* Fixed Top Utility Bar - 48px */}
+        <div className="fixed top-0 left-0 right-0 h-12 bg-[#020617] flex items-center justify-between px-4 z-50">
+          <div className="flex items-center gap-2">
+            <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
+            <span className="text-white font-semibold text-[11px] uppercase tracking-widest">Zezamii Pass</span>
+          </div>
+          <div className="flex items-center gap-2">
             <img 
               src={organizationLogo && !logoError ? organizationLogo : "/images/griffith-boat-club-logo.png"} 
               alt="" 
-              className="w-8 h-8 rounded-full object-cover border border-white/20 bg-white" 
+              className="w-7 h-7 rounded-full object-cover border border-white/20 bg-white" 
               onError={() => setLogoError(true)} 
             />
-            <span className="font-semibold text-white text-sm">{organizationName || "Access Pass"}</span>
+            <span className="font-medium text-white text-xs">{organizationName}</span>
           </div>
         </div>
 
-        <div className="px-4 py-4">
+        <div className="pt-14 px-4 py-2">
           <div className="premium-card rounded-xl p-4 max-w-md mx-auto">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-6 h-6 rounded-full bg-[#001F3F] flex items-center justify-center">
@@ -297,11 +305,19 @@ export function PassPurchaseForm({
     )
   }
 
-  // Selection Step - Hero Header
+  // Selection Step - Fixed Utility Bar with Hero
   return (
     <div className="min-h-screen bg-premium-gradient">
-      {/* Medium Hero Header */}
-      <div className="bg-nautical-gradient px-4 py-6">
+      {/* Fixed Top Utility Bar - 48px */}
+      <div className="fixed top-0 left-0 right-0 h-12 bg-[#020617] flex items-center px-4 z-50">
+        <div className="flex items-center gap-2">
+          <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
+          <span className="text-white font-semibold text-[11px] uppercase tracking-widest">Zezamii Pass</span>
+        </div>
+      </div>
+
+      {/* Hero Header with org branding */}
+      <div className="pt-12 bg-nautical-gradient px-4 py-6">
         <div className="max-w-md mx-auto text-center">
           <img 
             src={organizationLogo && !logoError ? organizationLogo : "/images/griffith-boat-club-logo.png"} 
@@ -309,11 +325,11 @@ export function PassPurchaseForm({
             className="w-16 h-16 rounded-full object-cover mx-auto mb-3 border-2 border-white/20 bg-white"
             onError={() => setLogoError(true)}
           />
-          <h1 className="text-2xl font-bold text-white tracking-tight">{organizationName || "Access Pass"}</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{organizationName || "Zezamii Pass"}</h1>
         </div>
       </div>
 
-      <div className="px-4 py-4 -mt-4">
+      <div className="px-4 py-2 -mt-4">
         <div className="premium-card rounded-xl p-4 max-w-md mx-auto">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-6 h-6 rounded-full bg-[#001F3F] flex items-center justify-center">

@@ -97,13 +97,13 @@ export async function GET(req: NextRequest) {
       cardTitle: {
         defaultValue: {
           language: "en-US",
-          value: "Access Pass",
+          value: "Zezamii Pass",
         },
       },
       header: {
         defaultValue: {
           language: "en-US",
-          value: "Your Access PIN",
+          value: "Your Zezamii PIN",
         },
       },
       heroImage: {

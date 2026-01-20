@@ -21,7 +21,7 @@ export async function sendPassNotifications(
       emailProvider
         .send({
           to: email,
-          subject: `Your Access Pass - PIN: ${data.pin}`,
+          subject: `Your Zezamii Pass - PIN: ${data.pin}`,
           body: textBody,
           html: htmlBody,
         })

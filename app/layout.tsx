@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
 })
 
-const appTitle = process.env.NEXT_PUBLIC_APP_TITLE || "Access Pass"
+const appTitle = process.env.NEXT_PUBLIC_APP_TITLE || "Zezamii Pass"
 const appDescription = process.env.NEXT_PUBLIC_APP_DESCRIPTION || "Quick and easy day pass purchase"
 
 export const metadata: Metadata = {

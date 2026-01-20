@@ -37,14 +37,14 @@ export async function getBrandingConfig(orgId?: string, siteId?: string): Promis
         organizationName: org.name,
         organizationLogo: org.logo_url,
         siteName: site.name,
-        appTitle: `${org.name} Access Pass`,
+        appTitle: `${org.name} Zezamii Pass`,
         appDescription: `Quick and easy pass purchase for ${site.name}`,
         appShortName: `${org.name} Pass`,
         supportEmail: org.support_email || process.env.SUPPORT_EMAIL || "",
         footerBranding: `Powered by ${org.name}`,
-        pwaInstallTitle: `Install ${org.name} Access Pass`,
+        pwaInstallTitle: `Install ${org.name} Zezamii Pass`,
         pwaInstallDescription: `Add ${site.name} to your home screen for quick access`,
-        manifestName: `${org.name} Access Pass`,
+        manifestName: `${org.name} Zezamii Pass`,
         manifestShortName: `${org.name}`,
         manifestDescription: `Access pass for ${site.name}`,
       }
@@ -52,7 +52,7 @@ export async function getBrandingConfig(orgId?: string, siteId?: string): Promis
   }
 
   // Fallback to environment variables or defaults
-  const defaultOrgName = process.env.NEXT_PUBLIC_DEFAULT_ORG_NAME || "Access Pass"
+  const defaultOrgName = process.env.NEXT_PUBLIC_DEFAULT_ORG_NAME || "Zezamii Pass"
   const defaultSiteName = process.env.NEXT_PUBLIC_DEFAULT_SITE_NAME || "Site"
 
   return {
@@ -64,9 +64,9 @@ export async function getBrandingConfig(orgId?: string, siteId?: string): Promis
     appShortName: "Pass",
     supportEmail: process.env.SUPPORT_EMAIL || "",
     footerBranding: "Powered by Zezamii",
-    pwaInstallTitle: "Install Access Pass",
+    pwaInstallTitle: "Install Zezamii Pass",
     pwaInstallDescription: "Add to your home screen for quick access and offline support",
-    manifestName: "Access Pass",
+    manifestName: "Zezamii Pass",
     manifestShortName: "Pass",
     manifestDescription: "Quick and easy day pass purchase",
   }
@@ -77,8 +77,8 @@ export async function getBrandingConfig(orgId?: string, siteId?: string): Promis
  */
 export function getClientBrandingDefaults(): Pick<BrandingConfig, "organizationName" | "siteName" | "appTitle"> {
   return {
-    organizationName: process.env.NEXT_PUBLIC_DEFAULT_ORG_NAME || "Access Pass",
+    organizationName: process.env.NEXT_PUBLIC_DEFAULT_ORG_NAME || "Zezamii Pass",
     siteName: process.env.NEXT_PUBLIC_DEFAULT_SITE_NAME || "Your Site",
-    appTitle: process.env.NEXT_PUBLIC_APP_TITLE || "Access Pass",
+    appTitle: process.env.NEXT_PUBLIC_APP_TITLE || "Zezamii Pass",
   }
 }

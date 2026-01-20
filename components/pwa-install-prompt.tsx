@@ -8,10 +8,10 @@ import { X, Download } from "lucide-react"
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [showPrompt, setShowPrompt] = useState(false)
-  const [appTitle, setAppTitle] = useState("Access Pass")
+  const [appTitle, setAppTitle] = useState("Zezamii Pass")
 
   useEffect(() => {
-    const title = process.env.NEXT_PUBLIC_APP_TITLE || "Access Pass"
+    const title = process.env.NEXT_PUBLIC_APP_TITLE || "Zezamii Pass"
     setAppTitle(title)
 
     const handler = (e: Event) => {

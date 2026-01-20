@@ -376,7 +376,7 @@ export default function SuccessPage() {
     const isCampingPass = passDetails.passType?.toLowerCase().includes("camping")
     const validUntilTime = isCampingPass ? "10:00 AM" : "11:59 PM"
 
-    const message = `Your Access Pass:
+    const message = `Your Zezamii Pass:
 Access Point: ${passDetails.accessPointName}
 PIN: ${displayedCode || "Contact support"}
 Valid until: ${validUntilTime} on ${validUntilDate}
@@ -400,23 +400,24 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
 
   return (
     <div className="min-h-screen bg-premium-gradient overflow-y-auto">
-      {/* Compact Navy Banner */}
-      <div className="bg-navy-banner px-4 py-3">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/images/griffith-boat-club-logo.png" alt="Griffith Boat Club" className="w-8 h-8 rounded-full bg-white border border-white/20" />
-            <span className="font-semibold text-white text-sm">Griffith Boat Club</span>
-          </div>
+      {/* Fixed Top Utility Bar - 48px */}
+      <div className="fixed top-0 left-0 right-0 h-12 bg-[#020617] flex items-center justify-between px-4 z-50">
+        <div className="flex items-center gap-2">
+          <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
+          <span className="text-white font-semibold text-[11px] uppercase tracking-widest">Zezamii Pass</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <img src="/images/griffith-boat-club-logo.png" alt="Griffith Boat Club" className="w-7 h-7 rounded-full bg-white border border-white/20" />
           {displayedCode && (
             <div className="flex items-center gap-1 text-white">
-              <ShieldCheck className="w-4 h-4" />
-              <span className="text-xs font-medium">Verified</span>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-medium">Verified</span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="pt-14 px-4 py-2">
         {/* Status Header */}
         <div className="text-center mb-4">
           {displayedCode ? (

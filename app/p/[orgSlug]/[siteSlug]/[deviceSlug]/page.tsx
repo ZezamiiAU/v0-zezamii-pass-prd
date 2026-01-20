@@ -109,13 +109,18 @@ export default function DevicePassPage() {
     }
 
     return (
-      <main className="min-h-screen bg-gradient-to-b from-[#001a3a] via-[#002147] to-[#1e3a5f] flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          {/* Glassmorphism Header Bar */}
-          <div className="flex items-center justify-center gap-4 mb-10 py-4 px-6 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 w-full">
-            <img src="/zezamii-logo.png" alt="Access" className="w-10 h-10 rounded-lg" />
-            <span className="text-white font-semibold text-2xl uppercase tracking-[0.15em]">Access Pass</span>
+      <main className="min-h-screen bg-gradient-to-b from-[#001a3a] via-[#002147] to-[#1e3a5f]">
+        {/* Fixed Top Utility Bar - 48px */}
+        <div className="fixed top-0 left-0 right-0 h-12 bg-[#020617] flex items-center px-4 z-50">
+          <div className="flex items-center gap-2">
+            <img src="/zezamii-logo.png" alt="Zezamii" className="w-6 h-6 rounded" />
+            <span className="text-white font-semibold text-[11px] uppercase tracking-widest">Zezamii Pass</span>
           </div>
+        </div>
+
+        {/* Content with top padding for fixed header + 8px gap */}
+        <div className="pt-14 px-4 pb-8 flex items-center justify-center min-h-screen">
+        <div className="w-full max-w-md">
 
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             {/* Hero Image */}
@@ -178,6 +183,7 @@ export default function DevicePassPage() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </main>
     )

@@ -12,7 +12,7 @@ export function generatePassNotificationText(data: PassNotificationData, timezon
   const validFromFormatted = formatLocalizedDateTime(data.validFrom, timezone)
   const validToFormatted = formatLocalizedDateTime(data.validTo, timezone)
   const isCamping = isCampingPass(data)
-  const orgName = data.orgName || "Access Pass"
+  const orgName = data.orgName || "Zezamii Pass"
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
   const normalizedSlugText = data.orgSlug?.toLowerCase().trim() || ""
   const normalizedOrgNameText = orgName.toLowerCase()
@@ -67,7 +67,7 @@ Your pass is valid until 11:59 PM today.`
 
   return `${orgName} - ${passTypeName}
 
-Your Access Pass is ready!
+Your Zezamii Pass is ready!
 
 Access Point: ${data.accessPointName}
 PIN: ${data.pin}
@@ -82,7 +82,7 @@ export function generatePassNotificationHTML(data: PassNotificationData, timezon
   const validFromFormatted = formatLocalizedDateTime(data.validFrom, timezone)
   const validToFormatted = formatLocalizedDateTime(data.validTo, timezone)
   const isCamping = isCampingPass(data)
-  const orgName = data.orgName || "Access Pass"
+  const orgName = data.orgName || "Zezamii Pass"
   const passTypeName = data.passTypeName || (isCamping ? "Camping Pass" : "Day Pass")
   
   // Organization-specific branding - check for griffith-boat-club (case-insensitive)
