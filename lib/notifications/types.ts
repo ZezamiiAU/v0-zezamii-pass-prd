@@ -11,7 +11,7 @@ export interface NotificationProvider {
 
 export interface PassNotificationData {
   accessPointName: string
-  pin: string
+  pin: string | null
   validFrom: string
   validTo: string
   vehiclePlate?: string
