@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     const getPartialPassMeta = async () => {
       let accessPointName = "Access Point"
       let returnUrl: string | null = null
-      const timezone = "UTC"
+      let timezone = "Australia/Sydney" // Default timezone
       
       if (pass?.device_id) {
         try {
@@ -100,12 +100,22 @@ export async function GET(request: NextRequest) {
           if (device?.site_id) {
             const { data: site } = await coreDb
               .from("sites")
-              .select("slug, org_id")
+              .select("slug, org_id, timezone")
               .eq("id", device.site_id)
               .maybeSingle()
 
+            // Use site timezone if available
+            if (site?.timezone) {
+              timezone = site.timezone
+            }
+
             if (site?.org_id) {
-              const { data: org } = await coreDb.from("organisations").select("slug").eq("id", site.org_id).maybeSingle()
+              const { data: org } = await coreDb.from("organisations").select("slug, timezone").eq("id", site.org_id).maybeSingle()
+
+              // Fall back to org timezone if site doesn't have one
+              if (!site?.timezone && org?.timezone) {
+                timezone = org.timezone
+              }
 
               if (org?.slug && site?.slug && device?.slug) {
                 returnUrl = `/p/${org.slug}/${site.slug}/${device.slug}`
@@ -345,7 +355,7 @@ export async function GET(request: NextRequest) {
     }
 
     let accessPointName = "Access Point"
-    const timezone = "UTC"
+    let timezone = "Australia/Sydney" // Default timezone
     let returnUrl: string | null = null
 
     try {
@@ -365,12 +375,22 @@ export async function GET(request: NextRequest) {
         if (device?.site_id) {
           const { data: site } = await coreDb
             .from("sites")
-            .select("slug, org_id")
+            .select("slug, org_id, timezone")
             .eq("id", device.site_id)
             .maybeSingle()
 
+          // Use site timezone if available
+          if (site?.timezone) {
+            timezone = site.timezone
+          }
+
           if (site?.org_id) {
-            const { data: org } = await coreDb.from("organisations").select("slug").eq("id", site.org_id).maybeSingle()
+            const { data: org } = await coreDb.from("organisations").select("slug, timezone").eq("id", site.org_id).maybeSingle()
+
+            // Fall back to org timezone if site doesn't have one
+            if (!site?.timezone && org?.timezone) {
+              timezone = org.timezone
+            }
 
             if (org?.slug && site?.slug && device?.slug) {
               returnUrl = `/p/${org.slug}/${site.slug}/${device.slug}`

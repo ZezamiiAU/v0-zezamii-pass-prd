@@ -216,6 +216,11 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
             validFrom: startsAt,
             validTo: endsAt,
             vehiclePlate: meta.data.customer_plate,
+            orgName: org.name,
+            orgSlug: org.slug,
+            passType: meta.data.variant || "day",
+            passTypeName: meta.data.pass_type_name || (meta.data.variant?.toLowerCase().includes("camping") ? "Camping Pass" : "Day Pass"),
+            numberOfDays: meta.data.number_of_days ? Number.parseInt(meta.data.number_of_days, 10) : 1,
           },
           timezone,
         )
