@@ -5,7 +5,7 @@ import { formatLocalizedDateTime } from "@/lib/timezone"
 function isCampingPass(data: PassNotificationData): boolean {
   const passType = data.passType?.toLowerCase() || ""
   const passTypeName = data.passTypeName?.toLowerCase() || ""
-  return passType === "camping" || passTypeName.includes("camping") || (data.numberOfDays && data.numberOfDays > 1)
+  return passType === "camping" || passTypeName.includes("camping") || (data.numberOfDays !== undefined && data.numberOfDays > 1)
 }
 
 export function generatePassNotificationText(data: PassNotificationData, timezone: string): string {
