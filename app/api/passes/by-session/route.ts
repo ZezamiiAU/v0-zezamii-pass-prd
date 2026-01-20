@@ -55,15 +55,18 @@ export async function GET(request: NextRequest) {
     const payment = result
     const pass = payment.pass
 
+    // Extract backup code from Stripe payment intent metadata (NOT our database)
     let backupCodeFromMeta: string | null = null
     try {
+      // First try our database metadata
       if (payment.metadata && typeof payment.metadata === "object") {
         const meta = payment.metadata as Record<string, unknown>
         if (meta.backup_pincode && typeof meta.backup_pincode === "string") {
           backupCodeFromMeta = meta.backup_pincode
         }
       }
-
+      
+      // If not in our database, fetch from Stripe (where it's actually stored)
       if (!backupCodeFromMeta && payment.stripe_payment_intent) {
         const stripePaymentIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent)
         if (stripePaymentIntent.metadata?.backup_pincode) {
@@ -75,10 +78,11 @@ export async function GET(request: NextRequest) {
       logger.warn({ error: metaError instanceof Error ? metaError.message : String(metaError) }, "[BySession] Error fetching backup code from metadata")
     }
 
+    // Helper to get partial pass metadata for error responses
     const getPartialPassMeta = async () => {
       let accessPointName = "Access Point"
       let returnUrl: string | null = null
-      let timezone = "Australia/Sydney"
+      let timezone = "Australia/Sydney" // Default timezone
       
       if (pass?.device_id) {
         try {
@@ -100,6 +104,7 @@ export async function GET(request: NextRequest) {
               .eq("id", device.site_id)
               .maybeSingle()
 
+            // Use site timezone if available
             if (site?.timezone) {
               timezone = site.timezone
             }
@@ -107,6 +112,7 @@ export async function GET(request: NextRequest) {
             if (site?.org_id) {
               const { data: org } = await coreDb.from("organisations").select("slug, timezone").eq("id", site.org_id).maybeSingle()
 
+              // Fall back to org timezone if site doesn't have one
               if (!site?.timezone && org?.timezone) {
                 timezone = org.timezone
               }
@@ -150,32 +156,39 @@ export async function GET(request: NextRequest) {
     }
 
     if (!devMode) {
+      // Auto-sync: If payment succeeded but pass is not active, activate it now
       if (pass.status !== "active" && payment.status === "succeeded") {
+        console.log("[v0] by-session: Auto-syncing pass - payment succeeded but pass not active")
         
         try {
           const passDb = createSchemaServiceClient("pass")
           const coreDb = createSchemaServiceClient("core")
           
+          // Get metadata from Stripe
           let meta: Record<string, string> = {}
           if (payment.stripe_payment_intent) {
             const stripeIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent)
             meta = stripeIntent.metadata || {}
           }
-
+          
+          // Calculate validity dates
           const numberOfDays = Number.parseInt(meta.number_of_days || "1", 10)
           const now = new Date()
           const startsAt = now.toISOString()
           const endsAt = new Date(now.getTime() + numberOfDays * 24 * 60 * 60 * 1000).toISOString()
-
+          
+          // Check if lock code already exists
           const existingLockCode = await getLockCodeByPassId(pass.id)
           
           let pinCode: string | null = null
           let pinProvider: "rooms" | "backup" = "backup"
           
           if (!existingLockCode) {
+            // Try Rooms API first - need device info for the payload
             const deviceId = pass.device_id || meta.access_point_id || meta.gate_id
             if (deviceId && meta.org_id) {
               try {
+                // Get device and site info for Rooms payload
                 const { data: device } = await coreDb
                   .from("qr_ready_devices")
                   .select("site_id, slug")
@@ -217,15 +230,18 @@ export async function GET(request: NextRequest) {
                   }
                 }
               } catch (roomsError) {
-                logger.warn({ error: roomsError instanceof Error ? roomsError.message : String(roomsError) }, "[BySession] Rooms API failed, using backup pincode")
+                console.log("[v0] by-session: Rooms API failed, using backup pincode", roomsError)
               }
             }
-
+            
+            // Fallback to backup pincode
             if (!pinCode) {
+              // First try backup code from Stripe metadata
               if (backupCodeFromMeta) {
                 pinCode = backupCodeFromMeta
                 pinProvider = "backup"
               } else if (pass.device_id) {
+                // Try to get current backup pincode for this device
                 const deviceBackupCode = await getCurrentBackupPincode(pass.device_id)
                 if (deviceBackupCode) {
                   pinCode = deviceBackupCode
@@ -233,7 +249,8 @@ export async function GET(request: NextRequest) {
                 }
               }
             }
-
+            
+            // Store lock code
             if (pinCode) {
               await passDb.from("lock_codes").upsert({
                 pass_id: pass.id,
@@ -247,22 +264,26 @@ export async function GET(request: NextRequest) {
             pinCode = existingLockCode.code
             pinProvider = (existingLockCode.provider as "rooms" | "backup") || "backup"
           }
-
-          await passDb.from("passes").update({
+          
+          // Activate the pass
+          await passDb.from("passes").update({ 
             status: "active",
             valid_from: startsAt,
             valid_to: endsAt,
           }).eq("id", pass.id)
-
+          
+          // Update payment status
           await passDb.from("payments").update({ status: "succeeded" }).eq("id", payment.id)
           
+          // Send email notification
           if (meta.customer_email && pinCode) {
             let accessPointName = "Access Point"
             if (pass.device_id) {
               const { data: device } = await coreDb.from("qr_ready_devices").select("name").eq("id", pass.device_id).single()
               if (device?.name) accessPointName = device.name
             }
-
+            
+            console.log("[v0] by-session: Sending email to", meta.customer_email)
             try {
               await sendPassNotifications(
                 meta.customer_email,
@@ -276,12 +297,13 @@ export async function GET(request: NextRequest) {
                 },
                 "Australia/Sydney",
               )
-              logger.info({ passId: pass.id, email: meta.customer_email }, "[BySession] Email sent successfully")
+              console.log("[v0] by-session: Email sent successfully")
             } catch (emailErr) {
-              logger.error({ passId: pass.id, error: emailErr instanceof Error ? emailErr.message : String(emailErr) }, "[BySession] Email failed")
+              console.log("[v0] by-session: Email failed:", emailErr)
             }
           }
-
+          
+          // Return successful response with the data
           return NextResponse.json({
             pass_id: pass.id,
             accessPointName: "Access Point",
@@ -298,7 +320,8 @@ export async function GET(request: NextRequest) {
             returnUrl: null,
           })
         } catch (syncError) {
-          logger.error({ error: syncError instanceof Error ? syncError.message : String(syncError) }, "[BySession] Auto-sync failed")
+          console.log("[v0] by-session: Auto-sync failed:", syncError)
+          // Fall through to return the 400 error
         }
       }
 
@@ -332,7 +355,7 @@ export async function GET(request: NextRequest) {
     }
 
     let accessPointName = "Access Point"
-    let timezone = "Australia/Sydney"
+    let timezone = "Australia/Sydney" // Default timezone
     let returnUrl: string | null = null
 
     try {
@@ -356,6 +379,7 @@ export async function GET(request: NextRequest) {
             .eq("id", device.site_id)
             .maybeSingle()
 
+          // Use site timezone if available
           if (site?.timezone) {
             timezone = site.timezone
           }
@@ -363,6 +387,7 @@ export async function GET(request: NextRequest) {
           if (site?.org_id) {
             const { data: org } = await coreDb.from("organisations").select("slug, timezone").eq("id", site.org_id).maybeSingle()
 
+            // Fall back to org timezone if site doesn't have one
             if (!site?.timezone && org?.timezone) {
               timezone = org.timezone
             }
@@ -403,6 +428,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Get backup code from payment metadata if available
     let backupCode: string | null = null
     let pinSource: "rooms" | "backup" | null = null
     

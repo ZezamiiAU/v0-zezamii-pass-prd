@@ -273,8 +273,8 @@ export default function SuccessPage() {
                 body: JSON.stringify({ paymentIntentId: paymentIntent }),
                 signal: abortController.signal,
               })
-            } catch {
-              // Sync failed silently, will retry on next poll
+            } catch (syncError) {
+              console.error("Error syncing payment:", syncError instanceof Error ? syncError.message : String(syncError))
             }
 
             if (isMounted) {
@@ -327,7 +327,7 @@ export default function SuccessPage() {
         }
         if (!isMounted) return
 
-        // Error logged to errorDetails state for support
+        console.error("Error fetching pass details:", err instanceof Error ? err.message : String(err))
 
         const errorInfo = {
           timestamp: new Date().toISOString(),

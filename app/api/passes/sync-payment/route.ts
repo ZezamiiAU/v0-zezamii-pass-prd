@@ -13,9 +13,12 @@ const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
 
 export async function POST(req: NextRequest) {
+  console.log("[v0] sync-payment: POST called")
   try {
     const { paymentIntentId } = await validateBody(req, syncPaymentBodySchema)
+    console.log("[v0] sync-payment: paymentIntentId =", paymentIntentId)
 
+    // Fetch the payment intent from Stripe to check its status
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
 
     if (paymentIntent.status !== "succeeded") {
@@ -28,6 +31,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Get metadata
     const meta = paymentIntent.metadata
     const passId = meta.pass_id
 
@@ -37,15 +41,21 @@ export async function POST(req: NextRequest) {
 
     const passDb = createSchemaServiceClient("pass")
 
+    // Check if pass is already active
     const { data: existingPass } = await passDb.from("passes").select("status").eq("id", passId).maybeSingle()
 
     if (existingPass?.status === "active") {
+      console.log("[v0] sync-payment: Pass already active, returning early")
       return NextResponse.json({ success: true, alreadyActive: true })
     }
 
+    // Check if lock code already exists
     const { data: existingLockCode } = await passDb.from("lock_codes").select("id, code").eq("pass_id", passId).maybeSingle()
+    console.log("[v0] sync-payment: existingLockCode =", existingLockCode)
 
     if (!existingLockCode) {
+      console.log("[v0] sync-payment: No existing lock code, generating new one")
+      // Need to generate pincode - try Rooms first, then backup
       const { data: pass } = await passDb
         .from("passes")
         .select("id, valid_from, valid_to, org_id")
@@ -63,6 +73,7 @@ export async function POST(req: NextRequest) {
       let pinCode: string | null = null
       let pinProvider: "rooms" | "backup" = "rooms"
 
+      // Try Rooms endpoint first
       const accessPointId = meta.access_point_id || meta.gate_id
       const slugPath = `${meta.org_slug || "org"}/${meta.site_slug || "site"}/${meta.device_slug || "device"}`
 
@@ -84,16 +95,19 @@ export async function POST(req: NextRequest) {
         pinProvider = "rooms"
         logger.info({ passId, pinCode }, "Pincode received from Rooms webhook (sync-payment)")
       } else {
+        // Use backup pincode from metadata
         if (meta.backup_pincode) {
           pinCode = meta.backup_pincode
           pinProvider = "backup"
           logger.info({ passId, pinCode }, "Using backup pincode from metadata (sync-payment)")
         } else {
+          // No pincode available - fail
           logger.error({ passId }, "No pincode available - both Rooms and backup failed")
           return NextResponse.json({ error: "Unable to generate access code" }, { status: 503 })
         }
       }
 
+      // Store the pincode (use upsert to handle race conditions)
       const { error: insertError } = await passDb
         .from("lock_codes")
         .upsert(
@@ -111,7 +125,10 @@ export async function POST(req: NextRequest) {
         logger.error({ passId, insertError }, "Failed to store lock code")
       }
 
+      // Send email notification with pincode
+      console.log("[v0] sync-payment: Checking email condition", { customer_email: meta.customer_email, pinCode })
       if (meta.customer_email && pinCode) {
+        // Get access point name
         let accessPointName = "Access Point"
         if (accessPointId) {
           const coreDb = createSchemaServiceClient("core")
@@ -124,6 +141,11 @@ export async function POST(req: NextRequest) {
         const timezone = "Australia/Sydney"
 
         try {
+          console.log("[v0] sync-payment: Sending email notification", {
+            email: meta.customer_email,
+            pinCode,
+            pinProvider,
+          })
           await sendPassNotifications(
             meta.customer_email,
             meta.customer_phone || null,
@@ -143,7 +165,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Update pass status to active
     await passDb.from("passes").update({ status: "active" }).eq("id", passId)
+
+    // Update payment status
     await passDb.from("payments").update({ status: "succeeded" }).eq("stripe_payment_intent", paymentIntentId)
 
     logger.info({ passId, paymentIntentId }, "Payment synced manually (webhook fallback)")

@@ -512,11 +512,14 @@ async function handlePaymentIntentFailed(event: Stripe.Event) {
 
   const passDb = createSchemaServiceClient("pass")
 
-  await passDb
+  const { error: deleteLockCodeError } = await passDb
     .from("lock_codes")
     .delete()
     .eq("pass_id", meta.data.pass_id)
     .eq("schema", "pass")
+
+  if (!deleteLockCodeError) {
+  }
 
   await passDb.from("passes").update({ status: "cancelled" }).eq("id", meta.data.pass_id)
 

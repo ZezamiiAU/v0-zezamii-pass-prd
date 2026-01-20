@@ -1,5 +1,4 @@
 import { createSchemaServiceClient } from "@/lib/supabase/server"
-import logger from "@/lib/logger"
 
 export interface BackupPincode {
   id: string
@@ -58,7 +57,10 @@ export async function getBackupPincode(
     }
   }
 
-  logger.warn({ orgId, siteId, deviceId, error: error || fallbackError }, "[BackupPincodes] No backup pincode found")
+  console.error("[BackupPincodes] Failed to get backup pincode:", 
+    error ? JSON.stringify(error) : fallbackError ? JSON.stringify(fallbackError) : "No data found",
+    { orgId, siteId, deviceId, now }
+  )
 
   return null
 }
@@ -80,7 +82,7 @@ export async function getCurrentBackupPincode(deviceId: string): Promise<string 
     .maybeSingle()
 
   if (error || !data) {
-    logger.warn({ deviceId, error }, "[BackupPincodes] No backup pincode found for device")
+    console.error("[BackupPincodes] Failed to get backup pincode:", error ? JSON.stringify(error) : "No data found")
     return null
   }
 
@@ -127,7 +129,7 @@ export async function getBackupPincodeByFortnight(deviceId: string, fortnightNum
     .maybeSingle()
 
   if (error || !data) {
-    logger.warn({ deviceId, fortnightNumber, error }, "[BackupPincodes] No backup pincode found for fortnight")
+    console.error("[BackupPincodes] Failed to get backup pincode for fortnight:", fortnightNumber, error ? JSON.stringify(error) : "No data found")
     return null
   }
 
