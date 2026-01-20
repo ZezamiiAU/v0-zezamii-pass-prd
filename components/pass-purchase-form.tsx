@@ -348,7 +348,7 @@ export function PassPurchaseForm({
                 <SelectContent className="rounded-xl">
                   {[1, 2, 3, 4, 5, 6, 7, 14, 21, 28].map((days) => (
                     <SelectItem key={days} value={days.toString()} className="py-2 rounded-lg text-sm">
-                      {days} {days === 1 ? "day" : "days"} - {formatPrice(selectedPassType?.price_cents * days)}
+                      {days} {days === 1 ? "day" : "days"} - {formatPrice((selectedPassType?.price_cents ?? 0) * days)}
                     </SelectItem>
                   ))}
                 </SelectContent>
