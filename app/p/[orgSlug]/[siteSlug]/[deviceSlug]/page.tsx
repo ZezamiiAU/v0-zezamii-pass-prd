@@ -118,9 +118,9 @@ export default function DevicePassPage() {
           </div>
         </div>
 
-        {/* Content with top padding for 80px header + 24px gap */}
-        <div className="pt-[104px] px-4 pb-8 flex items-center justify-center min-h-screen">
-        <div className="w-full max-w-md">
+        {/* Content with top padding for 80px header */}
+        <div className="pt-24 px-4" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
+        <div className="w-full max-w-md mx-auto">
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             {/* Hero Image - 180px compact */}

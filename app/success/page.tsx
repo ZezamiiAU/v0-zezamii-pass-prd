@@ -6,7 +6,7 @@ import { sessionQuerySchema } from "@/lib/schemas/api.schema"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { formatLocalizedDateTime } from "@/lib/timezone"
-import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, CheckCircle2 } from "lucide-react"
+import { WifiOff, MessageSquare, AlertTriangle, Copy, ChevronDown, CheckCircle2, Share2 } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_PIN_COUNTDOWN_SECONDS) || 20
@@ -363,7 +363,7 @@ export default function SuccessPage() {
     return formatLocalizedDateTime(dateString, timezone)
   }
 
-  const handleShareSMS = () => {
+  const handleShare = async () => {
     if (!passDetails) return
 
     const validUntilDate = new Date(passDetails.valid_to).toLocaleDateString("en-AU", {
@@ -383,6 +383,23 @@ Valid until: ${validUntilTime} on ${validUntilDate}
 
 ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please contact ${supportEmail} for your PIN.`}`
 
+    // Try native Web Share API first (works on mobile - WhatsApp, SMS, etc.)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Zezamii Pass Details",
+          text: message,
+        })
+        return
+      } catch (err) {
+        // User cancelled or share failed - fall through to SMS fallback
+        if (err instanceof Error && err.name === "AbortError") {
+          return // User cancelled, don't fallback
+        }
+      }
+    }
+    
+    // Fallback to SMS for browsers without Web Share API
     const smsUrl = `sms:?&body=${encodeURIComponent(message)}`
     window.location.href = smsUrl
   }
@@ -398,6 +415,8 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
   // Calculate countdown progress
   const countdownProgress = ((COUNTDOWN_SECONDS - countdown) / COUNTDOWN_SECONDS) * 100
 
+  const handleShareSMS = handleShare;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#020617] via-[#0f172a] to-[#1e293b] overflow-y-auto">
       {/* Slim Top Utility Bar - 44px for Operational Pages */}
@@ -412,7 +431,7 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
         </div>
       </div>
 
-      <div className="pt-[52px] px-4">
+      <div className="pt-14 px-4" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
         {/* Status Header */}
         <div className="text-center mb-4">
           {displayedCode ? (
@@ -541,10 +560,10 @@ ${displayedCode ? "Enter PIN followed by # at the keypad to access." : `Please c
                 {displayedCode && (
                   <Button 
                     variant="outline" 
-                    onClick={handleShareSMS} 
+                    onClick={handleShare} 
                     className="flex-1 h-11 rounded-xl text-sm border-[#e2e8f0] text-[#001F3F] hover:bg-[#f8fafc] bg-transparent btn-premium"
                   >
-                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <Share2 className="mr-2 h-4 w-4" />
                     Share
                   </Button>
                 )}

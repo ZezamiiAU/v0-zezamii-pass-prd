@@ -1,7 +1,7 @@
 # PRD: Rooms PIN Webhook Integration
 
 ## Document Info
-- **Version**: 2.0
+- **Version**: 3.0
 - **Date**: January 2026
 - **Author**: Zezamii Pass Team
 - **Status**: Ready for Development
@@ -10,28 +10,82 @@
 
 ## 1. Executive Summary
 
-Instead of the PWA polling Rooms for PIN codes, Rooms will **push PIN codes to a webhook endpoint** on our system. This simplifies the architecture and removes the need for polling/retry logic on the PWA side.
+This document describes the two-phase PIN provisioning architecture where:
+1. **PWA calls Rooms API directly** with status (Pending/Confirmed/Cancelled)
+2. **Rooms pushes PIN to Portal webhook** after processing
+3. **PWA polls Portal DB** for PIN with countdown timer
+4. **Backup codes remain** as existing fortnight-rotating system
 
-### Architecture Change
+### Architecture Flow
 
-**Previous approach (polling):**
 ```
-PWA → Stripe Payment → PWA calls Rooms API → Rooms returns PIN → PWA displays PIN
-                                ↓ (if fails)
-                       PWA uses backup code
+┌─────────┐      ┌─────────┐      ┌─────────┐      ┌─────────┐
+│   PWA   │      │  Rooms  │      │ Portal  │      │   DB    │
+└────┬────┘      └────┬────┘      └────┬────┘      └────┬────┘
+     │                │                │                │
+     │ 1. POST reservation (status: "Pending")         │
+     │───────────────>│                │                │
+     │                │                │                │
+     │ 2. Create pass + pending lock_code              │
+     │─────────────────────────────────────────────────>│
+     │                │                │                │
+     │ 3. Create Stripe Payment Intent                 │
+     │─────────────────────────────────────────────────>│
+     │                │                │                │
+     │ ... User completes payment ...  │                │
+     │                │                │                │
+     │ 4. POST reservation (status: "Confirmed")       │
+     │───────────────>│                │                │
+     │                │                │                │
+     │                │ 5. Generate PIN + POST webhook │
+     │                │───────────────>│                │
+     │                │                │ 6. Update      │
+     │                │                │    lock_code   │
+     │                │                │───────────────>│
+     │                │                │                │
+     │ 7. Poll GET /api/passes/by-session              │
+     │<────────────────────────────────────────────────│
+     │                │                │                │
+     │ 8. Display PIN │                │                │
 ```
 
-**New approach (webhook):**
+---
+
+## 1.1 Key Field Mappings (Portal Dev Reference)
+
+| What You Might Expect | Actual Column/Table |
+|-----|-----|
+| `valid_from` / `valid_until` on lock_codes | `starts_at` / `ends_at` |
+| `valid_until` on passes | `valid_to` |
+| `supabase.from('lock_codes')` | `supabase.schema('pass').from('lock_codes')` |
+| Backup code in site_settings | `pass.backup_pincodes` table (rotates fortnightly) |
+
+**Required Fields When Creating lock_code:**
+
+```javascript
+{
+  pass_id: pass.id,
+  status: 'pending',       // 'pending' | 'active' | 'expired' | 'cancelled'
+  provider: 'rooms',       // Required
+  provider_ref: pass.id,   // For tracking - use pass_id or reservation_id
+  starts_at: startDate,    // NOT valid_from
+  ends_at: endDate,        // NOT valid_until
+}
 ```
-PWA → Stripe Payment → PWA calls Rooms API (reservation only) → Returns immediately
-                                ↓
-                    Rooms processes async
-                                ↓
-                    Rooms calls our webhook with PIN
-                                ↓
-                    Webhook stores PIN in pass.lock_codes
-                                ↓
-                    PWA polls our database for PIN
+
+**When Webhook Receives PIN:**
+
+```javascript
+await supabase
+  .schema('pass')
+  .from('lock_codes')
+  .update({
+    code: pinCode,
+    status: 'active',
+    webhook_received_at: new Date().toISOString(),
+  })
+  .eq('provider', 'rooms')
+  .eq('provider_ref', reservationId)  // Match by reservation ID
 ```
 
 ---

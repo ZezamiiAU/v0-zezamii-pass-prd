@@ -221,6 +221,7 @@ export async function GET(request: NextRequest) {
                         phone: meta.customer_phone,
                         deviceId: deviceId,
                         slugPath,
+                        status: "Confirmed",
                       })
                       const roomsResult = await createRoomsReservation(meta.org_id, roomsPayload)
                       if (roomsResult?.pincode) {
@@ -256,7 +257,9 @@ export async function GET(request: NextRequest) {
               await passDb.from("lock_codes").upsert({
                 pass_id: pass.id,
                 code: pinCode,
+                status: "active",
                 provider: pinProvider,
+                provider_ref: pass.id, // Use pass_id as provider reference
                 starts_at: startsAt,
                 ends_at: endsAt,
               }, { onConflict: "pass_id" })

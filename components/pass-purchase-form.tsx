@@ -182,7 +182,7 @@ export function PassPurchaseForm({
           </div>
         </div>
 
-        <div className="pt-[52px] px-4">
+        <div className="pt-14 px-4" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 max-w-md mx-auto">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-7 h-7 rounded-full bg-[#020617] flex items-center justify-center">
@@ -236,7 +236,7 @@ export function PassPurchaseForm({
           </div>
         </div>
 
-        <div className="pt-[52px] px-4">
+        <div className="pt-14 px-4" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 max-w-md mx-auto">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-7 h-7 rounded-full bg-[#020617] flex items-center justify-center">
@@ -367,8 +367,8 @@ export function PassPurchaseForm({
         </div>
       </div>
 
-      {/* Compact Org Header - Inside card for high density */}
-      <div className="pt-[52px] px-4">
+{/* Compact Org Header - Inside card for high density */}
+      <div className="pt-14 px-4" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 max-w-md mx-auto">
           {/* Org Branding - Inline */}
           <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">

@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
         phone: meta.customer_phone || undefined,
         deviceId: accessPointId || "",
         slugPath,
+        status: "Confirmed",
       })
 
       const roomsResult = await createRoomsReservation(pass.org_id, roomsPayload)

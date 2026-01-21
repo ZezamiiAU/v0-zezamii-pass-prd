@@ -4,12 +4,14 @@ import logger from "@/lib/logger"
 export interface LockCode {
   id: string
   pass_id: string
-  code: string
+  code: string | null
+  status: "pending" | "active" | "expired" | "cancelled"
   provider: string
   provider_ref: string | null
   starts_at: string
   ends_at: string
   created_at: string
+  webhook_received_at: string | null
 }
 
 /**
@@ -46,6 +48,74 @@ export async function createLockCode(data: {
   }
 
   return lockCode
+}
+
+/**
+ * Creates a pending lock code record (code = null) for Rooms webhook to populate.
+ * Used in the two-phase flow: create pending record first, then Rooms webhook fills in the PIN.
+ */
+export async function createPendingLockCode(data: {
+  passId: string
+  provider: string
+  providerRef: string
+  startsAt: Date
+  endsAt: Date
+}): Promise<LockCode | null> {
+  const supabase = createServiceClient()
+
+  const { data: lockCode, error } = await supabase
+    .schema("pass")
+    .from("lock_codes")
+    .insert({
+      pass_id: data.passId,
+      code: null, // Will be populated by Rooms webhook
+      status: "pending",
+      provider: data.provider,
+      provider_ref: data.providerRef,
+      starts_at: data.startsAt.toISOString(),
+      ends_at: data.endsAt.toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) {
+    logger.error({ passId: data.passId, error: error.message }, "[LockCodes] Error creating pending lock code")
+    return null
+  }
+
+  logger.debug({ passId: data.passId, provider: data.provider }, "[LockCodes] Created pending lock code")
+  return lockCode
+}
+
+/**
+ * Gets a lock code for a pass, optionally filtered by provider.
+ * Uses maybeSingle() to handle cases where no record exists.
+ */
+export async function getLockCodeByPassIdAndProvider(
+  passId: string,
+  provider: string
+): Promise<LockCode | null> {
+  try {
+    const supabase = createServiceClient()
+
+    const { data, error } = await supabase
+      .schema("pass")
+      .from("lock_codes")
+      .select("*")
+      .eq("pass_id", passId)
+      .eq("provider", provider)
+      .maybeSingle()
+
+    if (error) {
+      logger.error({ passId, provider, error: error.message }, "[LockCodes] Error fetching lock code by provider")
+      return null
+    }
+
+    return data
+  } catch (err) {
+    logger.error({ passId, provider, error: err instanceof Error ? err.message : String(err) }, "[LockCodes] Exception fetching lock code by provider")
+    return null
+  }
 }
 
 /**

@@ -342,6 +342,7 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     phone: meta.data.customer_phone || undefined,
     deviceId: accessPointId || "",
     slugPath,
+    status: "Confirmed",
   })
 
   const roomsResult = await createRoomsReservation(org.id, roomsPayload)

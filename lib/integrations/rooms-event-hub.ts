@@ -2,6 +2,8 @@ import { createSchemaServiceClient } from "@/lib/supabase/server"
 import logger from "@/lib/logger"
 import { v5 as uuidv5 } from "uuid"
 
+export type RoomsReservationStatus = "Pending" | "Confirmed" | "Cancelled"
+
 export interface RoomsReservationPayload {
   propertyId: string // site_id
   reservationId: string // pass_id (booking id)
@@ -14,7 +16,7 @@ export interface RoomsReservationPayload {
   guestPhone: string // phone or empty
   roomId: string // device_id
   roomName: string // org-slug/site-slug/device-slug
-  status: string // "Unconfirmed"
+  status: RoomsReservationStatus // "Pending", "Confirmed", or "Cancelled"
 }
 
 export interface RoomsReservationResponse {
@@ -102,6 +104,7 @@ export function buildRoomsPayload(params: {
   phone?: string
   deviceId: string
   slugPath: string // "org-slug/site-slug/device-slug"
+  status?: RoomsReservationStatus // "Pending", "Confirmed", or "Cancelled"
 }): RoomsReservationPayload {
   const contactInfo = params.email || params.phone || "unknown"
   const { firstName, lastName } = splitFullName(params.fullName)
@@ -118,7 +121,7 @@ export function buildRoomsPayload(params: {
     guestPhone: params.phone || "",
     roomId: params.deviceId,
     roomName: params.slugPath,
-    status: "Unconfirmed",
+    status: params.status || "Pending",
   }
 }
 
