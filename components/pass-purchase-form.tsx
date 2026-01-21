@@ -249,7 +249,7 @@ export function PassPurchaseForm({
               <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="fullName" className="text-xs font-medium text-slate-600">
-                    Full Name <span className="text-red-500">*</span>
+                    Full Name <span className="text-amber-500 font-bold">*</span>
                   </Label>
                   <Input
                     id="fullName"
@@ -264,7 +264,7 @@ export function PassPurchaseForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-xs font-medium text-slate-600">
-                    Email Address <span className="text-red-500">*</span>
+                    Email Address <span className="text-amber-500 font-bold">*</span>
                   </Label>
                   <Input
                     id="email"
@@ -417,7 +417,7 @@ export function PassPurchaseForm({
           {isMultiDayPass && (
             <div className="mb-4">
               <Label htmlFor="numberOfDays" className="text-xs font-medium text-slate-600 mb-1.5 block">
-                    Number of Days <span className="text-red-500">*</span>
+                    Number of Days <span className="text-amber-500 font-bold">*</span>
                   </Label>
               <Select value={numberOfDays === 0 ? "" : numberOfDays.toString()} onValueChange={(val) => setNumberOfDays(Number.parseInt(val, 10))}>
                 <SelectTrigger id="numberOfDays" className={`h-10 rounded-xl text-sm ${numberOfDays === 0 ? "border-[#d4af37] border-2" : ""}`}>
