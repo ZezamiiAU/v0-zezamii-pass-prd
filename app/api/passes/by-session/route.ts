@@ -216,6 +216,7 @@ export async function GET(request: NextRequest) {
                         passId: pass.id,
                         validFrom: startsAt,
                         validTo: endsAt,
+                        fullName: meta.customer_name,
                         email: meta.customer_email,
                         phone: meta.customer_phone,
                         deviceId: deviceId,

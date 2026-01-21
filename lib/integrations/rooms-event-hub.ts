@@ -35,6 +35,61 @@ export function generateGuestId(emailOrPhone: string): string {
 }
 
 /**
+ * Split a full name into first and last name components
+ * Uses regex to handle various name formats:
+ * - "John Smith" -> { firstName: "John", lastName: "Smith" }
+ * - "John" -> { firstName: "John", lastName: "" }
+ * - "John Paul Smith" -> { firstName: "John Paul", lastName: "Smith" }
+ * - "" -> { firstName: "Guest", lastName: "" }
+ * 
+ * Always returns valid strings - never throws, always has defaults
+ */
+export function splitFullName(fullName?: string): { firstName: string; lastName: string } {
+  const DEFAULT_RESULT = { firstName: "Guest", lastName: "" }
+  
+  try {
+    // Handle null, undefined, or non-string inputs
+    if (!fullName || typeof fullName !== "string") {
+      return DEFAULT_RESULT
+    }
+
+    const trimmed = fullName.trim()
+    
+    // Handle empty string after trim
+    if (!trimmed || trimmed.length === 0) {
+      return DEFAULT_RESULT
+    }
+
+    // Clean the name - remove extra spaces, keep only valid characters
+    const cleaned = trimmed.replace(/\s+/g, " ").replace(/[^a-zA-Z\s'-]/g, "")
+    
+    if (!cleaned || cleaned.length === 0) {
+      return DEFAULT_RESULT
+    }
+
+    // Match: everything before the last space = firstName, everything after = lastName
+    const match = cleaned.match(/^(.+)\s+(\S+)$/)
+    
+    if (match && match[1] && match[2]) {
+      return {
+        firstName: match[1].trim() || "Guest",
+        lastName: match[2].trim() || "",
+      }
+    }
+
+    // Single word name - treat as first name only
+    return {
+      firstName: cleaned || "Guest",
+      lastName: "",
+    }
+  } catch (error) {
+    // If anything goes wrong, return safe defaults
+    logger.warn({ fullName, error: error instanceof Error ? error.message : String(error) }, "Error splitting full name, using defaults")
+    return DEFAULT_RESULT
+  }
+}
+
+/**
  * Build the Rooms reservation payload from pass data
  */
 export function buildRoomsPayload(params: {
@@ -42,12 +97,14 @@ export function buildRoomsPayload(params: {
   passId: string
   validFrom: string
   validTo: string
+  fullName?: string
   email?: string
   phone?: string
   deviceId: string
   slugPath: string // "org-slug/site-slug/device-slug"
 }): RoomsReservationPayload {
   const contactInfo = params.email || params.phone || "unknown"
+  const { firstName, lastName } = splitFullName(params.fullName)
 
   return {
     propertyId: params.siteId,
@@ -55,8 +112,8 @@ export function buildRoomsPayload(params: {
     arrivalDate: params.validFrom,
     departureDate: params.validTo,
     guestId: generateGuestId(contactInfo),
-    guestFirstName: "Guest",
-    guestLastName: params.email || "",
+    guestFirstName: firstName,
+    guestLastName: lastName,
     guestEmail: params.email || "",
     guestPhone: params.phone || "",
     roomId: params.deviceId,

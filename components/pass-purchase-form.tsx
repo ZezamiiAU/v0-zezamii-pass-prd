@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useState, useEffect } from "react"
 import { loadStripe } from "@stripe/stripe-js"
 import { Elements } from "@stripe/react-stripe-js"
@@ -45,6 +46,8 @@ export function PassPurchaseForm({
   const [passTypes, setPassTypes] = useState<PassType[]>([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
   const [numberOfDays, setNumberOfDays] = useState(0)
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -53,6 +56,7 @@ export function PassPurchaseForm({
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<"selection" | "details" | "payment">("selection")
   const [logoError, setLogoError] = useState(false)
+  const fullName = `${firstName} ${lastName}`
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -101,8 +105,28 @@ export function PassPurchaseForm({
     setStep("details")
   }
 
+  // Validate full name - must contain only letters, spaces, hyphens, apostrophes
+  const validateFullName = (name: string): string | null => {
+    if (!name || !name.trim()) {
+      return "Please enter your full name"
+    }
+    if (name.trim().length < 2) {
+      return "Name must be at least 2 characters"
+    }
+    if (!/^[a-zA-Z\s'-]+$/.test(name.trim())) {
+      return "Name can only contain letters, spaces, hyphens, and apostrophes"
+    }
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    const nameError = validateFullName(fullName)
+    if (nameError) {
+      alert(nameError)
+      return
+    }
     if (!email?.trim()) {
       alert("Please enter your email address")
       return
@@ -118,6 +142,7 @@ export function PassPurchaseForm({
       const payload = {
         accessPointId: deviceId,
         passTypeId: selectedPassTypeId,
+        fullName: fullName.trim(),
         plate: "",
         email: email,
         phone: phone || "",
@@ -223,28 +248,46 @@ export function PassPurchaseForm({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-medium text-[#64748b]">Email Address *</Label>
+                  <Label htmlFor="fullName" className="text-xs font-medium text-slate-600">
+                    Full Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Smith"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200 text-sm focus:border-[#020617] focus:ring-[#020617]"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs font-medium text-slate-600">
+                    Email Address <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-10 rounded-xl border-[#e2e8f0] text-sm"
+                    className="h-10 rounded-xl border-slate-200 text-sm focus:border-[#020617] focus:ring-[#020617]"
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="phone" className="text-xs font-medium text-[#64748b]">Mobile (optional)</Label>
+                  <Label htmlFor="phone" className="text-xs font-medium text-slate-600">
+                    Mobile <span className="text-slate-400 font-normal">(optional)</span>
+                  </Label>
                   <Input
                     id="phone"
                     type="tel"
                     placeholder="+61 412 345 678"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="h-10 rounded-xl border-[#e2e8f0] text-sm"
+                    className="h-10 rounded-xl border-slate-200 text-sm focus:border-[#020617] focus:ring-[#020617]"
                   />
                 </div>
               </div>
@@ -374,7 +417,9 @@ export function PassPurchaseForm({
           {/* Number of Days - inline */}
           {isMultiDayPass && (
             <div className="mb-4">
-              <Label htmlFor="numberOfDays" className="text-xs font-medium text-[#64748b] mb-1.5 block">Number of Days *</Label>
+              <Label htmlFor="numberOfDays" className="text-xs font-medium text-slate-600 mb-1.5 block">
+                    Number of Days <span className="text-red-500">*</span>
+                  </Label>
               <Select value={numberOfDays === 0 ? "" : numberOfDays.toString()} onValueChange={(val) => setNumberOfDays(Number.parseInt(val, 10))}>
                 <SelectTrigger id="numberOfDays" className={`h-10 rounded-xl text-sm ${numberOfDays === 0 ? "border-[#d4af37] border-2" : ""}`}>
                   <SelectValue placeholder="Select days" />

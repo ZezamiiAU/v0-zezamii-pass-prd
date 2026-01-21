@@ -1,10 +1,29 @@
+"use client"
+
+import { ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+
 export default function TermsPage() {
+  const router = useRouter()
+
   return (
     <div className="bg-gray-50 py-6 px-4 pb-24">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm border p-5 md:p-8">
-        <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-2">
-          Day Pass & Camping Pass Terms and Conditions
-        </h1>
+      <div className="max-w-3xl mx-auto">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          onClick={() => router.back()}
+          className="mb-4 text-gray-600 hover:text-gray-900 hover:bg-gray-100 -ml-2"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+
+        <div className="bg-white rounded-lg shadow-sm border p-5 md:p-8">
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-2">
+            Day Pass & Camping Pass Terms and Conditions
+          </h1>
         
         <p className="text-gray-500 mb-6">
           These Terms and Conditions apply to all Day Pass and Camping Pass purchases
@@ -157,8 +176,9 @@ export default function TermsPage() {
         </section>
 
         <div className="mt-8 pt-6 border-t text-center text-sm text-gray-500">
-          <p>Griffith Boat Club</p>
-          <p>Lake Wyangan, NSW</p>
+            <p>Griffith Boat Club</p>
+            <p>Lake Wyangan, NSW</p>
+          </div>
         </div>
       </div>
     </div>

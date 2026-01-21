@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
         passId: passId,
         validFrom: startsAt,
         validTo: endsAt,
+        fullName: meta.customer_name || undefined,
         email: meta.customer_email || undefined,
         phone: meta.customer_phone || undefined,
         deviceId: accessPointId || "",

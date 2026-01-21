@@ -107,6 +107,15 @@ export const checkoutSchema = z.object({
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       "Invalid pass type ID - must be UUID format",
     ),
+  fullName: z
+    .string()
+    .min(1, "Full name is required")
+    .max(100, "Name too long")
+    .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes")
+    .refine(
+      (val) => val.trim().length >= 2,
+      "Name must be at least 2 characters",
+    ),
   email: z.string().min(1, "Email is required").email("Invalid email address"),
   plate: z
     .string()

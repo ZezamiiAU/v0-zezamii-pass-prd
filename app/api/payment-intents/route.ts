@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { accessPointId, passTypeId, email, plate, phone, numberOfDays = 1 } = validation.data
+    const { accessPointId, passTypeId, fullName, email, plate, phone, numberOfDays = 1 } = validation.data
+    const [firstName, lastName] = fullName.split(" ")
 
     const idempotencyKey = request.headers.get("x-idempotency-key") || undefined
 
@@ -288,6 +289,7 @@ export async function POST(request: NextRequest) {
           site_slug: siteSlug || "",
           device_slug: device.slug || "",
           gate_id: accessPointId,
+          customer_name: fullName || "",
           customer_email: email || "",
           customer_phone: phone || "",
           customer_plate: plate || "",
