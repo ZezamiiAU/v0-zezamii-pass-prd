@@ -260,6 +260,7 @@ export function PassPurchaseForm({
                     className="h-10 rounded-xl border-slate-200 text-sm focus:border-[#020617] focus:ring-[#020617]"
                     required
                   />
+                  <p className="text-[10px] text-slate-400">Required for credit card payment</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-xs font-medium text-slate-600">
