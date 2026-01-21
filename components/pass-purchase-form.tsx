@@ -46,8 +46,7 @@ export function PassPurchaseForm({
   const [passTypes, setPassTypes] = useState<PassType[]>([])
   const [selectedPassTypeId, setSelectedPassTypeId] = useState(preSelectedPassTypeId || "")
   const [numberOfDays, setNumberOfDays] = useState(0)
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
+  const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -56,7 +55,6 @@ export function PassPurchaseForm({
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<"selection" | "details" | "payment">("selection")
   const [logoError, setLogoError] = useState(false)
-  const fullName = `${firstName} ${lastName}`
 
   useEffect(() => {
     const abortController = new AbortController()
