@@ -153,7 +153,7 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
     guestPhone: meta.data.customer_phone ?? "",
     roomId: meta.data.access_point_id || meta.data.gate_id || "default-device",
     roomName: `${meta.data.org_slug}/site/device`,
-    status: "Unconfirmed",
+    status: "Confirmed",
   })
 
   let pinCode = null
