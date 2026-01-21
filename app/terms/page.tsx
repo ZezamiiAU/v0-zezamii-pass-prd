@@ -1,23 +1,30 @@
 "use client"
 
-import { ArrowLeft } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function TermsPage() {
-  const router = useRouter()
+  const handleClose = () => {
+    // Try to close the window/tab if opened as new window
+    if (window.opener || window.history.length <= 1) {
+      window.close()
+    } else {
+      // Fallback to going back in history
+      window.history.back()
+    }
+  }
 
   return (
     <div className="bg-gray-50 py-6 px-4 pb-24">
       <div className="max-w-3xl mx-auto">
-        {/* Back Button */}
+        {/* Close Button */}
         <Button
           variant="ghost"
-          onClick={() => router.back()}
+          onClick={handleClose}
           className="mb-4 text-gray-600 hover:text-gray-900 hover:bg-gray-100 -ml-2"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          <X className="w-4 h-4 mr-2" />
+          Close
         </Button>
 
         <div className="bg-white rounded-lg shadow-sm border p-5 md:p-8">
