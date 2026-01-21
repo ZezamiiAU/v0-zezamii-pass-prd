@@ -58,7 +58,20 @@ This document describes the two-phase PIN provisioning architecture where:
 | `valid_from` / `valid_until` on lock_codes | `starts_at` / `ends_at` |
 | `valid_until` on passes | `valid_to` |
 | `supabase.from('lock_codes')` | `supabase.schema('pass').from('lock_codes')` |
+| `roomId` in Rooms API payload | Combined slug: `org-slug/site-slug/device-slug` |
 | Backup code in site_settings | `pass.backup_pincodes` table (rotates fortnightly) |
+
+### roomId Format
+
+The `roomId` field sent to the Rooms API uses the **combined slug path** format:
+
+```
+{org-slug}/{site-slug}/{device-slug}
+```
+
+Example: `griffith-boat-club/marina/main-gate`
+
+This value is also stored in `core.devices.zezamii_room_id` for reference. Migration script `039-update-zezamii-room-id-to-slug.sql` updates existing devices.
 
 **Required Fields When Creating lock_code:**
 

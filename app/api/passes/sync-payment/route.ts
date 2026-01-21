@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     // Get metadata
     const meta = paymentIntent.metadata
     const passId = meta.pass_id
+    const accessPointId = meta.access_point_id // Declare accessPointId variable
 
     if (!passId) {
       return NextResponse.json({ error: "No pass ID in payment metadata" }, { status: 400 })
@@ -74,7 +75,6 @@ export async function POST(req: NextRequest) {
       let pinProvider: "rooms" | "backup" = "rooms"
 
       // Try Rooms endpoint first
-      const accessPointId = meta.access_point_id || meta.gate_id
       const slugPath = `${meta.org_slug || "org"}/${meta.site_slug || "site"}/${meta.device_slug || "device"}`
 
       const roomsPayload = buildRoomsPayload({
@@ -85,7 +85,6 @@ export async function POST(req: NextRequest) {
         fullName: meta.customer_name || undefined,
         email: meta.customer_email || undefined,
         phone: meta.customer_phone || undefined,
-        deviceId: accessPointId || "",
         slugPath,
         status: "Confirmed",
       })

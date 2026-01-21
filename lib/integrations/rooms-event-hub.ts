@@ -93,6 +93,7 @@ export function splitFullName(fullName?: string): { firstName: string; lastName:
 
 /**
  * Build the Rooms reservation payload from pass data
+ * roomId uses the combined slugPath (org-slug/site-slug/device-slug) for consistency
  */
 export function buildRoomsPayload(params: {
   siteId: string
@@ -102,8 +103,7 @@ export function buildRoomsPayload(params: {
   fullName?: string
   email?: string
   phone?: string
-  deviceId: string
-  slugPath: string // "org-slug/site-slug/device-slug"
+  slugPath: string // "org-slug/site-slug/device-slug" - used as roomId
   status?: RoomsReservationStatus // "Pending", "Confirmed", or "Cancelled"
 }): RoomsReservationPayload {
   const contactInfo = params.email || params.phone || "unknown"
@@ -119,7 +119,7 @@ export function buildRoomsPayload(params: {
     guestLastName: lastName,
     guestEmail: params.email || "",
     guestPhone: params.phone || "",
-    roomId: params.deviceId,
+    roomId: params.slugPath, // Use combined slug as roomId
     roomName: params.slugPath,
     status: params.status || "Pending",
   }

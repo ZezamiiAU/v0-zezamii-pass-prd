@@ -188,12 +188,12 @@ export async function GET(request: NextRequest) {
             const deviceId = pass.device_id || meta.access_point_id || meta.gate_id
             if (deviceId && meta.org_id) {
               try {
-                // Get device and site info for Rooms payload
-                const { data: device } = await coreDb
-                  .from("qr_ready_devices")
-                  .select("site_id, slug")
-                  .eq("id", deviceId)
-                  .single()
+// Get device and site info for Rooms payload
+  const { data: device } = await coreDb
+    .from("devices")
+    .select("site_id, slug")
+    .eq("id", deviceId)
+    .single()
 
                 if (device?.site_id) {
                   const { data: site } = await coreDb
@@ -219,7 +219,6 @@ export async function GET(request: NextRequest) {
                         fullName: meta.customer_name,
                         email: meta.customer_email,
                         phone: meta.customer_phone,
-                        deviceId: deviceId,
                         slugPath,
                         status: "Confirmed",
                       })

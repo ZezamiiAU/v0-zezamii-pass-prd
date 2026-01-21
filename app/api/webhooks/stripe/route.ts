@@ -138,23 +138,21 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
 
   const startsAt = pass?.valid_from || new Date().toISOString()
   const endsAt = pass?.valid_to || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-  const customerEmail = meta.data.customer_email || "guest@example.com"
-  const customerName = customerEmail.split("@")[0]
 
-  const roomsResult = await createRoomsReservation(org.id, {
-    propertyId: "z71owzgoNUxJtxOC",
-    reservationId: meta.data.pass_id!, // Pass ID is used as reservation ID
-    arrivalDate: new Date(startsAt).toISOString().split("T")[0],
-    departureDate: new Date(endsAt).toISOString().split("T")[0],
-    guestId: customerEmail, // Will be converted to UUID by generateGuestId if needed
-    guestFirstName: customerName,
-    guestLastName: customerEmail,
-    guestEmail: customerEmail,
-    guestPhone: meta.data.customer_phone ?? "",
-    roomId: meta.data.access_point_id || meta.data.gate_id || "default-device",
-    roomName: `${meta.data.org_slug}/site/device`,
+  const slugPath = `${meta.data.org_slug || "org"}/${meta.data.site_slug || "site"}/${meta.data.device_slug || "device"}`
+  const roomsPayload = buildRoomsPayload({
+    siteId: meta.data.site_id || "",
+    passId: meta.data.pass_id!,
+    validFrom: startsAt,
+    validTo: endsAt,
+    fullName: meta.data.customer_name || undefined,
+    email: meta.data.customer_email || undefined,
+    phone: meta.data.customer_phone || undefined,
+    slugPath,
     status: "Confirmed",
   })
+
+  const roomsResult = await createRoomsReservation(org.id, roomsPayload)
 
   let pinCode = null
 
@@ -384,91 +382,95 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
 
   // ALWAYS send email notification (even without pincode - customer can contact support)
   if (meta.data.customer_email) {
-      // Fetch access point name and organization details for the email
-      let accessPointName = "Access Point"
-      let orgName = meta.data.org_slug
-      let orgLogo: string | undefined
-      let siteName: string | undefined
-      
-      // Fetch org details for branding
-      const { data: orgDetails } = await core
-        .from("organisations")
-        .select("name, brand_settings")
-        .eq("id", org.id)
+    // Fetch access point name and organization details for the email
+    let accessPointName = "Access Point"
+    let orgName = meta.data.org_slug
+    let orgLogo: string | undefined
+    let siteName: string | undefined
+
+    // Fetch org details for branding
+    const { data: orgDetails } = await core
+      .from("organisations")
+      .select("name, brand_settings")
+      .eq("id", org.id)
+      .single()
+
+    if (orgDetails) {
+      orgName = orgDetails.name
+      // Parse brand_settings if it's a string
+      let brandSettings = orgDetails.brand_settings
+      if (typeof brandSettings === "string") {
+        try {
+          brandSettings = JSON.parse(brandSettings)
+        } catch {
+          brandSettings = null
+        }
+      }
+      orgLogo = brandSettings?.logo_url
+    }
+
+    // Fetch site name
+    if (siteId) {
+      const { data: siteDetails } = await core
+        .from("sites")
+        .select("name")
+        .eq("id", siteId)
         .single()
-      
-      if (orgDetails) {
-        orgName = orgDetails.name
-        // Parse brand_settings if it's a string
-        let brandSettings = orgDetails.brand_settings
-        if (typeof brandSettings === "string") {
-          try { brandSettings = JSON.parse(brandSettings) } catch { brandSettings = null }
-        }
-        orgLogo = brandSettings?.logo_url
-      }
-      
-      // Fetch site name
-      if (siteId) {
-        const { data: siteDetails } = await core
-          .from("sites")
-          .select("name")
-          .eq("id", siteId)
-          .single()
-        if (siteDetails) {
-          siteName = siteDetails.name
-        }
-      }
-      
-      if (accessPointId) {
-        const { data: accessPoint } = await core
-          .from("qr_ready_devices")
-          .select("name")
-          .eq("id", accessPointId)
-          .single()
-        if (accessPoint?.name) {
-          accessPointName = accessPoint.name
-        }
-      }
-
-      // Determine timezone from metadata or default to Australia/Sydney
-      const timezone = meta.data.org_timezone || "Australia/Sydney"
-      
-      // Determine pass type
-      const passType = meta.data.variant || "day"
-      const passTypeName = meta.data.pass_type_name || (passType.toLowerCase().includes("camping") ? "Camping Pass" : "Day Pass")
-      const numberOfDays = Number.parseInt(meta.data.number_of_days || "1", 10)
-
-      try {
-        await sendPassNotifications(
-          meta.data.customer_email,
-          meta.data.customer_phone || null,
-          {
-            accessPointName,
-            pin: pinCode,
-            validFrom: startsAt,
-            validTo: endsAt,
-            vehiclePlate: meta.data.customer_plate,
-            orgName,
-            orgSlug: meta.data.org_slug,
-            orgLogo,
-            siteName,
-            passType,
-            passTypeName,
-            numberOfDays,
-          },
-          timezone,
-        )
-        logger.info(
-          { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider, hasPin: !!pinCode },
-          "Pass notification email sent successfully",
-        )
-      } catch (emailError) {
-        logger.error(
-          { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
-          "Failed to send pass notification email",
-        )
+      if (siteDetails) {
+        siteName = siteDetails.name
       }
     }
+
+    if (accessPointId) {
+      const { data: accessPoint } = await core
+        .from("qr_ready_devices")
+        .select("name")
+        .eq("id", accessPointId)
+        .single()
+      if (accessPoint?.name) {
+        accessPointName = accessPoint.name
+      }
+    }
+
+    // Determine timezone from metadata or default to Australia/Sydney
+    const timezone = meta.data.org_timezone || "Australia/Sydney"
+
+    // Determine pass type
+    const passType = meta.data.variant || "day"
+    const passTypeName = meta.data.pass_type_name || (passType.toLowerCase().includes("camping") ? "Camping Pass" : "Day Pass")
+    const numberOfDays = Number.parseInt(meta.data.number_of_days || "1", 10)
+
+    try {
+      await sendPassNotifications(
+        meta.data.customer_email,
+        meta.data.customer_phone || null,
+        {
+          accessPointName,
+          pin: pinCode,
+          validFrom: startsAt,
+          validTo: endsAt,
+          vehiclePlate: meta.data.customer_plate,
+          orgName,
+          orgSlug: meta.data.org_slug,
+          orgLogo,
+          siteName,
+          passType,
+          passTypeName,
+          numberOfDays,
+        },
+        timezone,
+      )
+      logger.info(
+        { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider, hasPin: !!pinCode },
+        "Pass notification email sent successfully",
+      )
+    } catch (emailError) {
+      logger.error(
+        { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
+        "Failed to send pass notification email",
+      )
+    }
+  }
 
   const customerIdentifier =
     meta.data.customer_email || meta.data.customer_phone || meta.data.customer_plate || "unknown"
