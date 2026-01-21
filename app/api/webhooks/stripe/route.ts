@@ -338,7 +338,6 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     fullName: meta.data.customer_name || undefined,
     email: meta.data.customer_email || undefined,
     phone: meta.data.customer_phone || undefined,
-    deviceId: accessPointId || "",
     slugPath,
     status: "Confirmed",
   })
