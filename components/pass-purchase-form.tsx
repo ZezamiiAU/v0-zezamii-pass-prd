@@ -257,7 +257,7 @@ export function PassPurchaseForm({
                     placeholder="John Smith"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="h-10 rounded-xl border-slate-200 text-sm focus:border-[#020617] focus:ring-[#020617]"
+                    className={`h-10 rounded-xl text-sm focus:border-[#020617] focus:ring-[#020617] ${!fullName.trim() ? "border-2 border-amber-400" : "border-slate-200"}`}
                     required
                   />
                   <p className="text-[10px] text-slate-400">Required for credit card payment</p>
@@ -272,7 +272,7 @@ export function PassPurchaseForm({
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-10 rounded-xl border-slate-200 text-sm focus:border-[#020617] focus:ring-[#020617]"
+                    className={`h-10 rounded-xl text-sm focus:border-[#020617] focus:ring-[#020617] ${!email.trim() ? "border-2 border-amber-400" : "border-slate-200"}`}
                     required
                   />
                 </div>
