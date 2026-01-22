@@ -152,14 +152,14 @@ export default function SuccessPage() {
   // Send confirmation email after PIN is displayed
   useEffect(() => {
     const sendConfirmationEmail = async () => {
-      if (!displayedCode || !passDetails?.passId || emailSent) return
-      
+      if (!displayedCode || !passDetails?.pass_id || emailSent) return
+
       try {
         const response = await fetch("/api/passes/send-confirmation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            passId: passDetails.passId,
+            passId: passDetails.pass_id,
             pin: displayedCode,
             pinSource,
           }),
@@ -177,7 +177,7 @@ export default function SuccessPage() {
     }
 
     sendConfirmationEmail()
-  }, [displayedCode, passDetails?.passId, emailSent, pinSource])
+  }, [displayedCode, passDetails?.pass_id, emailSent, pinSource])
 
   useEffect(() => {
     const checkOnlineStatus = () => {
