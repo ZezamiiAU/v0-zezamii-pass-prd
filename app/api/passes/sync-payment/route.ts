@@ -91,21 +91,22 @@ export async function POST(req: NextRequest) {
 
       const roomsResult = await createRoomsReservation(pass.org_id, roomsPayload)
 
-      if (roomsResult.success && roomsResult.pincode) {
-        pinCode = roomsResult.pincode
-        pinProvider = "rooms"
-        logger.info({ passId, pinCode }, "Pincode received from Rooms webhook (sync-payment)")
+      // Note: Rooms API does NOT return pincode - PIN arrives async via Portal webhook
+      if (roomsResult.success) {
+        logger.info({ passId }, "Rooms reservation confirmed, PIN will arrive via Portal webhook (sync-payment)")
       } else {
-        // Use backup pincode from metadata
-        if (meta.backup_pincode) {
-          pinCode = meta.backup_pincode
-          pinProvider = "backup"
-          logger.info({ passId, pinCode }, "Using backup pincode from metadata (sync-payment)")
-        } else {
-          // No pincode available - fail
-          logger.error({ passId }, "No pincode available - both Rooms and backup failed")
-          return NextResponse.json({ error: "Unable to generate access code" }, { status: 503 })
-        }
+        logger.warn({ passId, error: roomsResult.error }, "Rooms call failed (sync-payment)")
+      }
+
+      // Use backup pincode from metadata - PIN from Rooms will be fetched later via by-session polling
+      if (meta.backup_pincode) {
+        pinCode = meta.backup_pincode
+        pinProvider = "backup"
+        logger.info({ passId, pinCode }, "Using backup pincode from metadata (sync-payment)")
+      } else {
+        // No backup pincode available - fail
+        logger.error({ passId }, "No backup pincode available")
+        return NextResponse.json({ error: "Unable to generate access code" }, { status: 503 })
       }
 
       // Store the pincode (use upsert to handle race conditions)
