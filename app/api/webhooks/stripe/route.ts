@@ -112,6 +112,8 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
     .eq("id", meta.data.pass_id!)
     .single()
 
+  let pinCode: string | null = null
+
   if (pass) {
     const { error: activateError } = await passDb
       .from("passes")
@@ -120,7 +122,7 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
       .eq("schema", "pass")
 
     if (activateError) {
-      return NextResponse.json({ error: "Failed to activate pass", details: activateError.message }, { status: 500 })
+      logger.error({ passId: pass.id, activateError }, "Failed to activate pass")
     }
   }
 
@@ -140,6 +142,17 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
   const endsAt = pass?.valid_to || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
   const slugPath = `${meta.data.org_slug || "org"}/${meta.data.site_slug || "site"}/${meta.data.device_slug || "device"}`
+  
+  // Check if Rooms reservation was already created during payment intent
+  const roomsReservationAlreadyCreated = meta.data.rooms_reservation_created === "true"
+  
+  console.log("[v0] stripe-webhook: roomsReservationAlreadyCreated =", roomsReservationAlreadyCreated)
+  
+  // Send "Confirmed" status update to Rooms (reservation was created with "Pending" before payment)
+  // Note: Rooms API does NOT return a pincode - PIN is sent async via Portal webhook to pass.lock_codes
+  console.log("[v0] stripe-webhook: Building Rooms payload for Confirmed status, slugPath =", slugPath)
+  console.log("[v0] stripe-webhook: org.id =", org.id, "passId =", meta.data.pass_id)
+  
   const roomsPayload = buildRoomsPayload({
     siteId: meta.data.site_id || "",
     passId: meta.data.pass_id!,
@@ -149,30 +162,18 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
     email: meta.data.customer_email || undefined,
     phone: meta.data.customer_phone || undefined,
     slugPath,
-    status: "Confirmed",
+    status: "Confirmed", // Update to Confirmed after payment succeeds
   })
 
+  console.log("[v0] stripe-webhook: Calling createRoomsReservation with Confirmed status:", JSON.stringify(roomsPayload))
   const roomsResult = await createRoomsReservation(org.id, roomsPayload)
-
-  let pinCode = null
-
-  if (roomsResult.success && roomsResult.pincode) {
-    pinCode = roomsResult.pincode
-
-    const { error: lockCodeError } = await passDb.from("lock_codes").insert({
-      pass_id: meta.data.pass_id!,
-      code: pinCode,
-      provider: "rooms",
-      provider_ref: roomsResult.reservationId,
-      starts_at: startsAt,
-      ends_at: endsAt,
-    })
-
-    if (lockCodeError) {
-      logger.error({ passId: meta.data.pass_id, lockCodeError }, "Failed to store Rooms pincode")
-    }
+  console.log("[v0] stripe-webhook: Rooms API result:", JSON.stringify(roomsResult))
+  
+  if (roomsResult.success) {
+    console.log("[v0] stripe-webhook: Rooms reservation confirmed, PIN will arrive via Portal webhook")
   } else {
-    logger.error({ passId: meta.data.pass_id, error: roomsResult.error }, "Rooms API failed, using fallback pincode")
+    console.log("[v0] stripe-webhook: Rooms confirmation failed, PWA will use backup pincode")
+    logger.error({ passId: meta.data.pass_id, error: roomsResult.error }, "Rooms API failed")
 
     const { data: existingCode } = await passDb
       .from("lock_codes")
@@ -301,6 +302,9 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
     .eq("id", meta.data.pass_id!)
     .single()
 
+  let pinCode: string | null = null
+  let pinProvider: "rooms" | "backup" = "rooms"
+
   if (pass) {
     const { error: activateError } = await passDb.from("passes").update({ status: "active" }).eq("id", pass.id)
 
@@ -326,9 +330,6 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
   const accessPointId = meta.data.access_point_id || meta.data.gate_id
   const siteId = meta.data.site_id
   const slugPath = `${meta.data.org_slug}/${meta.data.site_slug || "site"}/${meta.data.device_slug || "device"}`
-
-  let pinCode: string | null = null
-  let pinProvider: "rooms" | "backup" = "rooms"
 
   const roomsPayload = buildRoomsPayload({
     siteId: siteId || "",

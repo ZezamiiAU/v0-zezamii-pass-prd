@@ -9,6 +9,7 @@ import { checkoutSchema } from "@/lib/validation"
 import logger from "@/lib/logger"
 import { createCoreClient } from "@/lib/supabase/core-client"
 import { getBackupPincode } from "@/lib/db/backup-pincodes"
+import { buildRoomsPayload, createRoomsReservation } from "@/lib/integrations/rooms-event-hub"
 
 function getStripeClient() {
   const { STRIPE_SECRET_KEY } = ENV.server()
@@ -239,6 +240,39 @@ export async function POST(request: NextRequest) {
 
     const slugPath = `${org.slug}/${siteSlug || "site"}/${device.slug || "device"}`
 
+    // Call Rooms API BEFORE payment - create reservation with "Pending" status
+    // Note: Rooms API does NOT return a pincode - PIN is sent async via Portal webhook
+    let roomsReservationCreated = false
+    let roomsPincode = ""
+    try {
+      console.log("[v0] payment-intents: Calling Rooms API before payment, slugPath =", slugPath)
+      const roomsPayload = buildRoomsPayload({
+        siteId: siteId,
+        passId: pass.id,
+        validFrom: validFrom.toISOString(),
+        validTo: validTo.toISOString(),
+        fullName: fullName || undefined,
+        email: email || undefined,
+        phone: phone || undefined,
+        slugPath,
+        status: "Pending", // Pending until payment succeeds
+      })
+      console.log("[v0] payment-intents: Rooms payload:", JSON.stringify(roomsPayload))
+      
+      const roomsResult = await createRoomsReservation(passType.org_id, roomsPayload)
+      console.log("[v0] payment-intents: Rooms result:", JSON.stringify(roomsResult))
+      
+      if (roomsResult.success) {
+        roomsReservationCreated = true
+        roomsPincode = roomsResult.pincode || ""
+        console.log("[v0] payment-intents: Rooms reservation created, PIN will arrive via Portal webhook")
+      } else {
+        console.log("[v0] payment-intents: Rooms call failed, will use backup pincode fallback")
+      }
+    } catch (roomsError) {
+      console.log("[v0] payment-intents: Rooms API error, will use backup pincode:", roomsError)
+    }
+
     let backupPincode = ""
     let backupFortnightNumber = ""
     try {
@@ -299,6 +333,7 @@ export async function POST(request: NextRequest) {
           valid_to: validTo.toISOString(),
           backup_pincode: backupPincode,
           backup_pincode_fortnight: backupFortnightNumber,
+          rooms_reservation_created: roomsReservationCreated ? "true" : "false",
         },
       },
       idempotencyKey ? { idempotencyKey } : undefined,

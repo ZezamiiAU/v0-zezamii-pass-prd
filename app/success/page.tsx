@@ -205,6 +205,9 @@ export default function SuccessPage() {
     let syncAttempted = false
     let pollInterval: NodeJS.Timeout | null = null
     let isMounted = true
+    let pinRetryCount = 0
+    const MAX_PIN_RETRIES = 3
+    const PIN_RETRY_DELAY_MS = Number(process.env.NEXT_PUBLIC_PASS_FETCH_BASE_DELAY_MS) || 8000
 
     const fetchPassDetails = async () => {
       if (!isMounted) return
@@ -297,15 +300,42 @@ export default function SuccessPage() {
 
         if (!isMounted) return
 
+        // Check if we got a Rooms PIN code
+        const hasRoomsPin = data.code && data.pinSource === "rooms"
+        const hasAnyCode = data.code || data.backupCode
+        
+        // If no Rooms PIN yet and we haven't exhausted retries, poll again
+        if (!hasRoomsPin && pinRetryCount < MAX_PIN_RETRIES && isMounted) {
+          pinRetryCount++
+          console.log(`[v0] success: PIN retry ${pinRetryCount}/${MAX_PIN_RETRIES}, waiting ${PIN_RETRY_DELAY_MS}ms`)
+          
+          // Cache backup code in case retries fail
+          if (data.backupCode && !backupCodeCached) {
+            setBackupCodeCached(data.backupCode)
+          }
+          
+          // Store pass details but keep loading for PIN
+          setPassDetails(data)
+          
+          // Schedule retry
+          pollInterval = setTimeout(() => fetchPassDetails(), PIN_RETRY_DELAY_MS)
+          return
+        }
+        
+        // Retries exhausted or PIN received
         const codeToCache = data.code || data.backupCode
         if (codeToCache) {
           setBackupCodeCached(codeToCache)
           if (data.pinSource === "rooms") {
             setRoomsPinReceived(true)
+            console.log("[v0] success: Rooms PIN received:", data.code)
+          } else {
+            console.log("[v0] success: Using backup code after", pinRetryCount, "retries")
           }
         }
         
-        if (countdown === 0 && !displayedCode && codeToCache) {
+        // Display code immediately if countdown finished or we have Rooms PIN
+        if ((countdown === 0 || hasRoomsPin) && !displayedCode && codeToCache) {
           setDisplayedCode(codeToCache)
           setPinSource(data.pinSource || "backup")
           setIsWaitingForRooms(false)

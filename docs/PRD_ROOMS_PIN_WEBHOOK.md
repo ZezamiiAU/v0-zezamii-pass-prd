@@ -1,52 +1,85 @@
 # PRD: Rooms PIN Webhook Integration
 
 ## Document Info
-- **Version**: 3.0
+- **Version**: 4.0
 - **Date**: January 2026
 - **Author**: Zezamii Pass Team
-- **Status**: Ready for Development
+- **Status**: Implemented
 
 ---
 
 ## 1. Executive Summary
 
-This document describes the two-phase PIN provisioning architecture where:
-1. **PWA calls Rooms API directly** with status (Pending/Confirmed/Cancelled)
-2. **Rooms pushes PIN to Portal webhook** after processing
-3. **PWA polls Portal DB** for PIN with countdown timer
-4. **Backup codes remain** as existing fortnight-rotating system
+This document describes the asynchronous PIN provisioning architecture where:
+1. **PWA calls Rooms API** with `status: "Pending"` BEFORE payment
+2. **User completes Stripe payment**
+3. **Stripe webhook** calls Rooms API with `status: "Confirmed"` 
+4. **Rooms generates PIN** and POSTs to **Portal webhook** (`/api/webhooks/rooms/pin`)
+5. **Portal stores PIN** in `pass.lock_codes` table
+6. **PWA polls** `by-session` API (3 retries, 8-second delays) to fetch PIN from `lock_codes`
+7. **Fallback to backup code** if no PIN received after retries
+
+**Key Point:** Rooms API does NOT return a PIN in its response. PIN is delivered asynchronously via Portal webhook.
 
 ### Architecture Flow
 
 ```
-┌─────────┐      ┌─────────┐      ┌─────────┐      ┌─────────┐
-│   PWA   │      │  Rooms  │      │ Portal  │      │   DB    │
-└────┬────┘      └────┬────┘      └────┬────┘      └────┬────┘
-     │                │                │                │
-     │ 1. POST reservation (status: "Pending")         │
-     │───────────────>│                │                │
-     │                │                │                │
-     │ 2. Create pass + pending lock_code              │
-     │─────────────────────────────────────────────────>│
-     │                │                │                │
-     │ 3. Create Stripe Payment Intent                 │
-     │─────────────────────────────────────────────────>│
-     │                │                │                │
-     │ ... User completes payment ...  │                │
-     │                │                │                │
-     │ 4. POST reservation (status: "Confirmed")       │
-     │───────────────>│                │                │
-     │                │                │                │
-     │                │ 5. Generate PIN + POST webhook │
-     │                │───────────────>│                │
-     │                │                │ 6. Update      │
-     │                │                │    lock_code   │
-     │                │                │───────────────>│
-     │                │                │                │
-     │ 7. Poll GET /api/passes/by-session              │
-     │<────────────────────────────────────────────────│
-     │                │                │                │
-     │ 8. Display PIN │                │                │
+┌─────────┐      ┌─────────┐      ┌─────────┐      ┌─────────┐      ┌─────────┐
+│   PWA   │      │ Stripe  │      │  Rooms  │      │ Portal  │      │   DB    │
+└────┬────┘      └────┬────┘      └────┬────┘      └────┬────┘      └────┬────┘
+     │                │                │                │                │
+     │ 1. User clicks "Continue" (POST /api/payment-intents)             │
+     │───────────────────────────────────────────────────────────────────>│
+     │                │                │                │                │
+     │ 2. Create pass in database                                        │
+     │───────────────────────────────────────────────────────────────────>│
+     │                │                │                │                │
+     │ 3. POST reservation (status: "Pending") - NO PIN RETURNED         │
+     │────────────────────────────────>│                │                │
+     │                │                │                │                │
+     │ 4. Create Stripe Payment Intent │                │                │
+     │───────────────>│                │                │                │
+     │                │                │                │                │
+     │ 5. User enters card + pays      │                │                │
+     │───────────────>│                │                │                │
+     │                │                │                │                │
+     │                │ 6. Stripe webhook (checkout.session.completed)   │
+     │                │───────────────────────────────────────────────────>
+     │                │                │                │                │
+     │                │ 7. POST reservation (status: "Confirmed")        │
+     │                │────────────────>                │                │
+     │                │                │                │                │
+     │                │                │ 8. Generate PIN                 │
+     │                │                │────────────────────────────────>│
+     │                │                │                │                │
+     │                │                │ 9. POST /api/webhooks/rooms/pin │
+     │                │                │───────────────>│                │
+     │                │                │                │                │
+     │                │                │                │ 10. Store PIN  │
+     │                │                │                │    in lock_codes
+     │                │                │                │───────────────>│
+     │                │                │                │                │
+     │ 11. Success page polls GET /api/passes/by-session (3x, 8s delays) │
+     │───────────────────────────────────────────────────────────────────>│
+     │                │                │                │                │
+     │ 12. Return PIN from lock_codes (pinSource: "rooms")               │
+     │<──────────────────────────────────────────────────────────────────│
+     │                │                │                │                │
+     │ 13. Display PIN to user         │                │                │
+     │                │                │                │                │
+```
+
+### Fallback Flow (No PIN received)
+
+```
+     │ 11. Success page polls 3 times (8s each = 24s total)              │
+     │───────────────────────────────────────────────────────────────────>│
+     │                │                │                │                │
+     │ 12. No PIN found after retries                                    │
+     │<──────────────────────────────────────────────────────────────────│
+     │                │                │                │                │
+     │ 13. Display backup code (from Stripe metadata)                    │
+     │                │                │                │                │
 ```
 
 ---
@@ -379,114 +412,108 @@ export async function POST(request: Request) {
 
 ---
 
-## 6. PWA Changes Required
+## 6. PWA Implementation (Current State)
 
-### 6.1 Remove Synchronous PIN Expectation
+### 6.1 Rooms API Call Points
 
-**Current flow in `rooms-event-hub.ts`:**
+**Location 1: `/api/payment-intents/route.ts`** (BEFORE payment)
 ```typescript
-// Current: Expects PIN in response
-const response = await createRoomsReservation(orgId, payload)
-if (response.success && response.pincode) {
-  return response.pincode  // Uses PIN from response
+// Called when user clicks "Continue" - before Stripe payment
+const roomsPayload = buildRoomsPayload({
+  siteId,
+  passId: pass.id,
+  validFrom,
+  validTo,
+  fullName,
+  email,
+  phone,
+  slugPath,  // e.g. "griffith-boat/club/gate-entry"
+  status: "Pending",  // Pending until payment succeeds
+})
+
+const roomsResult = await createRoomsReservation(passType.org_id, roomsPayload)
+// Note: roomsResult does NOT contain a pincode - PIN arrives via Portal webhook
+```
+
+**Location 2: `/api/webhooks/stripe/route.ts`** (AFTER payment)
+```typescript
+// Called by Stripe webhook after checkout.session.completed
+const roomsPayload = buildRoomsPayload({
+  // ... same fields ...
+  status: "Confirmed",  // Payment succeeded
+})
+
+const roomsResult = await createRoomsReservation(org.id, roomsPayload)
+// Note: roomsResult does NOT contain a pincode - PIN arrives via Portal webhook
+```
+
+### 6.2 Rooms Response Type
+
+```typescript
+// lib/integrations/rooms-event-hub.ts
+export interface RoomsReservationResponse {
+  success: boolean
+  reservationId?: string  // The pass_id we sent
+  error?: string
+  statusCode?: number
+  // Note: PIN is NOT returned - it's sent async via Portal webhook
 }
 ```
 
-**New flow:**
-```typescript
-// New: Don't expect PIN in response
-const response = await createRoomsReservation(orgId, payload)
-if (response.success) {
-  // Reservation created, PIN will arrive via webhook
-  // Create pending lock_code record
-  await createPendingLockCode(passId, validFrom, validTo)
-  return null  // PIN will be fetched from database later
-}
-```
+### 6.3 Success Page Polling (3 retries, 8-second delays)
 
-### 6.2 Create Pending Lock Code
-
-Add function to create pending lock_code when reservation is made:
+**Location: `/app/success/page.tsx`**
 
 ```typescript
-async function createPendingLockCode(
-  passId: string, 
-  startsAt: string, 
-  endsAt: string
-): Promise<void> {
-  const supabase = createSchemaServiceClient("pass")
+let pinRetryCount = 0
+const MAX_PIN_RETRIES = 3
+const PIN_RETRY_DELAY_MS = 8000  // 8 seconds between retries
+
+const fetchPassDetails = async () => {
+  const response = await fetch(`/api/passes/by-session?${queryParam}`)
+  const data = await response.json()
   
-  await supabase
-    .from("lock_codes")
-    .upsert({
-      pass_id: passId,
-      provider: "rooms",
-      provider_ref: passId,  // Use pass_id as reference
-      status: "pending",
-      code: null,
-      starts_at: startsAt,
-      ends_at: endsAt,
-    }, {
-      onConflict: "pass_id,provider"
-    })
-}
-```
-
-### 6.3 Update Success Page Polling
-
-**Current:** Polls Rooms API or checks Stripe metadata
-**New:** Polls `pass.lock_codes` table
-
-```typescript
-// In success page or by-session API
-async function getPinForPass(passId: string): Promise<string | null> {
-  const supabase = createSchemaServiceClient("pass")
+  // Check if we got a Rooms PIN code
+  const hasRoomsPin = data.code && data.pinSource === "rooms"
   
-  const { data } = await supabase
-    .from("lock_codes")
-    .select("code, status")
-    .eq("pass_id", passId)
-    .eq("status", "active")
-    .maybeSingle()
-  
-  return data?.code || null
-}
-```
-
-### 6.4 Fallback to Backup Code
-
-If after N seconds (e.g., 30s) no PIN arrives, use backup code:
-
-```typescript
-const PIN_WAIT_TIMEOUT_MS = 30000
-
-// In success page
-const [countdown, setCountdown] = useState(30)
-const [pin, setPin] = useState<string | null>(null)
-
-useEffect(() => {
-  const pollInterval = setInterval(async () => {
-    const code = await getPinForPass(passId)
-    if (code) {
-      setPin(code)
-      clearInterval(pollInterval)
-    }
-  }, 2000)  // Poll every 2 seconds
-
-  const timeout = setTimeout(() => {
-    clearInterval(pollInterval)
-    if (!pin) {
-      // Use backup code
-      setPin(backupCode)
-      setPinSource("backup")
-    }
-  }, PIN_WAIT_TIMEOUT_MS)
-
-  return () => {
-    clearInterval(pollInterval)
-    clearTimeout(timeout)
+  // If no Rooms PIN yet and we haven't exhausted retries, poll again
+  if (!hasRoomsPin && pinRetryCount < MAX_PIN_RETRIES) {
+    pinRetryCount++
+    console.log(`PIN retry ${pinRetryCount}/${MAX_PIN_RETRIES}, waiting ${PIN_RETRY_DELAY_MS}ms`)
+    
+    // Schedule retry
+    setTimeout(() => fetchPassDetails(), PIN_RETRY_DELAY_MS)
+    return
   }
-}, [passId])
+  
+  // After retries exhausted, use backup code if no Rooms PIN
+  const codeToDisplay = data.code || data.backupCode
+  setDisplayedCode(codeToDisplay)
+  setPinSource(data.pinSource || "backup")
+}
+```
+
+### 6.4 PIN Source Determination
+
+**Location: `/api/passes/by-session/route.ts`**
+
+```typescript
+// Determine pin source from lock_codes provider field
+const lockCodeRecord = await getLockCodeByPassId(pass.id)
+lockCode = lockCodeRecord?.code || null
+
+if (lockCodeRecord?.provider === "rooms") {
+  pinSource = "rooms"
+} else if (lockCode) {
+  pinSource = "backup"
+}
+
+// Response includes:
+return {
+  code: lockCode,           // PIN from lock_codes table (or null)
+  backupCode: backupCode,   // Backup from Stripe metadata
+  pinSource: pinSource,     // "rooms" or "backup"
+}
 ```
 
 ---
@@ -621,15 +648,17 @@ logger.info({
 - [ ] Add logging and monitoring
 - [ ] Test with sample webhook payloads
 
-### PWA Changes
-- [ ] Modify `createRoomsReservation` to not expect PIN in response
-- [ ] Add `createPendingLockCode` function
-- [ ] Update success page to poll `lock_codes` table
-- [ ] Implement timeout → backup code fallback
-- [ ] Update `by-session` API to check `lock_codes` table
+### PWA Changes (COMPLETED)
+- [x] Modify `createRoomsReservation` to not expect PIN in response
+- [x] Call Rooms API with "Pending" status in `/api/payment-intents` (before payment)
+- [x] Call Rooms API with "Confirmed" status in Stripe webhook (after payment)
+- [x] Update success page to poll `by-session` with 3 retries, 8-second delays
+- [x] Implement fallback to backup code after retries exhausted
+- [x] Update `by-session` API to read PIN from `lock_codes` table
+- [x] Set `pinSource` based on `lock_codes.provider` field
 
 ### Rooms Configuration
-- [ ] Configure webhook URL in Rooms system
+- [ ] Configure webhook URL in Rooms system (Portal endpoint)
 - [ ] Set up authentication header
 - [ ] Test end-to-end with real reservation
 
@@ -654,7 +683,67 @@ logger.info({
 
 ---
 
-## 13. Open Questions for Rooms Team
+## 13. Test Data (Griffith Boat Club)
+
+### Test Identifiers
+| Field | Value |
+|-------|-------|
+| **passId / reservationId** | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
+| **guestId** | `6ba7b810-9dad-11d1-80b4-00c04fd430c8` |
+| **roomId / slugPath** | `griffith-boat/club/gate-entry` |
+
+### Sample Rooms API Payload (from PWA)
+```json
+{
+  "propertyId": "griffith-boat",
+  "reservationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "arrivalDate": "2026-01-22T00:00:00.000Z",
+  "departureDate": "2026-01-23T23:59:59.999Z",
+  "guestId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "guestFirstName": "John",
+  "guestLastName": "Smith",
+  "guestEmail": "john.smith@example.com",
+  "guestPhone": "+61412345678",
+  "roomId": "griffith-boat/club/gate-entry",
+  "roomName": "griffith-boat/club/gate-entry",
+  "status": "Pending"
+}
+```
+
+### Sample Portal Webhook Payload (from Rooms)
+```json
+{
+  "event": "pin.created",
+  "data": {
+    "reservationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "pinCode": "4829",
+    "validFrom": "2026-01-22T00:00:00.000Z",
+    "validUntil": "2026-01-23T23:59:59.999Z"
+  }
+}
+```
+
+### Test Curl Commands
+
+**1. Simulate Rooms webhook to Portal:**
+```bash
+curl -X POST "https://portal.zezamii.com/api/webhooks/rooms/pin" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_WEBHOOK_SECRET" \
+  -d '{
+    "event": "pin.created",
+    "data": {
+      "reservationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "pinCode": "4829",
+      "validFrom": "2026-01-22T00:00:00.000Z",
+      "validUntil": "2026-01-23T23:59:59.999Z"
+    }
+  }'
+```
+
+---
+
+## 14. Open Questions for Rooms Team
 
 1. **Webhook payload format:** Confirm exact field names and structure
 2. **Authentication method:** Bearer token or HMAC signature?

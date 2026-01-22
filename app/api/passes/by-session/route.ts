@@ -17,6 +17,7 @@ const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
 
 export async function GET(request: NextRequest) {
+  console.log("[v0] by-session: GET called with URL:", request.url)
   if (!rateLimit(request, 30, 60000)) {
     const headers = getRateLimitHeaders(request, 30)
     return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
@@ -159,6 +160,7 @@ export async function GET(request: NextRequest) {
       // Auto-sync: If payment succeeded but pass is not active, activate it now
       if (pass.status !== "active" && payment.status === "succeeded") {
         console.log("[v0] by-session: Auto-syncing pass - payment succeeded but pass not active")
+        console.log("[v0] by-session: pass.id =", pass.id, "pass.status =", pass.status, "payment.status =", payment.status)
         
         try {
           const passDb = createSchemaServiceClient("pass")
@@ -169,6 +171,9 @@ export async function GET(request: NextRequest) {
           if (payment.stripe_payment_intent) {
             const stripeIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent)
             meta = stripeIntent.metadata || {}
+            console.log("[v0] by-session: Stripe metadata =", JSON.stringify(meta))
+          } else {
+            console.log("[v0] by-session: No stripe_payment_intent on payment record")
           }
           
           // Calculate validity dates
@@ -179,6 +184,7 @@ export async function GET(request: NextRequest) {
           
           // Check if lock code already exists
           const existingLockCode = await getLockCodeByPassId(pass.id)
+          console.log("[v0] by-session: existingLockCode =", existingLockCode ? "EXISTS" : "NULL")
           
           let pinCode: string | null = null
           let pinProvider: "rooms" | "backup" = "backup"
@@ -186,7 +192,9 @@ export async function GET(request: NextRequest) {
           if (!existingLockCode) {
             // Try Rooms API first - need device info for the payload
             const deviceId = pass.device_id || meta.access_point_id || meta.gate_id
+            console.log("[v0] by-session: deviceId =", deviceId, "meta.org_id =", meta.org_id)
             if (deviceId && meta.org_id) {
+              console.log("[v0] by-session: Attempting Rooms API call...")
               try {
 // Get device and site info for Rooms payload
   const { data: device } = await coreDb
@@ -211,6 +219,7 @@ export async function GET(request: NextRequest) {
 
                     if (org) {
                       const slugPath = `${org.slug}/${site.slug}/${device.slug}`
+                      console.log("[v0] by-session: Building Rooms payload with slugPath =", slugPath)
                       const roomsPayload = buildRoomsPayload({
                         siteId: device.site_id,
                         passId: pass.id,
@@ -222,17 +231,30 @@ export async function GET(request: NextRequest) {
                         slugPath,
                         status: "Confirmed",
                       })
+                      console.log("[v0] by-session: Calling createRoomsReservation with payload:", JSON.stringify(roomsPayload))
                       const roomsResult = await createRoomsReservation(meta.org_id, roomsPayload)
+                      console.log("[v0] by-session: Rooms API result =", JSON.stringify(roomsResult))
                       if (roomsResult?.pincode) {
                         pinCode = roomsResult.pincode
                         pinProvider = "rooms"
+                        console.log("[v0] by-session: Got PIN from Rooms:", pinCode)
+                      } else {
+                        console.log("[v0] by-session: No pincode in Rooms result")
                       }
+                    } else {
+                      console.log("[v0] by-session: org not found")
                     }
+                  } else {
+                    console.log("[v0] by-session: site not found")
                   }
+                } else {
+                  console.log("[v0] by-session: device not found or no site_id")
                 }
               } catch (roomsError) {
                 console.log("[v0] by-session: Rooms API failed, using backup pincode", roomsError)
               }
+            } else {
+              console.log("[v0] by-session: Skipping Rooms - deviceId =", deviceId, "meta.org_id =", meta.org_id)
             }
             
             // Fallback to backup pincode
@@ -410,10 +432,19 @@ export async function GET(request: NextRequest) {
 
     let lockCode = null
     let lockCodeError = false
+    let pinSource: "rooms" | "backup" | null = null
+    
     if (pass.status === "active") {
       try {
-        const code = await getLockCodeByPassId(pass.id)
-        lockCode = code?.code || null
+        const lockCodeRecord = await getLockCodeByPassId(pass.id)
+        lockCode = lockCodeRecord?.code || null
+        
+        // Determine pin source from lock_codes provider field
+        if (lockCodeRecord?.provider === "rooms") {
+          pinSource = "rooms"
+        } else if (lockCode) {
+          pinSource = "backup"
+        }
 
         if (lockCode === null) {
           lockCodeError = true
@@ -433,16 +464,12 @@ export async function GET(request: NextRequest) {
 
     // Get backup code from payment metadata if available
     let backupCode: string | null = null
-    let pinSource: "rooms" | "backup" | null = null
     
     try {
       if (payment.metadata && typeof payment.metadata === "object") {
         const meta = payment.metadata as Record<string, unknown>
         if (meta.backup_pincode && typeof meta.backup_pincode === "string") {
           backupCode = meta.backup_pincode
-        }
-        if (meta.pin_source && typeof meta.pin_source === "string") {
-          pinSource = meta.pin_source as "rooms" | "backup"
         }
       }
     } catch {
