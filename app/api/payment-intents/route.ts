@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
     // Note: Rooms API does NOT return a pincode - PIN is sent async via Portal webhook
     let roomsReservationCreated = false
     try {
-      logger.info({ slugPath, orgId: passType.org_id, passId: pass.id }, "Calling Rooms API before payment")
+      console.log("[v0] payment-intents: Calling Rooms API before payment, slugPath =", slugPath)
       const roomsPayload = buildRoomsPayload({
         siteId: siteId,
         passId: pass.id,
@@ -256,19 +256,19 @@ export async function POST(request: NextRequest) {
         slugPath,
         status: "Pending", // Pending until payment succeeds
       })
-      logger.info({ roomsPayload }, "Rooms payload built")
-
+      console.log("[v0] payment-intents: Rooms payload:", JSON.stringify(roomsPayload))
+      
       const roomsResult = await createRoomsReservation(passType.org_id, roomsPayload)
-      logger.info({ roomsResult }, "Rooms API response received")
-
+      console.log("[v0] payment-intents: Rooms result:", JSON.stringify(roomsResult))
+      
       if (roomsResult.success) {
         roomsReservationCreated = true
-        logger.info({ passId: pass.id }, "Rooms reservation created - PIN will arrive via Portal webhook")
+        console.log("[v0] payment-intents: Rooms reservation created, PIN will arrive via Portal webhook")
       } else {
-        logger.warn({ passId: pass.id, error: roomsResult.error }, "Rooms call failed - will use backup pincode fallback")
+        console.log("[v0] payment-intents: Rooms call failed, will use backup pincode fallback")
       }
     } catch (roomsError) {
-      logger.error({ error: roomsError instanceof Error ? roomsError.message : String(roomsError) }, "Rooms API error - will use backup pincode")
+      console.log("[v0] payment-intents: Rooms API error, will use backup pincode:", roomsError)
     }
 
     let backupPincode = ""

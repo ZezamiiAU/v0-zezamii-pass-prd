@@ -134,12 +134,12 @@ export async function createRoomsReservation(
   payload: RoomsReservationPayload,
 ): Promise<RoomsReservationResponse> {
   const startTime = Date.now()
-  logger.info({ organisationId }, "createRoomsReservation called")
+  console.log("[v0] createRoomsReservation: Called with organisationId =", organisationId)
 
   try {
     // Fetch integration config from database
     const core = createSchemaServiceClient("core")
-    logger.info({ organisationId }, "Querying integrations table for rooms_event_hub")
+    console.log("[v0] createRoomsReservation: Querying integrations table...")
     const { data: integration, error: configError } = await core
       .from("integrations")
       .select("id, config, credentials")
@@ -148,9 +148,10 @@ export async function createRoomsReservation(
       .eq("status", "active")
       .maybeSingle()
 
-    logger.info({ organisationId, found: !!integration, error: configError?.message }, "Integration query result")
+    console.log("[v0] createRoomsReservation: Integration query result:", integration ? "FOUND" : "NOT FOUND", "error:", configError?.message || "none")
 
     if (configError || !integration) {
+      console.log("[v0] createRoomsReservation: No active Rooms integration found for org", organisationId)
       logger.warn({ organisationId, configError: configError?.message || "No integration found" }, "Rooms integration not configured")
       return {
         success: false,
@@ -159,15 +160,25 @@ export async function createRoomsReservation(
     }
 
     const config = integration.config as { base_url: string; webhook_path: string }
+    const credentials = integration.credentials as { api_key?: string } | null
+    console.log("[v0] createRoomsReservation: Integration config:", JSON.stringify(config))
+
     const url = `${config.base_url}${config.webhook_path}`
-    logger.info({ organisationId, url }, "Calling Rooms API")
+    console.log("[v0] createRoomsReservation: Calling URL:", url)
+
+    // Build headers with optional Authorization
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    }
+    if (credentials?.api_key) {
+      headers["Authorization"] = `Bearer ${credentials.api_key}`
+      console.log("[v0] createRoomsReservation: Authorization header added")
+    }
 
     // Make synchronous HTTP call to Rooms API
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(30000),
     })
@@ -207,26 +218,29 @@ export async function createRoomsReservation(
       }
     }
 
-    // Note: Per PRD, Rooms API does NOT return a PIN in its response.
-    // PIN is delivered asynchronously via Portal webhook to /api/webhooks/rooms/pin
-    // We consider the call successful if HTTP response is OK (2xx)
     const pincode =
       responseBody.pincode || responseBody.pin_code || responseBody.pin || responseBody.code || responseBody.accessCode
+
+    if (!pincode) {
+      logger.error({ organisationId, responseBody }, "Rooms API did not return pincode")
+      return {
+        success: false,
+        error: "Rooms API did not return pincode",
+      }
+    }
 
     logger.info(
       {
         organisationId,
         reservationId: payload.reservationId,
         duration,
-        hasPincode: !!pincode,
-        responseBody,
       },
-      "Rooms reservation created successfully - PIN will arrive via webhook",
+      "Rooms reservation created successfully",
     )
 
     return {
       success: true,
-      pincode: pincode ? String(pincode) : undefined,
+      pincode: String(pincode),
       reservationId: payload.reservationId,
       statusCode: response.status,
     }
