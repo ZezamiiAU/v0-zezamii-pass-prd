@@ -134,12 +134,12 @@ export async function createRoomsReservation(
   payload: RoomsReservationPayload,
 ): Promise<RoomsReservationResponse> {
   const startTime = Date.now()
-  console.log("[v0] createRoomsReservation: Called with organisationId =", organisationId)
+  logger.info({ organisationId }, "createRoomsReservation called")
 
   try {
     // Fetch integration config from database
     const core = createSchemaServiceClient("core")
-    console.log("[v0] createRoomsReservation: Querying integrations table...")
+    logger.info({ organisationId }, "Querying integrations table for rooms_event_hub")
     const { data: integration, error: configError } = await core
       .from("integrations")
       .select("id, config, credentials")
@@ -148,10 +148,9 @@ export async function createRoomsReservation(
       .eq("status", "active")
       .maybeSingle()
 
-    console.log("[v0] createRoomsReservation: Integration query result:", integration ? "FOUND" : "NOT FOUND", "error:", configError?.message || "none")
+    logger.info({ organisationId, found: !!integration, error: configError?.message }, "Integration query result")
 
     if (configError || !integration) {
-      console.log("[v0] createRoomsReservation: No active Rooms integration found for org", organisationId)
       logger.warn({ organisationId, configError: configError?.message || "No integration found" }, "Rooms integration not configured")
       return {
         success: false,
@@ -161,10 +160,8 @@ export async function createRoomsReservation(
 
     const config = integration.config as { base_url: string; webhook_path: string }
     const credentials = integration.credentials as { api_key?: string } | null
-    console.log("[v0] createRoomsReservation: Integration config:", JSON.stringify(config))
-
     const url = `${config.base_url}${config.webhook_path}`
-    console.log("[v0] createRoomsReservation: Calling URL:", url)
+    logger.info({ organisationId, url, hasApiKey: !!credentials?.api_key }, "Calling Rooms API")
 
     // Build headers with optional Authorization
     const headers: Record<string, string> = {
@@ -172,7 +169,6 @@ export async function createRoomsReservation(
     }
     if (credentials?.api_key) {
       headers["Authorization"] = `Bearer ${credentials.api_key}`
-      console.log("[v0] createRoomsReservation: Authorization header added")
     }
 
     // Make synchronous HTTP call to Rooms API
