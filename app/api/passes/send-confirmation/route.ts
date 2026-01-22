@@ -15,14 +15,22 @@ import { getLockCodeByPassId } from "@/lib/db/lock-codes"
  * incorrect backup PIN that would be replaced by the Rooms PIN.
  */
 export async function POST(request: NextRequest) {
+  logger.info("[send-confirmation] Endpoint called")
+
   if (!rateLimit(request, 5, 60000)) {
     const headers = getRateLimitHeaders(request, 5)
+    logger.warn("[send-confirmation] Rate limited")
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers })
   }
 
   try {
     const body = await request.json()
     const { passId, pin, pinSource } = body
+
+    logger.info(
+      { passId, pinSource, hasPin: !!pin },
+      "[send-confirmation] Request received",
+    )
 
     if (!passId) {
       return NextResponse.json({ error: "passId is required" }, { status: 400 })
@@ -102,6 +110,11 @@ export async function POST(request: NextRequest) {
     const numberOfDays = Number.parseInt((meta.number_of_days as string) || "1", 10)
 
     // Send the email with the final PIN
+    logger.info(
+      { passId, email: customerEmail, accessPointName, timezone },
+      "[send-confirmation] Calling sendPassNotifications",
+    )
+
     await sendPassNotifications(
       customerEmail,
       customerPhone || null,
@@ -119,6 +132,8 @@ export async function POST(request: NextRequest) {
       },
       timezone,
     )
+
+    logger.info({ passId }, "[send-confirmation] sendPassNotifications completed")
 
     // Mark email as sent
     await passDb

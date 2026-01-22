@@ -9,13 +9,23 @@ export async function sendPassNotifications(
   data: PassNotificationData,
   timezone: string,
 ): Promise<void> {
+  logger.info(
+    { email, hasPhone: !!phone, pin: data.pin, timezone },
+    "[sendPassNotifications] Function called",
+  )
+
   const promises: Promise<any>[] = []
 
   // Send email notification
   if (email) {
+    logger.info({ email }, "[sendPassNotifications] Creating EmailProvider")
     const emailProvider = new EmailProvider()
     const textBody = generatePassNotificationText(data, timezone)
     const htmlBody = generatePassNotificationHTML(data, timezone)
+    logger.info(
+      { email, textBodyLength: textBody.length, htmlBodyLength: htmlBody.length },
+      "[sendPassNotifications] Templates generated, sending email",
+    )
 
     promises.push(
       emailProvider
@@ -38,7 +48,15 @@ export async function sendPassNotifications(
   // Note: SMS is handled client-side via device's native SMS app
   // The success page will show a "Share via SMS" button that uses sms: URI
 
-  await Promise.allSettled(promises)
+  logger.info(
+    { promiseCount: promises.length },
+    "[sendPassNotifications] Waiting for promises to settle",
+  )
+  const results = await Promise.allSettled(promises)
+  logger.info(
+    { results: results.map((r) => r.status) },
+    "[sendPassNotifications] All promises settled",
+  )
 }
 
 export * from "./types"

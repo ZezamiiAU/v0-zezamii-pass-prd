@@ -21,14 +21,24 @@ export class EmailProvider implements NotificationProvider {
     const apiKey = process.env.RESEND_API_KEY
     const fromAddress = process.env.EMAIL_FROM
 
+    logger.info(
+      {
+        hasApiKey: !!apiKey,
+        apiKeyLength: apiKey?.length || 0,
+        hasFromAddress: !!fromAddress,
+        fromAddress: fromAddress || "(not set)",
+      },
+      "[EmailProvider] Constructor called - checking env vars",
+    )
+
     if (!apiKey) {
-      logger.warn("RESEND_API_KEY not configured - email sending disabled")
+      logger.warn("[EmailProvider] RESEND_API_KEY not configured - email sending disabled")
       this.fromAddress = "noreply@example.com"
       return
     }
 
     if (!fromAddress) {
-      logger.warn("EMAIL_FROM not configured - using default")
+      logger.warn("[EmailProvider] EMAIL_FROM not configured - using default")
       this.fromAddress = "noreply@example.com"
     } else {
       this.fromAddress = fromAddress
@@ -36,12 +46,31 @@ export class EmailProvider implements NotificationProvider {
 
     this.replyTo = process.env.EMAIL_REPLY_TO
     this.resend = new Resend(apiKey)
+
+    logger.info(
+      {
+        fromAddress: this.fromAddress,
+        hasReplyTo: !!this.replyTo,
+        resendInitialized: !!this.resend,
+      },
+      "[EmailProvider] Initialized successfully",
+    )
   }
 
   async send(message: NotificationMessage): Promise<{ success: boolean; error?: string }> {
+    logger.info(
+      {
+        recipient: message.to,
+        subject: message.subject,
+        hasResend: !!this.resend,
+        fromAddress: this.fromAddress,
+      },
+      "[EmailProvider.send] Method called",
+    )
+
     if (!this.resend) {
       const error = "Email provider not configured (missing RESEND_API_KEY)"
-      logger.error({ recipient: message.to }, error)
+      logger.error({ recipient: message.to }, `[EmailProvider.send] ${error}`)
       return { success: false, error }
     }
 
