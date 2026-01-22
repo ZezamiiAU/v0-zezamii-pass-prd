@@ -24,7 +24,7 @@ export interface RoomsReservationResponse {
   reservationId?: string // The pass_id we sent
   error?: string
   statusCode?: number
-  // Note: PIN is NOT returned by Rooms API - it's sent async via Portal webhook to pass.lock_codes
+  pincode?: string // PIN code returned by Rooms API (if available)
 }
 
 const GUEST_ID_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8" // UUID v1 namespace
