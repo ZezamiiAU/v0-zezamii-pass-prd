@@ -234,12 +234,11 @@ export async function GET(request: NextRequest) {
                       console.log("[v0] by-session: Calling createRoomsReservation with payload:", JSON.stringify(roomsPayload))
                       const roomsResult = await createRoomsReservation(meta.org_id, roomsPayload)
                       console.log("[v0] by-session: Rooms API result =", JSON.stringify(roomsResult))
-                      if (roomsResult?.pincode) {
-                        pinCode = roomsResult.pincode
-                        pinProvider = "rooms"
-                        console.log("[v0] by-session: Got PIN from Rooms:", pinCode)
+                      // Note: Rooms API does NOT return pincode - PIN arrives async via Portal webhook
+                      if (roomsResult.success) {
+                        console.log("[v0] by-session: Rooms reservation confirmed, PIN will arrive via Portal webhook")
                       } else {
-                        console.log("[v0] by-session: No pincode in Rooms result")
+                        console.log("[v0] by-session: Rooms call failed:", roomsResult.error)
                       }
                     } else {
                       console.log("[v0] by-session: org not found")
