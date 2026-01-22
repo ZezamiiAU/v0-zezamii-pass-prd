@@ -35,6 +35,7 @@ const Meta = z.object({
   valid_to: z.string().optional(),
   backup_pincode: z.string().optional(),
   backup_pincode_fortnight: z.string().optional(),
+  rooms_reservation_created: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
