@@ -80,6 +80,7 @@ export default function SuccessPage() {
   const [walletEnabled] = useState(() => process.env.NEXT_PUBLIC_WALLET_ENABLED === "true")
   const [googleWalletUrl, setGoogleWalletUrl] = useState<string | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   const rawParams = useMemo(() => Object.fromEntries(searchParams.entries()), [searchParams])
 
@@ -147,6 +148,36 @@ export default function SuccessPage() {
       setError(null)
     }
   }, [countdown, displayedCode, passDetails?.backupCode, passDetails?.code, backupCodeCached, roomsPinReceived])
+
+  // Send confirmation email after PIN is displayed
+  useEffect(() => {
+    const sendConfirmationEmail = async () => {
+      if (!displayedCode || !passDetails?.passId || emailSent) return
+      
+      try {
+        const response = await fetch("/api/passes/send-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            passId: passDetails.passId,
+            pin: displayedCode,
+            pinSource,
+          }),
+        })
+        
+        if (response.ok) {
+          setEmailSent(true)
+          console.log("[v0] Confirmation email sent successfully")
+        } else {
+          console.log("[v0] Failed to send confirmation email:", await response.text())
+        }
+      } catch (err) {
+        console.log("[v0] Error sending confirmation email:", err)
+      }
+    }
+
+    sendConfirmationEmail()
+  }, [displayedCode, passDetails?.passId, emailSent, pinSource])
 
   useEffect(() => {
     const checkOnlineStatus = () => {

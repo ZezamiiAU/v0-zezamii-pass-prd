@@ -204,37 +204,14 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
         }
       }
 
-      // Determine timezone - default to Australia/Sydney
-      const timezone = "Australia/Sydney"
-
-      try {
-        await sendPassNotifications(
-          meta.data.customer_email,
-          meta.data.customer_phone || null,
-          {
-            accessPointName,
-            pin: pinCode,
-            validFrom: startsAt,
-            validTo: endsAt,
-            vehiclePlate: meta.data.customer_plate,
-            orgName: org.name,
-            orgSlug: org.slug,
-            passType: meta.data.variant || "day",
-            passTypeName: meta.data.pass_type_name || (meta.data.variant?.toLowerCase().includes("camping") ? "Camping Pass" : "Day Pass"),
-            numberOfDays: meta.data.number_of_days ? Number.parseInt(meta.data.number_of_days, 10) : 1,
-          },
-          timezone,
-        )
-        logger.info(
-          { passId: meta.data.pass_id, email: meta.data.customer_email },
-          "Pass notification email sent successfully (checkout)",
-        )
-      } catch (emailError) {
-        logger.error(
-          { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
-          "Failed to send pass notification email (checkout)",
-        )
-      }
+      // NOTE: Email is NOT sent here in the Stripe webhook.
+      // The success page will trigger email after the PIN countdown completes,
+      // ensuring the correct PIN (Rooms or backup) is sent to the customer.
+      // See /api/passes/send-confirmation for the email trigger endpoint.
+      logger.info(
+        { passId: meta.data.pass_id, email: meta.data.customer_email },
+        "Pass activated - email will be sent after PIN confirmation on success page",
+      )
     }
 
     const customerIdentifier =
@@ -434,44 +411,14 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
       }
     }
 
-    // Determine timezone from metadata or default to Australia/Sydney
-    const timezone = meta.data.org_timezone || "Australia/Sydney"
-
-    // Determine pass type
-    const passType = meta.data.variant || "day"
-    const passTypeName = meta.data.pass_type_name || (passType.toLowerCase().includes("camping") ? "Camping Pass" : "Day Pass")
-    const numberOfDays = Number.parseInt(meta.data.number_of_days || "1", 10)
-
-    try {
-      await sendPassNotifications(
-        meta.data.customer_email,
-        meta.data.customer_phone || null,
-        {
-          accessPointName,
-          pin: pinCode,
-          validFrom: startsAt,
-          validTo: endsAt,
-          vehiclePlate: meta.data.customer_plate,
-          orgName,
-          orgSlug: meta.data.org_slug,
-          orgLogo,
-          siteName,
-          passType,
-          passTypeName,
-          numberOfDays,
-        },
-        timezone,
-      )
-      logger.info(
-        { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider, hasPin: !!pinCode },
-        "Pass notification email sent successfully",
-      )
-    } catch (emailError) {
-      logger.error(
-        { passId: meta.data.pass_id, email: meta.data.customer_email, emailError },
-        "Failed to send pass notification email",
-      )
-    }
+    // NOTE: Email is NOT sent here in the Stripe webhook.
+    // The success page will trigger email after the PIN countdown completes,
+    // ensuring the correct PIN (Rooms or backup) is sent to the customer.
+    // See /api/passes/send-confirmation for the email trigger endpoint.
+    logger.info(
+      { passId: meta.data.pass_id, email: meta.data.customer_email, pinProvider, hasPin: !!pinCode },
+      "Pass activated - email will be sent after PIN confirmation on success page",
+    )
   }
 
   const customerIdentifier =

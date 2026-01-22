@@ -304,10 +304,10 @@ export function PassPurchaseForm({
               )}
 
               <label htmlFor="terms" className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                termsAccepted ? "bg-[#f0fdf4] border border-[#22c55e]" : "bg-[#f8fafc] border border-transparent"
+                termsAccepted ? "bg-[#fef9e7] border border-[#d4a017]" : "bg-[#f8fafc] border border-transparent"
               }`}>
                 <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
-                  termsAccepted ? "bg-[#22c55e]" : "border border-[#e2e8f0] bg-white"
+                  termsAccepted ? "bg-[#d4a017]" : "border border-[#e2e8f0] bg-white"
                 }`}>
                   {termsAccepted && <Check className="w-3 h-3 text-white" />}
                 </div>
