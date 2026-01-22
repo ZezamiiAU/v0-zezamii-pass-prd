@@ -346,24 +346,25 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
 
   const roomsResult = await createRoomsReservation(org.id, roomsPayload)
 
-  if (roomsResult.success && roomsResult.pincode) {
-    pinCode = roomsResult.pincode
-    pinProvider = "rooms"
-    logger.info({ passId: meta.data.pass_id, pinCode }, "Pincode received from Rooms webhook")
+  // Note: Rooms API does NOT return a pincode - PIN arrives async via Portal webhook to pass.lock_codes
+  // The success page polls by-session which reads from lock_codes table
+  if (roomsResult.success) {
+    logger.info({ passId: meta.data.pass_id }, "Rooms reservation confirmed, PIN will arrive via Portal webhook")
   } else {
     logger.warn(
       { passId: meta.data.pass_id, error: roomsResult.error },
-      "Rooms webhook failed, using cached backup pincode from metadata",
+      "Rooms API call failed",
     )
+  }
 
-    if (meta.data.backup_pincode) {
-      pinCode = meta.data.backup_pincode
-      pinProvider = "backup"
-      logger.info(
-        { passId: meta.data.pass_id, pinCode, fortnight: meta.data.backup_pincode_fortnight },
-        "Using cached backup pincode from payment metadata",
-      )
-    }
+  // Always use backup pincode initially - Rooms PIN will be fetched later via by-session polling
+  if (meta.data.backup_pincode) {
+    pinCode = meta.data.backup_pincode
+    pinProvider = "backup"
+    logger.info(
+      { passId: meta.data.pass_id, pinCode, fortnight: meta.data.backup_pincode_fortnight },
+      "Using backup pincode from payment metadata (Rooms PIN will arrive via webhook)",
+    )
   }
 
   // Store lock code if we have a pincode
