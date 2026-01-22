@@ -243,7 +243,6 @@ export async function POST(request: NextRequest) {
     // Call Rooms API BEFORE payment - create reservation with "Pending" status
     // Note: Rooms API does NOT return a pincode - PIN is sent async via Portal webhook
     let roomsReservationCreated = false
-    let roomsPincode = ""
     try {
       console.log("[v0] payment-intents: Calling Rooms API before payment, slugPath =", slugPath)
       const roomsPayload = buildRoomsPayload({
@@ -264,7 +263,6 @@ export async function POST(request: NextRequest) {
       
       if (roomsResult.success) {
         roomsReservationCreated = true
-        roomsPincode = roomsResult.pincode || ""
         console.log("[v0] payment-intents: Rooms reservation created, PIN will arrive via Portal webhook")
       } else {
         console.log("[v0] payment-intents: Rooms call failed, will use backup pincode fallback")
