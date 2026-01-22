@@ -86,7 +86,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -106,9 +106,6 @@
       "esbuild",
       "sharp",
       "unrs-resolver"
-    ],
-    "overrides": {
-      "lodash": ">=4.17.23"
-    }
+    ]
   }
 }

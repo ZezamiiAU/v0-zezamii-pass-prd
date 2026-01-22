@@ -134,11 +134,12 @@ export async function createRoomsReservation(
   payload: RoomsReservationPayload,
 ): Promise<RoomsReservationResponse> {
   const startTime = Date.now()
-  logger.info({ organisationId, reservationId: payload.reservationId }, "Creating Rooms reservation")
+  console.log("[v0] createRoomsReservation: Called with organisationId =", organisationId)
 
   try {
     // Fetch integration config from database
     const core = createSchemaServiceClient("core")
+    console.log("[v0] createRoomsReservation: Querying integrations table...")
     const { data: integration, error: configError } = await core
       .from("integrations")
       .select("id, config, credentials")
@@ -147,7 +148,10 @@ export async function createRoomsReservation(
       .eq("status", "active")
       .maybeSingle()
 
+    console.log("[v0] createRoomsReservation: Integration query result:", integration ? "FOUND" : "NOT FOUND", "error:", configError?.message || "none")
+
     if (configError || !integration) {
+      console.log("[v0] createRoomsReservation: No active Rooms integration found for org", organisationId)
       logger.warn({ organisationId, configError: configError?.message || "No integration found" }, "Rooms integration not configured")
       return {
         success: false,
@@ -157,7 +161,10 @@ export async function createRoomsReservation(
 
     const config = integration.config as { base_url: string; webhook_path: string }
     const credentials = integration.credentials as { api_key?: string } | null
+    console.log("[v0] createRoomsReservation: Integration config:", JSON.stringify(config))
+
     const url = `${config.base_url}${config.webhook_path}`
+    console.log("[v0] createRoomsReservation: Calling URL:", url)
 
     // Build headers with optional Authorization
     const headers: Record<string, string> = {
@@ -165,6 +172,7 @@ export async function createRoomsReservation(
     }
     if (credentials?.api_key) {
       headers["Authorization"] = `Bearer ${credentials.api_key}`
+      console.log("[v0] createRoomsReservation: Authorization header added")
     }
 
     // Make synchronous HTTP call to Rooms API
