@@ -152,14 +152,14 @@ export default function SuccessPage() {
   // Send confirmation email after PIN is displayed
   useEffect(() => {
     const sendConfirmationEmail = async () => {
-      if (!displayedCode || !passDetails?.pass_id || emailSent) return
-
+      if (!displayedCode || !passDetails?.passId || emailSent) return
+      
       try {
         const response = await fetch("/api/passes/send-confirmation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            passId: passDetails.pass_id,
+            passId: passDetails.passId,
             pin: displayedCode,
             pinSource,
           }),
@@ -167,14 +167,17 @@ export default function SuccessPage() {
         
         if (response.ok) {
           setEmailSent(true)
+          console.log("[v0] Confirmation email sent successfully")
+        } else {
+          console.log("[v0] Failed to send confirmation email:", await response.text())
         }
-      } catch {
-        // Email send failures are non-critical
+      } catch (err) {
+        console.log("[v0] Error sending confirmation email:", err)
       }
     }
 
     sendConfirmationEmail()
-  }, [displayedCode, passDetails?.pass_id, emailSent, pinSource])
+  }, [displayedCode, passDetails?.passId, emailSent, pinSource])
 
   useEffect(() => {
     const checkOnlineStatus = () => {
@@ -335,6 +338,7 @@ export default function SuccessPage() {
         // If no Rooms PIN yet and we haven't exhausted retries, poll again
         if (!hasRoomsPin && pinRetryCount < MAX_PIN_RETRIES && isMounted) {
           pinRetryCount++
+          console.log(`[v0] success: PIN retry ${pinRetryCount}/${MAX_PIN_RETRIES}, waiting ${PIN_RETRY_DELAY_MS}ms`)
           
           // Cache backup code in case retries fail
           if (data.backupCode && !backupCodeCached) {
@@ -355,6 +359,9 @@ export default function SuccessPage() {
           setBackupCodeCached(codeToCache)
           if (data.pinSource === "rooms") {
             setRoomsPinReceived(true)
+            console.log("[v0] success: Rooms PIN received:", data.code)
+          } else {
+            console.log("[v0] success: Using backup code after", pinRetryCount, "retries")
           }
         }
         

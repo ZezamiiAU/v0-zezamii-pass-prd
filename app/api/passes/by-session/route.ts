@@ -17,6 +17,7 @@ const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
 
 export async function GET(request: NextRequest) {
+  console.log("[v0] by-session: GET called with URL:", request.url)
   if (!rateLimit(request, 30, 60000)) {
     const headers = getRateLimitHeaders(request, 30)
     return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429, headers })
@@ -158,8 +159,9 @@ export async function GET(request: NextRequest) {
     if (!devMode) {
       // Auto-sync: If payment succeeded but pass is not active, activate it now
       if (pass.status !== "active" && payment.status === "succeeded") {
-        logger.info({ passId: pass.id, passStatus: pass.status, paymentStatus: payment.status }, "Auto-syncing pass")
-
+        console.log("[v0] by-session: Auto-syncing pass - payment succeeded but pass not active")
+        console.log("[v0] by-session: pass.id =", pass.id, "pass.status =", pass.status, "payment.status =", payment.status)
+        
         try {
           const passDb = createSchemaServiceClient("pass")
           const coreDb = createSchemaServiceClient("core")
@@ -169,6 +171,9 @@ export async function GET(request: NextRequest) {
           if (payment.stripe_payment_intent) {
             const stripeIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent)
             meta = stripeIntent.metadata || {}
+            console.log("[v0] by-session: Stripe metadata =", JSON.stringify(meta))
+          } else {
+            console.log("[v0] by-session: No stripe_payment_intent on payment record")
           }
           
           // Calculate validity dates
@@ -179,6 +184,7 @@ export async function GET(request: NextRequest) {
           
           // Check if lock code already exists
           const existingLockCode = await getLockCodeByPassId(pass.id)
+          console.log("[v0] by-session: existingLockCode =", existingLockCode ? "EXISTS" : "NULL")
           
           let pinCode: string | null = null
           let pinProvider: "rooms" | "backup" = "backup"
@@ -186,7 +192,9 @@ export async function GET(request: NextRequest) {
           if (!existingLockCode) {
             // Try Rooms API first - need device info for the payload
             const deviceId = pass.device_id || meta.access_point_id || meta.gate_id
+            console.log("[v0] by-session: deviceId =", deviceId, "meta.org_id =", meta.org_id)
             if (deviceId && meta.org_id) {
+              console.log("[v0] by-session: Attempting Rooms API call...")
               try {
 // Get device and site info for Rooms payload
   const { data: device } = await coreDb
@@ -211,6 +219,7 @@ export async function GET(request: NextRequest) {
 
                     if (org) {
                       const slugPath = `${org.slug}/${site.slug}/${device.slug}`
+                      console.log("[v0] by-session: Building Rooms payload with slugPath =", slugPath)
                       const roomsPayload = buildRoomsPayload({
                         siteId: device.site_id,
                         passId: pass.id,
@@ -222,19 +231,29 @@ export async function GET(request: NextRequest) {
                         slugPath,
                         status: "Confirmed",
                       })
+                      console.log("[v0] by-session: Calling createRoomsReservation with payload:", JSON.stringify(roomsPayload))
                       const roomsResult = await createRoomsReservation(meta.org_id, roomsPayload)
+                      console.log("[v0] by-session: Rooms API result =", JSON.stringify(roomsResult))
                       // Note: Rooms API does NOT return pincode - PIN arrives async via Portal webhook
                       if (roomsResult.success) {
-                        logger.info({ passId: pass.id }, "Rooms reservation confirmed")
+                        console.log("[v0] by-session: Rooms reservation confirmed, PIN will arrive via Portal webhook")
                       } else {
-                        logger.warn({ passId: pass.id, error: roomsResult.error }, "Rooms call failed")
+                        console.log("[v0] by-session: Rooms call failed:", roomsResult.error)
                       }
+                    } else {
+                      console.log("[v0] by-session: org not found")
                     }
+                  } else {
+                    console.log("[v0] by-session: site not found")
                   }
+                } else {
+                  console.log("[v0] by-session: device not found or no site_id")
                 }
               } catch (roomsError) {
-                logger.warn({ error: roomsError instanceof Error ? roomsError.message : String(roomsError) }, "Rooms API failed, using backup")
+                console.log("[v0] by-session: Rooms API failed, using backup pincode", roomsError)
               }
+            } else {
+              console.log("[v0] by-session: Skipping Rooms - deviceId =", deviceId, "meta.org_id =", meta.org_id)
             }
             
             // Fallback to backup pincode
@@ -288,6 +307,7 @@ export async function GET(request: NextRequest) {
               if (device?.name) accessPointName = device.name
             }
             
+            console.log("[v0] by-session: Sending email to", meta.customer_email)
             try {
               await sendPassNotifications(
                 meta.customer_email,
@@ -301,9 +321,9 @@ export async function GET(request: NextRequest) {
                 },
                 "Australia/Sydney",
               )
-              logger.info({ passId: pass.id, email: meta.customer_email }, "Email notification sent")
+              console.log("[v0] by-session: Email sent successfully")
             } catch (emailErr) {
-              logger.error({ passId: pass.id, error: emailErr instanceof Error ? emailErr.message : String(emailErr) }, "Email notification failed")
+              console.log("[v0] by-session: Email failed:", emailErr)
             }
           }
           
@@ -324,7 +344,7 @@ export async function GET(request: NextRequest) {
             returnUrl: null,
           })
         } catch (syncError) {
-          logger.error({ passId: pass.id, error: syncError instanceof Error ? syncError.message : String(syncError) }, "Auto-sync failed")
+          console.log("[v0] by-session: Auto-sync failed:", syncError)
           // Fall through to return the 400 error
         }
       }
