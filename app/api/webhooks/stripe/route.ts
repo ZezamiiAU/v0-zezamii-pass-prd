@@ -146,13 +146,10 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
   
   // Check if Rooms reservation was already created during payment intent
   const roomsReservationAlreadyCreated = meta.data.rooms_reservation_created === "true"
-  
-  console.log("[v0] stripe-webhook: roomsReservationAlreadyCreated =", roomsReservationAlreadyCreated)
-  
+
   // Send "Confirmed" status update to Rooms (reservation was created with "Pending" before payment)
   // Note: Rooms API does NOT return a pincode - PIN is sent async via Portal webhook to pass.lock_codes
-  console.log("[v0] stripe-webhook: Building Rooms payload for Confirmed status, slugPath =", slugPath)
-  console.log("[v0] stripe-webhook: org.id =", org.id, "passId =", meta.data.pass_id)
+  logger.info({ passId: meta.data.pass_id, orgId: org.id, slugPath, roomsReservationAlreadyCreated }, "Building Rooms payload for Confirmed status")
   
   const roomsPayload = buildRoomsPayload({
     siteId: meta.data.site_id || "",
@@ -166,15 +163,12 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event) {
     status: "Confirmed", // Update to Confirmed after payment succeeds
   })
 
-  console.log("[v0] stripe-webhook: Calling createRoomsReservation with Confirmed status:", JSON.stringify(roomsPayload))
   const roomsResult = await createRoomsReservation(org.id, roomsPayload)
-  console.log("[v0] stripe-webhook: Rooms API result:", JSON.stringify(roomsResult))
-  
+
   if (roomsResult.success) {
-    console.log("[v0] stripe-webhook: Rooms reservation confirmed, PIN will arrive via Portal webhook")
+    logger.info({ passId: meta.data.pass_id }, "Rooms reservation confirmed, PIN will arrive via Portal webhook")
   } else {
-    console.log("[v0] stripe-webhook: Rooms confirmation failed, PWA will use backup pincode")
-    logger.error({ passId: meta.data.pass_id, error: roomsResult.error }, "Rooms API failed")
+    logger.warn({ passId: meta.data.pass_id, error: roomsResult.error }, "Rooms confirmation failed, PWA will use backup pincode")
 
     const { data: existingCode } = await passDb
       .from("lock_codes")

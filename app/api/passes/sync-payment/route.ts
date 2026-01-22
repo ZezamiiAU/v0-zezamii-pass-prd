@@ -13,10 +13,8 @@ const { STRIPE_SECRET_KEY } = ENV.server()
 const stripe = new Stripe(STRIPE_SECRET_KEY)
 
 export async function POST(req: NextRequest) {
-  console.log("[v0] sync-payment: POST called")
   try {
     const { paymentIntentId } = await validateBody(req, syncPaymentBodySchema)
-    console.log("[v0] sync-payment: paymentIntentId =", paymentIntentId)
 
     // Fetch the payment intent from Stripe to check its status
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
@@ -46,16 +44,13 @@ export async function POST(req: NextRequest) {
     const { data: existingPass } = await passDb.from("passes").select("status").eq("id", passId).maybeSingle()
 
     if (existingPass?.status === "active") {
-      console.log("[v0] sync-payment: Pass already active, returning early")
       return NextResponse.json({ success: true, alreadyActive: true })
     }
 
     // Check if lock code already exists
     const { data: existingLockCode } = await passDb.from("lock_codes").select("id, code").eq("pass_id", passId).maybeSingle()
-    console.log("[v0] sync-payment: existingLockCode =", existingLockCode)
 
     if (!existingLockCode) {
-      console.log("[v0] sync-payment: No existing lock code, generating new one")
       // Need to generate pincode - try Rooms first, then backup
       const { data: pass } = await passDb
         .from("passes")
@@ -128,7 +123,6 @@ export async function POST(req: NextRequest) {
       }
 
       // Send email notification with pincode
-      console.log("[v0] sync-payment: Checking email condition", { customer_email: meta.customer_email, pinCode })
       if (meta.customer_email && pinCode) {
         // Get access point name
         let accessPointName = "Access Point"
@@ -143,11 +137,6 @@ export async function POST(req: NextRequest) {
         const timezone = "Australia/Sydney"
 
         try {
-          console.log("[v0] sync-payment: Sending email notification", {
-            email: meta.customer_email,
-            pinCode,
-            pinProvider,
-          })
           await sendPassNotifications(
             meta.customer_email,
             meta.customer_phone || null,
