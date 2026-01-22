@@ -210,25 +210,29 @@ export async function createRoomsReservation(
       }
     }
 
-    // Note: According to PRD, Rooms API does NOT return a PIN in its response.
-    // PIN is delivered asynchronously via Portal webhook to /api/webhooks/rooms/pin
-    // We consider the call successful if HTTP response is OK (2xx)
     const pincode =
       responseBody.pincode || responseBody.pin_code || responseBody.pin || responseBody.code || responseBody.accessCode
+
+    if (!pincode) {
+      logger.error({ organisationId, responseBody }, "Rooms API did not return pincode")
+      return {
+        success: false,
+        error: "Rooms API did not return pincode",
+      }
+    }
 
     logger.info(
       {
         organisationId,
         reservationId: payload.reservationId,
         duration,
-        hasPincode: !!pincode,
       },
-      "Rooms reservation created successfully - PIN will arrive via webhook",
+      "Rooms reservation created successfully",
     )
 
     return {
       success: true,
-      pincode: pincode ? String(pincode) : undefined, // May be undefined - PIN arrives via webhook
+      pincode: String(pincode),
       reservationId: payload.reservationId,
       statusCode: response.status,
     }
